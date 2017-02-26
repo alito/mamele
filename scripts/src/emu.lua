@@ -26,6 +26,7 @@ includedirs {
 	MAME_DIR .. "3rdparty",
 	GEN_DIR  .. "emu",
 	GEN_DIR  .. "emu/layout",
+	MAME_DIR .. "learning_environment",
 }
 
 includedirs {

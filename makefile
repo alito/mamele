@@ -17,6 +17,9 @@
 # NOWERROR = 1
 # IGNORE_GIT = 1
 
+#Enable the learning environment
+LEARNING_ENVIRONMENT = 1
+
 # TARGET = mame
 # SUBTARGET = tiny
 # TOOLS = 1
@@ -552,6 +555,10 @@ endif
 endif
 endif
 
+ifdef LEARNING_ENVIRONMENT
+PARAMS += --with-learning-environment
+endif
+
 ifdef TOOLS
 ifneq '$(TOOLS)' '0'
 PARAMS += --with-tools
@@ -806,6 +813,7 @@ SCRIPTS = scripts/genie.lua \
 	scripts/src/formats.lua \
 	scripts/toolchain.lua \
 	scripts/src/osd/modules.lua \
+	scripts/src/learningenvironment.lua \
 	$(wildcard src/osd/$(OSD)/$(OSD).mak) \
 	$(wildcard src/$(TARGET)/$(SUBTARGET_FULL).mak)
 

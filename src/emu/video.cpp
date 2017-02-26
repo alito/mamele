@@ -17,6 +17,7 @@
 #include "crsshair.h"
 #include "rendersw.hxx"
 #include "output.h"
+#include "learning-environment.h"
 
 #include "snap.lh"
 
@@ -112,7 +113,10 @@ video_manager::video_manager(running_machine &machine)
 		m_timecode_write(false),
 		m_timecode_text(""),
 		m_timecode_start(attotime::zero),
-		m_timecode_total(attotime::zero)
+		m_timecode_total(attotime::zero),
+		m_learning_environment_enabled(machine.options().learning_environment_enabled()),
+		m_show_screen_when_le_enabled(machine.options().show_screen_on_learning_environment())
+
 
 {
 	// request a callback upon exiting
@@ -231,8 +235,16 @@ void video_manager::frame_update(bool from_debugger)
 
 	// ask the OSD to update
 	g_profiler.start(PROFILER_BLIT);
-	machine().osd().update(!from_debugger && skipped_it);
+	if ((!m_learning_environment_enabled) || (m_show_screen_when_le_enabled)) {
+		machine().osd().update(!from_debugger && skipped_it);
+	}
 	g_profiler.stop();
+
+	if (m_learning_environment_enabled) {
+		/* create the bitmap */
+		create_snapshot_bitmap(nullptr);
+		le_update_display(machine(), m_snap_bitmap);
+	}
 
 	emulator_info::periodic_check();
 
@@ -582,6 +594,10 @@ void video_manager::exit()
 	// stop recording any movie
 	end_recording(MF_AVI);
 	end_recording(MF_MNG);
+
+	if (m_learning_environment_enabled) {
+		le_close_display(machine());
+	}
 
 	// free the snapshot target
 	machine().render().target_free(m_snap_target);

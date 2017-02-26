@@ -1,0 +1,20 @@
+# Where the first player's score sits and how to read that score
+# Follows the setup of hiscore.dat for the memory range, but is
+# followed by the style of encoding.  It does not try to
+# make an all-powerful encoding system, but instead will limit to major
+# schemes which will be given names.
+
+# Format is 
+# gamename:
+# for which game the description corresponds to
+# This can be multiple games, one per line
+
+# The score descriptions start with an @ symbol
+# @:<cpu>:<address_space>:<0xaddress_start>:<0xlength>:<unused>:<unused> <format>
+
+galaxian:
+
+@:maincpu:program:40a2:3:00:00 hexreadable
+
+puckmana:
+@:maincpu:program:4E80:04:00:00 hexreadable
