@@ -511,6 +511,9 @@ private:
 	input_seq           m_poll_seq;
 	osd_ticks_t         m_poll_seq_last_ticks;
 	input_item_class    m_poll_seq_class;
+
+	// learning environment
+	bool                m_learning_environment_enabled;
 };
 
 

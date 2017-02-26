@@ -1,0 +1,15 @@
+# Bit to detect when the game is over
+
+# Format is 
+# gamename:
+# for which game the description corresponds to
+# This can be multiple games, one per line
+
+# The game over descriptions start with an @ symbol
+# @:<cpu>:<address_space>:address:bit:<1|0> 
+# address and bit are zero-based, so bit 1 is the 2nd bit
+# last 1 or 0 is whether we are detecting the presence of a 1 or a 0
+
+
+galaxian:
+@:maincpu:program:16389:1:1

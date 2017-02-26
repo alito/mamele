@@ -390,6 +390,13 @@ public:
 	short http_port() const { return int_value(OPTION_HTTP_PORT); }
 	const char *http_root() const { return value(OPTION_HTTP_ROOT); }
 
+	// learning environment variables
+	bool learning_environment_enabled() const { return bool_value("use_le"); }
+	const char *learning_environment() const { return value("learning_environment"); }
+	const char *learning_environment_options() const { return value("le_options"); }
+	int learning_environment_player() const { return int_value("le_player"); }
+	bool show_screen_on_learning_environment() const { return bool_value("show_le"); }
+
 	// cache frequently used options in members
 	void update_cached_options();
 

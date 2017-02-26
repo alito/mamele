@@ -272,6 +272,12 @@ if (_OPTIONS["osd"] ~= "uwp") then
 		"linenoise-ng",
 	}
 end
+
+if _OPTIONS["with-learning-environment"] then
+	links {
+		"learningenvironment",
+	}
+end
 end
 	links {
 		ext_lib("zlib"),

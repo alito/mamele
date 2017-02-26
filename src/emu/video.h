@@ -205,6 +205,10 @@ private:
 	attotime            m_timecode_start;       // Starting timer for that video part (intro, gameplay, extra)
 	attotime            m_timecode_total;       // Show/hide timer at left (total elapsed on resulting video preview)
 
+	// learning environment
+	bool                m_learning_environment_enabled; // Whether the learning environment is enabled
+	bool                m_show_screen_when_le_enabled; // Display the screen when the learning environment is enabled
+
 };
 
 #endif // MAME_EMU_VIDEO_H

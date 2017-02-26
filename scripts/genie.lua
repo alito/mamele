@@ -116,6 +116,11 @@ newoption {
 }
 
 newoption {
+	trigger = "with-learning-environment",
+	description = "Learning environment to train automated agents.",
+}
+
+newoption {
 	trigger = "osd",
 	description = "Choose OSD layer implementation",
 }
@@ -1396,4 +1401,9 @@ end
 if _OPTIONS["with-benchmarks"] then
 	group "benchmarks"
 	dofile(path.join("src", "benchmarks.lua"))
+end
+
+if _OPTIONS["with-learning-environment"] then
+	group "learningenvironment"
+	dofile(path.join("src", "learningenvironment.lua"))
 end

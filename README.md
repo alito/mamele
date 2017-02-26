@@ -1,3 +1,12 @@
+# **mamele** #
+
+The MAME learning environment. This is a fork of the main MAME repository to let programmed agents
+play the games supported by the MAME emulator. If you are familiar with the 
+[Arcade Learning Environment](http://www.arcadelearningenvironment.org/) then mamele is to MAME as the
+Arcade Learaning Environment is to Stella.
+
+To see the main documentation for mamele go to [learning_environment/README.md](learning_environment/README.md)
+The rest of this document is the standard MAME readme.
 
 # **MAME** #
 

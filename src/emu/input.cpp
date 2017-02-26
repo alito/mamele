@@ -18,8 +18,9 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "emuopts.h"
 #include "inputdev.h"
-
+#include "learning-environment.h"
 
 
 //**************************************************************************
@@ -570,6 +571,8 @@ input_manager::input_manager(running_machine &machine)
 	m_class[DEVICE_CLASS_LIGHTGUN] = std::make_unique<input_class_lightgun>(*this);
 	m_class[DEVICE_CLASS_JOYSTICK] = std::make_unique<input_class_joystick>(*this);
 
+	m_learning_environment_enabled = machine.options().learning_environment_enabled();
+
 #ifdef MAME_DEBUG
 	for (input_device_class devclass = DEVICE_CLASS_FIRST_VALID; devclass <= DEVICE_CLASS_LAST_VALID; ++devclass)
 	{
@@ -653,6 +656,10 @@ s32 input_manager::code_value(input_code code)
 			}
 		}
 	} while (0);
+
+	if ((!result) && (m_learning_environment_enabled))
+		result = (le_get_input_code_value(code) != 0);
+
 
 	// stop the profiler before exiting
 	g_profiler.stop();

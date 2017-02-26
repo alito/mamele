@@ -83,6 +83,7 @@
 #include "image.h"
 #include "network.h"
 #include "ui/uimain.h"
+#include "learning-environment.h"
 #include <time.h>
 #include "server_http.hpp"
 #include "rapidjson/include/rapidjson/writer.h"
@@ -215,6 +216,13 @@ void running_machine::start()
 
 	// init the osd layer
 	m_manager.osd().init(*this);
+
+	// determine if the learning environment should be enabled
+	if (options().learning_environment_enabled()) {
+		if (le_init(*this)) {
+			fatalerror("Initialisation of learning environment failed\n");
+		}		
+	}
 
 	// create the video manager
 	m_video = std::make_unique<video_manager>(*this);
