@@ -12,4 +12,4 @@
 
 
 galaxian:
-@:maincpu:program:16389:1:1
+@:maincpu:program:16389:1:0
