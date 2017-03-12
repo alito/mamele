@@ -194,6 +194,14 @@
 #define OPTION_HTTP_PORT            "http_port"
 #define OPTION_HTTP_ROOT            "http_root"
 
+#define OPTION_LE_USE               "use_le"
+#define OPTION_LE_LIBRARY           "le_library"
+#define OPTION_LE_SHOW              "le_show"
+#define OPTION_LE_OPTIONS           "le_options"
+#define OPTION_LE_PLAYER            "le_player"
+#define OPTION_LE_DATA_PATH         "le_datapath"
+
+
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
@@ -391,11 +399,12 @@ public:
 	const char *http_root() const { return value(OPTION_HTTP_ROOT); }
 
 	// learning environment variables
-	bool learning_environment_enabled() const { return bool_value("use_le"); }
-	const char *learning_environment() const { return value("learning_environment"); }
-	const char *learning_environment_options() const { return value("le_options"); }
-	int learning_environment_player() const { return int_value("le_player"); }
-	bool show_screen_on_learning_environment() const { return bool_value("show_le"); }
+	bool learning_environment_enabled() const { return bool_value(OPTION_LE_USE); }
+	const char *learning_environment() const { return value(OPTION_LE_LIBRARY); }
+	const char *learning_environment_options() const { return value(OPTION_LE_OPTIONS); }
+	const char *learning_environment_data_path() const { return value(OPTION_LE_DATA_PATH); }
+	int learning_environment_player() const { return int_value(OPTION_LE_PLAYER); }
+	bool show_screen_on_learning_environment() const { return bool_value(OPTION_LE_SHOW); }
 
 	// cache frequently used options in members
 	void update_cached_options();

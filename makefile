@@ -1724,3 +1724,11 @@ translation:
 	$(SILENT) find language -iname "*.po" | xargs -n 1 -I %% msgmerge -U -N %% mame.pot
 	$(SILENT) find language -iname "*.po" | xargs -n 1 -I %% msgattrib --clear-fuzzy --empty %% -o %%
 
+
+install: all
+	mkdir -p ~/bin
+	cp mame64 ~/bin
+	mkdir -p ~/.le
+	cp learning_environment/gameover_description.txt ~/.le
+	cp learning_environment/score_description.txt ~/.le
+	@echo Make sure you have ~/bin in your PATH

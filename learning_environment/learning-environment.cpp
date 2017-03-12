@@ -337,8 +337,9 @@ int le_init(const running_machine &machine)
 
 	// Get score encoding and location
 	std::string game_name = machine.system().name;
-	score_memory_description = get_score_details(game_name);
-	game_over = get_gameover_details(game_name);
+	std::string location_files_directory = machine.options().learning_environment_data_path();
+	score_memory_description = get_score_details(game_name, location_files_directory);
+	game_over = get_gameover_details(game_name, location_files_directory);
 
 
 	/* Load given environment */

@@ -26,11 +26,15 @@ struct le_gameover {
     bool on;
 };
 
-/* Get where to find the current score details and its encoding for the given game */
-le_score_memory_description get_score_details(const std::string& game_name);
+/* Get where to find the current score details and its encoding for the given game. 
+   description_files_directory is where to look for the description file first
+ */
+le_score_memory_description get_score_details(const std::string& game_name, const std::string& description_files_directory);
 
-/* Get where to find the game over details for the given game */
-le_gameover get_gameover_details(const std::string& game_name);
+/* Get where to find the game over details for the given game
+   description_files_directory is where to look for the description file first 
+*/
+le_gameover get_gameover_details(const std::string& game_name, const std::string& description_files_directory);
 
 
 #endif /* _LE_UTILS_H */

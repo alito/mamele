@@ -209,12 +209,13 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_HTTP_PORT,                       "8080",            OPTION_INTEGER, "HTTP server port" },
 	{ OPTION_HTTP_ROOT,                       "web",             OPTION_STRING,  "HTTP server document root" },
 	// learning environment options
-	{ nullptr,                    nullptr,       OPTION_HEADER,     "LEARNING ENVIRONMENT OPTIONS" },
-	{ "use_le", "0", OPTION_BOOLEAN, "enable learning environment" },
-	{ "learning_environment;le", nullptr, OPTION_STRING, "library that should be given control to" },
-	{ "show_le", "1", OPTION_BOOLEAN, "display screen when learning environment is enabled (dangerous to turn off)"},
-	{ "le_options", "", OPTION_STRING, "options to pass to the learning environment" },
-	{ "le_player", "1", OPTION_INTEGER, "player that learning environment plays as" },
+	{ nullptr,                                nullptr,           OPTION_HEADER,     "LEARNING ENVIRONMENT OPTIONS" },
+	{ OPTION_LE_USE,                          "0",               OPTION_BOOLEAN, "enable learning environment" },
+	{ OPTION_LE_LIBRARY ";le",                nullptr,           OPTION_STRING, "library that should be given control to" },
+	{ OPTION_LE_SHOW,                         "1",               OPTION_BOOLEAN, "display screen when learning environment is enabled (dangerous to turn off)"},
+	{ OPTION_LE_OPTIONS,                      "",                OPTION_STRING, "options to pass to the learning environment" },
+	{ OPTION_LE_PLAYER,                       "1",               OPTION_INTEGER, "player that learning environment plays as" },
+	{ OPTION_LE_DATA_PATH,                    ".",                OPTION_STRING, "directory where gameover and score data is stored" },
 
 	{ nullptr }
 };

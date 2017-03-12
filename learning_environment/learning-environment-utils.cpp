@@ -131,18 +131,23 @@ static string get_full_path(const string& path) {
 
 
 /* Find a readable file among the default paths */
-static string find_score_filename(const string& filename) {
+static string find_description_filename(const string& filename, const std::string& description_files_directory) {
 
 	string full_path;
 	bool found = false;
 
 	list<string> paths;
+	if (!description_files_directory.empty()) {
+		paths.push_back(description_files_directory);
+	}
 	paths.push_back("~/.le/");
 	paths.push_back("./");
-	paths.push_back("le/");
 
 	for (list<string>::iterator it=paths.begin(), end=paths.end(); it != end; ++it) {
 		full_path = get_full_path(*it);
+		if (full_path.back() != '/') {
+			full_path += '/';
+		}
 		full_path += filename;
 	
 		ifstream fin(full_path.c_str());
@@ -191,10 +196,10 @@ std::string find_description_for_game(const std::string& filename, const std::st
 }
 
 /* Get where to find the current score details for the given game */
-le_score_memory_description get_score_details(const std::string& game_name) {
+le_score_memory_description get_score_details(const std::string& game_name, const std::string& description_files_directory) {
 	le_score_memory_description description;
 
-	string filename = find_score_filename(score_description_filename);
+	string filename = find_description_filename(score_description_filename, description_files_directory);
 
 	if (filename.empty()) {
 		cerr << "Could not find '" << score_description_filename << "'" << endl;
@@ -250,10 +255,10 @@ le_score_memory_description get_score_details(const std::string& game_name) {
 }
 
 /* Get where to find whether the game is over for the given game */
-le_gameover get_gameover_details(const std::string& game_name) {
+le_gameover get_gameover_details(const std::string& game_name, const std::string& description_files_directory) {
 	le_gameover gameover;
 
-	string filename = find_score_filename(gameover_description_filename);
+	string filename = find_description_filename(gameover_description_filename, description_files_directory);
 
 	if (filename.empty()) {
 		cerr << "Could not find '" << gameover_description_filename << "'" << endl;
