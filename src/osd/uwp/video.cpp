@@ -158,7 +158,7 @@ void windows_osd_interface::extract_video_config()
 	else if (strcmp(stemp, "none") == 0)
 	{
 		video_config.mode = VIDEO_MODE_NONE;
-		if (!emulator_info::standalone() && options().seconds_to_run() == 0)
+		if (!emulator_info::standalone() && options().seconds_to_run() == 0 && !options().learning_environment_enabled())
 			osd_printf_warning("Warning: -video none doesn't make much sense without -seconds_to_run\n");
 	}
 	else
