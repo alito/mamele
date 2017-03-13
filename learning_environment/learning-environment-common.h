@@ -53,7 +53,7 @@ typedef struct {
 } le_game_info;
 
 
-typedef int (*le_game_starter)(const char *args, const le_game_info *game_info);
+typedef int (*le_game_starter)(const le_game_info *game_info);
 typedef void (*le_game_finisher) (void);
 typedef int (*le_state_updater) (int current_score, int game_over, const le_frame_buffer *buffer);
 typedef int (*le_reset_checker) (void);

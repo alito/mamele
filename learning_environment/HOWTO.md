@@ -34,10 +34,10 @@ Flow of calls
 
 This is a summary of the order of the calls to your agent:
 
-1. MAME starts, le_get_functions is called.
+1. MAME starts, le_get_functions is called with the parameters passed on the 
+command line through le_options.
 
-2. start function called with the parameters passed on
-command line through le_options, and a structure specifying the name
+2. start function called and passed a structure specifying the name
 of the game, the bitmap size to be expected, and a list of the buttons
 that the game uses (eg galaxian only uses left, right and button 1)
 

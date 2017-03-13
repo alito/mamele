@@ -9,13 +9,11 @@ To call, use something like 'mame -use_le -agent sit.so <romname>'
 
 static int frame_counter = 0;
 
-static int start_game(const char *args, const le_game_info *game_info) {
+static int start_game(const le_game_info *game_info) {
 	/* 
 	   This is called at game start.
-	   args is a string with the command-line options passed in through -ac_options to mame
 	*/
 	fprintf(stderr,"dummy start game called\n");
-	fprintf(stderr,"arguments: %s\n",args);
 	fprintf(stderr,"game name: %s\nwidth: %d\nheight: %d\n",game_info->game_name,game_info->width, game_info->height);
 	fprintf(stderr,"Buttons used: ");
 	for (int i=0; i < LE_TOTAL_BUTTONS; i++) {
@@ -76,9 +74,11 @@ static void consume_memory(const le_memory *memory) {
 	fprintf(stderr, "Got %lu bytes of memory\n", memory->size);
 }
 
-le_functions le_get_functions (void) {
+le_functions le_get_functions (const char* args) {
 	/*
 	  This is the only mandatory function and it has to be called le_get_functions 
+
+	  args is a string with the command-line options passed in through -ac_options to mame
 
 	  It should return what function should be called at the start of the game,
 	  on each update to receive the framebuffer, which will return the actions of the agent, and which to get called

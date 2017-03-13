@@ -7,35 +7,29 @@ mame -use_le -learning_environment pythonbinding.so -le_options randomplayer <ro
 
 import random
 
-def le_get_functions(args, game_name, width, height, buttons_used):
+def le_get_functions(args):
     """
     This function has to be called le_get_functions
 
     args is the rest of the command-line options passed in on -le_options to MAME after the name 
     of the module
     
-    It should return a 5-tuple of the function to call with updates on framebuffer, the function 
+    It should return a 6-tuple listing the function to call at the start with the game info (name, 
+    width, height, buttons used), the function to callwith updates on framebuffer, the function 
     to be called to get agent input, the function to call to check whether to reset MAME, the 
     function to be called when MAME shuts down, and the function that gets passed the contents
     of the memory (this last one is rarely needed) 
 
-    Any of  them can be set to None if you don't want to be notified of that event type.
+    Any of them can be set to None if you don't want to be notified of that event type.
     """
-    state = DummyController(game_name, width, height, buttons_used, args)
-    return (state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
-
+    state = DummyController(args)
+    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
 
 
 class DummyController(object):
-    def __init__(self, game_name, width, height, buttons_used, args):
-        self.game_name = game_name
-        self.width = width
-        self.height = height
-        self.buttons_used = buttons_used
-        
+    def __init__(self, args):
+
         #TODO: parse args
-
-
         # some useful constants
         left_arrow_button = Button(0)       
         right_arrow_button = Button(1)
@@ -72,6 +66,17 @@ class DummyController(object):
         self.current_score = 0
         self.game_over = False
 
+
+    def start(self, game_name, width, height, buttons_used):
+        """
+        This will be called early on, with information about the game name, its frame size
+        and the buttons used by the game
+        """
+        self.game_name = game_name
+        self.width = width
+        self.height = height
+        self.buttons_used = buttons_used
+    
         
     def update(self, score, game_over, video_frame):
         """

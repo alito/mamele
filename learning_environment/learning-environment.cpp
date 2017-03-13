@@ -314,7 +314,7 @@ int le_init(const running_machine &machine)
 {
 
 	le_functions le_functions_;
-	le_functions (*le_get_functions) (void);
+	le_functions (*le_get_functions) (const char *args);
 	const char *error_message;
 	char library_file_full_path[PATH_MAX + 1];
 
@@ -355,14 +355,14 @@ int le_init(const running_machine &machine)
 	}
 
 	/*fprintf(stderr,"About to get function %s\n",LE_GET_FUNCTIONS_NAME);*/
-	le_get_functions = (le_functions (*)()) dlsym(le_lib_handle,LE_GET_FUNCTIONS_NAME);
+	le_get_functions = (le_functions (*)(const char *)) dlsym(le_lib_handle,LE_GET_FUNCTIONS_NAME);
 	error_message = dlerror();
 	if (error_message) {
 		cerr << "Could not find " LE_GET_FUNCTIONS_NAME " symbol in " << le_library << ": " << error_message << endl;
 		return 1;
 	}
 	/*fprintf(stderr,"About to call function\n");*/
-	le_functions_ = (*le_get_functions)();
+	le_functions_ = (*le_get_functions)(le_args);
 
 	le_start_game = le_functions_.start;
 	le_finish_game = le_functions_.finish;
@@ -446,7 +446,7 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 				game_info.buttons_used[button_index] = used_buttons[g_player-1][button_index];
 			}
 
-			le_video_mode = (*le_start_game) (le_args, &game_info);
+			le_video_mode = (*le_start_game) (&game_info);
 			if (le_video_mode != LE_VIDEO_MODE_BGRA) {
 				cerr << "Modes other than BGRA have not been implemented yet!" << endl;
 				exit(1);
