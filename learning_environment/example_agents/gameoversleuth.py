@@ -73,19 +73,15 @@ def different_bits(previous, current):
 
     return differences
 
-def le_get_functions(args, game_name, width, height, buttons_used):
+def le_get_functions(args):
 
 
-    state = GameOverSleuth(game_name, width, height, buttons_used, args)
-    return (state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
+    state = GameOverSleuth(args)
+    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
 
 
 class GameOverSleuth(object):
-    def __init__(self, game_name, width, height, buttons_used, args):
-        self.game_name = game_name
-        self.width = width
-        self.height = height
-        self.buttons_used = buttons_used
+    def __init__(self, args):
 
         self.actions = [False for i in range(12)]
 
@@ -117,6 +113,12 @@ class GameOverSleuth(object):
 
         logging.basicConfig(level=logging.DEBUG)
 
+
+    def start(self, game_name, width, height, buttons_used):
+        self.game_name = game_name
+        self.width = width
+        self.height = height
+        self.buttons_used = buttons_used
 
     def handle_input(self):
         key = self.stdscr.getch()
