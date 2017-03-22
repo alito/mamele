@@ -289,12 +289,12 @@ static void extract_main_memory(running_machine &machine) {
 				offs_t bytemask = space.bytemask();
 				if (memory.size == 0) {
 					// Initialise
-					memory.size = bytemask;
-					memory.content = (uint8_t *) malloc(sizeof(uint8_t) * bytemask);
+					memory.size = bytemask + 1;
+					memory.content = (uint8_t *) malloc(sizeof(uint8_t) * memory.size);
 				}
 
 				uint8_t *target = memory.content;
-				for (offs_t byteaddress = 0; byteaddress <= bytemask; byteaddress++)
+				for (offs_t byteaddress = 0; byteaddress < memory.size; byteaddress++)
 				{
 					*target++ = space.read_byte(byteaddress);
 				}
@@ -317,8 +317,6 @@ int le_init(const running_machine &machine)
 	le_functions (*le_get_functions) (const char *args);
 	const char *error_message;
 	char library_file_full_path[PATH_MAX + 1];
-
-
 
 	le_library = machine.options().learning_environment();
 	if (le_library == NULL) {
