@@ -2,7 +2,7 @@
 Dummy controller that presses keys randomly
 
 Call with a command line like:
-mame -use_le -learning_environment pythonbinding.so -le_options randomplayer <romname>
+mame -use_le -le_library pythonbinding.so -le_options randomplayer <romname>
 """
 
 import random

@@ -3,7 +3,7 @@ Helps to work out what memory changes when the game ends.
 Press a key when the game is over. This will dump the last 100 frames of memory and images on a directory
 
 Call with a command line like:
-mame -use_le -learning_environment pythonbinding.so -le_options gameoversleuth <romname>
+mame -use_le -le_library pythonbinding.so -le_options gameoversleuth <romname>
 """
 
 import os, sys, logging
@@ -242,3 +242,5 @@ class GameOverSleuth(object):
             self.ored_memory[current_frame_index] = [(old_byte | new_byte) for old_byte, new_byte in zip(self.ored_memory[previous_frame_index], current)]
             self.anded_memory[current_frame_index] = [(old_byte & new_byte) for old_byte, new_byte in zip(self.anded_memory[previous_frame_index], current)]
 
+if __name__ == '__main__':
+    print(__doc__)
