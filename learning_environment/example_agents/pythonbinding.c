@@ -37,6 +37,12 @@ static int start_game(const le_game_info *game_info) {
 	Py_DECREF(p_args);
 	if (p_value != NULL) {
 		Py_DECREF(p_value);
+	} else {
+		/* Something went wrong. Bail out */
+		fprintf(stderr, "Something went wrong calling the Python-side of start_game. Bailing\n");
+		PyErr_Print();					
+		Py_Finalize();
+		exit(1);		
 	}
 
 	return le_video_mode;
@@ -91,7 +97,11 @@ static int update_state(int current_score, int game_over, const le_frame_buffer 
 				frame_skip = PyInt_AsLong(p_value);
 				Py_DECREF(p_value);
 			} else {
-				PyErr_Print();
+				/* Something went wrong. Bail out */
+				fprintf(stderr, "Something went wrong calling the Python-side of update_state. Bailing\n");
+				PyErr_Print();					
+				Py_Finalize();
+				exit(1);
 			}
 		}
 		Py_DECREF(p_buffer);
@@ -130,6 +140,12 @@ static le_actions get_actions(void) {
 				}
 			}
 			Py_DECREF(p_value);
+		} else {
+			/* Something went wrong. Bail out */
+			fprintf(stderr, "Something went wrong calling the Python-side of get_actions. Bailing\n");
+			PyErr_Print();					
+			Py_Finalize();
+			exit(1);			
 		}
 	} else {
 		// Return zeros for all buttons if we don't have a useful function
@@ -158,7 +174,11 @@ static int check_reset(void) {
 			}
 			Py_DECREF(p_value);
 		} else {
-			PyErr_Print();
+			/* Something went wrong. Bail out */
+			fprintf(stderr, "Something went wrong calling the Python-side of check_reset. Bailing\n");
+			PyErr_Print();					
+			Py_Finalize();
+			exit(1);
 		}
 	}
 	return should_reset;
@@ -186,6 +206,12 @@ static void consume_memory(const le_memory *memory) {
 				if (p_value != NULL) {
 					/* Don't care what consume_memory returns */
 					Py_DECREF(p_value);
+				} else {
+					/* Something went wrong. Bail out */
+					fprintf(stderr, "Something went wrong calling the Python-side of consume_memory. Bailing\n");
+					PyErr_Print();					
+					Py_Finalize();
+					exit(1);
 				}
 			}
 		}
