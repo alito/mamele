@@ -23,7 +23,7 @@ def le_get_functions(args):
     Any of them can be set to None if you don't want to be notified of that event type.
     """
     state = DummyController(args)
-    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
+    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, None)
 
 
 class DummyController(object):
@@ -99,7 +99,7 @@ class DummyController(object):
         elif self.game_over:
             self.game_over = False
             print ("New game")
-        
+
         return 0  #number of frames you want to skip
 
     
@@ -118,6 +118,7 @@ class DummyController(object):
                 self.actions.append(button.state)
             else:
                 self.actions.append(False)
+
         return self.actions
 
     def check_reset(self):

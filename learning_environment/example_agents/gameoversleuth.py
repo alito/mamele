@@ -1,6 +1,11 @@
 """
 Helps to work out what memory changes when the game ends.
-Press a key when the game is over. This will dump the last 100 frames of memory and images on a directory
+Press the 's' key when the game starts. Pressing the 'w' key will write the last 100 frames,
+a list of memory bits that were never set to 0, and a list of memory bits that were
+never set to 1.
+
+If you press 'w' as soon as the game is over, you should be able to extract a bit that
+will work as a game over detector which you can then enter into ../gameover_description.txt
 
 Call with a command line like:
 mame -use_le -le_library pythonbinding.so -le_options gameoversleuth <romname>
