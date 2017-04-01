@@ -214,16 +214,34 @@ static void initialise_buttons_used(running_machine &machine) {
 			ioport_type_class type_class = field.type_class();
 
 			/* add if we match the group, we have a valid name,  and the input is digital */
-			if (field.enabled() && (type_class == INPUT_CLASS_CONTROLLER || type_class == INPUT_CLASS_MISC || type_class == INPUT_CLASS_KEYBOARD) && !field.is_analog())
+			if (field.enabled() && (type_class == INPUT_CLASS_CONTROLLER || type_class == INPUT_CLASS_MISC || type_class == INPUT_CLASS_KEYBOARD))
 			{
 
 				input_seq mame_sequence = field.seq(SEQ_TYPE_STANDARD);
 				if (mame_sequence.is_valid()) {
+
 					// Iterate over the button codes, find out which one this is
+					bool found = false;
 					u8 player = field.player();
+					input_code button = mame_sequence[0];
 					for (int button_index=0; button_index < LE_TOTAL_BUTTONS; button_index++) {
-						if (mame_sequence[0] == button_codes[player][button_index]) {
+						if (button == button_codes[player][button_index]) {
 							used_buttons[player][button_index] = true;
+							found = true;
+						}
+					}
+
+					if ((!found) && (button.device_class() == DEVICE_CLASS_JOYSTICK)) {
+						// Check to see if it's a joystick input instead, in which case map to correct 
+						// buttons
+						if  (button.item_id() == ITEM_ID_XAXIS) {
+							// Add left and right buttons
+							used_buttons[player][LE_BUTTON_INDEX_RIGHT] = true;
+							used_buttons[player][LE_BUTTON_INDEX_LEFT] = true;
+						} else if (button.item_id() == ITEM_ID_YAXIS) {
+							// Add up and down buttons
+							used_buttons[player][LE_BUTTON_INDEX_UP] = true;
+							used_buttons[player][LE_BUTTON_INDEX_DOWN] = true;							
 						}
 					}
 				} 
