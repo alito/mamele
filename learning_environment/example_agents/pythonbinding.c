@@ -185,35 +185,73 @@ static int check_reset(void) {
 }
 
 
-static void consume_memory(const le_memory *memory) {
+static void consume_memory(const le_memory_t *memory) {
 	PyObject *p_value, *p_args;
 	PyObject *p_memory;
-
+	PyObject *p_start_address;
+	PyObject *p_ram_region;
 
 	if (p_consume_memory_func) {
-		p_memory = PyBuffer_FromMemory(memory->content, memory->size);
-		if (p_memory == NULL) {
-			fprintf(stderr, "Error creating buffer from memory in consume_memory\n");
-			PyErr_Print();			
-		} else {
-			p_args = Py_BuildValue("(O)", p_memory);
-			if (p_args == NULL) {
-				fprintf(stderr, "Error creating arguments to consume_memory\n");
+		/* Convert the linked list to a list of (start_address, content) pairs */
+
+		PyObject *p_ram_regions = PyList_New(0);
+		if (p_ram_regions == NULL) {
+			fprintf(stderr, "Couldn't allocate a new python list\n");
+		    exit(1);
+		}
+		while (memory != NULL) {
+
+
+			p_memory = PyBuffer_FromMemory(memory->content, memory->size);
+			if (p_memory == NULL) {
+				fprintf(stderr, "Error creating buffer from memory in consume_memory\n");
 				PyErr_Print();
-			} else {
-				p_value = PyObject_CallObject(p_consume_memory_func, p_args);
-				Py_DECREF(p_args);
-				if (p_value != NULL) {
-					/* Don't care what consume_memory returns */
-					Py_DECREF(p_value);
-				} else {
-					/* Something went wrong. Bail out */
-					fprintf(stderr, "Something went wrong calling the Python-side of consume_memory. Bailing\n");
-					PyErr_Print();					
-					Py_Finalize();
-					exit(1);
-				}
+				exit(1);
 			}
+
+			p_start_address = PyLong_FromSize_t(memory->start);
+			if (p_start_address == NULL) {
+				fprintf(stderr, "Couldn't convert the start address to a python long\n");
+				PyErr_Print();
+				exit(1);				
+			}
+
+			p_ram_region = PyTuple_New(2);
+			if (p_ram_region == NULL) {
+				fprintf(stderr, "Couldn't create a 2-tuple\n");
+				PyErr_Print();
+				exit(1);								
+			}
+
+			PyTuple_SET_ITEM(p_ram_region, 0, p_start_address);
+			PyTuple_SET_ITEM(p_ram_region, 1, p_memory);
+
+			if (PyList_Append(p_ram_regions, p_ram_region) != 0) {
+				fprintf(stderr, "Couldn't append to list of ram regions\n");
+				PyErr_Print();			
+				exit(1);
+			}
+
+			memory = memory->next;
+		}
+
+		p_args = Py_BuildValue("(O)", p_ram_regions);
+		if (p_args == NULL) {
+			fprintf(stderr, "Error creating arguments to consume_memory\n");
+			PyErr_Print();
+			exit(1);
+		}
+		p_value = PyObject_CallObject(p_consume_memory_func, p_args);
+		Py_DECREF(p_args);
+		if (p_value != NULL) {
+			/* Don't care what consume_memory returns */
+			Py_DECREF(p_value);
+		} else {
+			/* Something went wrong. Bail out */
+			fprintf(stderr, "Something went wrong calling the Python-side of consume_memory. Bailing\n");
+			PyErr_Print();					
+			Py_Finalize();
+			exit(1);
 		}
 	}
 }

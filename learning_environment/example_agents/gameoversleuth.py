@@ -58,10 +58,11 @@ def write_memory_to_filename(filename, memory):
         for line in atatime(memory, 50):
             memory_out.write('%s\n' % ''.join('%02x' % ord(byte) for byte in line))
 
-def write_differences_to_filename(filename, differences):
+def write_differences_to_filename(filename, differences, base_address):
     with open(filename, 'w') as out:
         for difference in differences:
-            out.write("%s:%s\n" % tuple(difference))
+            address, bit = difference
+            out.write("%s:%s\n" % (address + base_address, bit))
 
 def different_bits(previous, current):
     """
@@ -111,6 +112,7 @@ class GameOverSleuth(object):
         self.memory = [None] * self.frames
         self.images = [None] * self.frames
 
+        self.memory_start_address = None
         self.initial_memory = None
         self.ored_memory = [None] * self.frames
         self.anded_memory = [None] * self.frames
@@ -167,11 +169,11 @@ class GameOverSleuth(object):
                     previous_frame_index = (frame - 1) % self.frames
                     differences = different_bits(self.ored_memory[previous_frame_index], self.ored_memory[frame])
                     if differences:
-                        write_differences_to_filename(os.path.join(directory, 'diff_or_%s.txt' % index), differences)
+                        write_differences_to_filename(os.path.join(directory, 'diff_or_%s.txt' % index), differences, self.memory_start_address)
 
                     differences = different_bits(self.anded_memory[previous_frame_index], self.anded_memory[frame])
                     if differences:
-                        write_differences_to_filename(os.path.join(directory, 'diff_and_%s.txt' % index), differences)
+                        write_differences_to_filename(os.path.join(directory, 'diff_and_%s.txt' % index), differences, self.memory_start_address)
 
                     frame += 1
                     if frame >= self.frames:
@@ -182,13 +184,16 @@ class GameOverSleuth(object):
         elif key == ord('s'):
             # start a game
             current_frame_index = (self.update_count-1) % self.frames
-            self.initial_memory = self.memory[current_frame_index][:]
-            self.unpacker = struct.Struct('!' + 'B' * len(self.initial_memory))
-            self.ored_memory[current_frame_index] = list(self.unpacker.unpack(self.initial_memory))
-            self.anded_memory[current_frame_index] = list(self.unpacker.unpack(self.initial_memory))
+            if self.memory[current_frame_index] is not None:
+                self.initial_memory = self.memory[current_frame_index][:]
+                self.unpacker = struct.Struct('!' + 'B' * len(self.initial_memory))
+                self.ored_memory[current_frame_index] = list(self.unpacker.unpack(self.initial_memory))
+                self.anded_memory[current_frame_index] = list(self.unpacker.unpack(self.initial_memory))
 
-            self.stdscr.addstr(0, 0, "Game started")
-            self.stdscr.refresh()
+                self.stdscr.addstr(0, 0, "Game started")
+                self.stdscr.refresh()
+            else:
+                self.stdscr.addstr(0, 0, "Not ready")
 
 
     def update(self, score, game_over, video_frame):
@@ -236,12 +241,16 @@ class GameOverSleuth(object):
         curses.endwin()
     
     def consume_memory(self, memory):
+        if len(memory) != 1:
+            raise ValueError("This code only handles one RAM area for now")
+
+        self.memory_start_address = memory[0][0]
         current_frame_index = (self.update_count-1) % self.frames
-        self.memory[current_frame_index] = memory[:]
+        self.memory[current_frame_index] = memory[0][1][:]
 
         if self.initial_memory is not None:
             previous_frame_index = (self.update_count-2) % self.frames
-            current = self.unpacker.unpack(memory)
+            current = self.unpacker.unpack(memory[0][1])
 
             # This is dog-slow code. We'll speed it up when we need to
             self.ored_memory[current_frame_index] = [(old_byte | new_byte) for old_byte, new_byte in zip(self.ored_memory[previous_frame_index], current)]

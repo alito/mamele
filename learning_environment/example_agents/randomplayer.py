@@ -23,8 +23,8 @@ def le_get_functions(args):
     Any of them can be set to None if you don't want to be notified of that event type.
     """
     state = DummyController(args)
-    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, None)
-
+    #return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, None)
+    return (state.start, state.update, state.get_actions, state.check_reset, state.shutdown, state.consume_memory)
 
 class DummyController(object):
     def __init__(self, args):
@@ -65,6 +65,7 @@ class DummyController(object):
         self.update_count = 0
         self.current_score = 0
         self.game_over = False
+        self.seen_memory = False
 
 
     def start(self, game_name, width, height, buttons_used):
@@ -77,6 +78,7 @@ class DummyController(object):
         self.height = height
         self.buttons_used = buttons_used
     
+        print (self.buttons_used)
         
     def update(self, score, game_over, video_frame):
         """
@@ -136,7 +138,10 @@ class DummyController(object):
         pass
     
     def consume_memory(self, memory):
-        print ("Got %s bytes of memory" % len(memory))
+        if not self.seen_memory:
+            self.seen_memory = True
+            for region in memory:
+                print ("Got %s bytes of memory starting at %s" % (len(region[1]), region[0]))
 
 
 class Button(object):

@@ -41,10 +41,12 @@ typedef struct {
 	int buttons[LE_TOTAL_BUTTONS];
 } le_actions;
 
-typedef struct {
+typedef struct le_memory {
+	unsigned long start;
 	unsigned long size;
 	uint8_t *content;
-} le_memory;
+	struct le_memory *next;
+} le_memory_t;
 
 typedef struct {
 	const char *game_name;
@@ -57,7 +59,7 @@ typedef int (*le_game_starter)(const le_game_info *game_info);
 typedef void (*le_game_finisher) (void);
 typedef int (*le_state_updater) (int current_score, int game_over, const le_frame_buffer *buffer);
 typedef int (*le_reset_checker) (void);
-typedef void (*le_memory_consumer) (const le_memory *memory);
+typedef void (*le_memory_consumer) (const le_memory_t *memory);
 typedef le_actions (*le_action_getter) (void);
 
 typedef struct {

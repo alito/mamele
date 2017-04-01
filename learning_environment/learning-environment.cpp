@@ -40,7 +40,7 @@ typedef struct {
 static le_state state;
 
 static le_frame_buffer frame_buffer = {0,0,nullptr};
-static le_memory memory = {0, nullptr};
+static le_memory_t *memory = nullptr;
 
 
 static int wait_frames = WaitFrames;
@@ -65,6 +65,8 @@ static le_memory_consumer le_consume_memory = NULL;
 
 using std::cerr;
 using std::endl;
+
+
 
 /* 
 Copy number of bytes from address space address_space_name attached to cpu cpu starting at offset 
@@ -263,9 +265,7 @@ static void process_events(const running_machine &machine) {
 
 static void extract_main_memory(running_machine &machine) {
 	/* 
-	FIXME: This is almost certainly not the right way to do it. It does enough for now
-	for the games we've tried, but something that skips unmapped RAM and maybe copies
-	the data multiple bytes at a time might be worth using 
+	Copy the main RAM 
 	*/
 
 	cpu_device* p_cpu = machine.device<cpu_device>("maincpu");
@@ -286,19 +286,35 @@ static void extract_main_memory(running_machine &machine) {
 				found = true;
 
 				address_space &space = p_cpu->space(sp);
-				offs_t bytemask = space.bytemask();
-				if (memory.size == 0) {
-					// Initialise
-					memory.size = bytemask + 1;
-					memory.content = (uint8_t *) malloc(sizeof(uint8_t) * memory.size);
+				
+				if (memory == nullptr) {
+					// Initialise the structure that we use to transfer
+					le_memory_t * last_node = nullptr;
+					for (address_map_entry &entry : space.map()->m_entrylist) {
+						if ((entry.m_read.m_type == AMH_RAM) && (entry.m_write.m_type == AMH_RAM)) {
+							// Found a RAM section
+							le_memory_t * memory_node = (le_memory_t *) malloc(sizeof(le_memory_t));
+							memory_node->next = last_node;
+							memory_node->start = entry.m_bytestart;
+							memory_node->size = entry.m_byteend - entry.m_bytestart + 1;
+							memory_node->content = (uint8_t *) malloc(memory_node->size);
+							last_node = memory_node;
+						}
+					}
+					memory = last_node;
 				}
 
-				uint8_t *target = memory.content;
-				for (offs_t byteaddress = 0; byteaddress < memory.size; byteaddress++)
-				{
-					*target++ = space.read_byte(byteaddress);
-				}
-					
+				le_memory_t *memory_node = memory;
+
+				while (memory_node != nullptr) {
+					uint8_t *target = memory_node->content;
+					offs_t end_address = memory_node->start + memory_node->size - 1;
+					for (offs_t byte_address = memory_node->start; byte_address <= end_address; ++byte_address)
+					{
+						*target++ = space.read_byte(byte_address);
+					}
+					memory_node = memory_node->next;
+				}					
 				break;
 			}
 		}
@@ -493,7 +509,7 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 
 	if (le_consume_memory) {
 		extract_main_memory(machine);
-		le_consume_memory(&memory);
+		le_consume_memory(memory);
 	}
 
 	process_events(machine);

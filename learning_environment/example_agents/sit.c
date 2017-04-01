@@ -70,8 +70,12 @@ static int check_reset(void) {
 	else return 0;
 }
 
-static void consume_memory(const le_memory *memory) {
-	fprintf(stderr, "Got %lu bytes of memory\n", memory->size);
+static void consume_memory(const le_memory_t *memory) {
+
+	while (memory != NULL) {
+		fprintf(stderr, "Got %lu bytes of memorystarting at %lu\n", memory->size, memory->start);
+		memory = memory->next;
+	}
 }
 
 le_functions le_get_functions (const char* args) {

@@ -13,3 +13,6 @@
 
 galaxian:
 @:maincpu:program:16389:1:0
+
+circus:
+@:maincpu:program:2:7:0
