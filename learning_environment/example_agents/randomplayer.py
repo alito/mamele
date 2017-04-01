@@ -87,11 +87,12 @@ class DummyController(object):
         The frame can be converted to a nice PIL image with something like
 
         frame = PIL.Image.frombuffer("RGBA",(self.width, self.height),video_frame,'raw', ("BGRA",0,1))
+        frame.putalpha(255) # since the alpha channel is sometimes set to 0 for no reason
 
         Return the number of frames you want skipped before being called again.  Due to conversions, it's much faster
         to return a positive number here than to keep an internal count on when to react
         """
-        
+
         self.update_count += 1
         self.current_score = score
         if game_over:
