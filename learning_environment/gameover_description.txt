@@ -14,5 +14,13 @@
 galaxian:
 @:maincpu:program:16389:1:0
 
+crash:
 circus:
+ripcord:
+sidetrac:
 @:maincpu:program:2:7:0
+
+
+robotbwl:
+@:maincpu:program:510:6:0
+

@@ -19,4 +19,9 @@ puckmana:
 @:maincpu:program:20096:4 hexreadable
 
 circus:
+ripcord:
 @:maincpu:program:45:2:hexreadable
+
+crash:
+sidetrac:
+@:maincpu:program:10:3:hexreadable
