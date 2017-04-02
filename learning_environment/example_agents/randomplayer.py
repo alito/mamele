@@ -94,7 +94,9 @@ class DummyController(object):
         """
 
         self.update_count += 1
-        self.current_score = score
+        if score != self.current_score:
+            print ("Score: %s" % score)
+            self.current_score = score
         if game_over:
             if not self.game_over:
                 print ("Game Over")
@@ -154,6 +156,11 @@ class Button(object):
         self.last_state = False
         self.number_in_c = number_in_c
 
+        if self.number_in_c >= 10:
+            self.frequency = 1.0 / 250.
+        else:
+            self.frequency = 1.0 / 30.
+
     def press(self):
         self.state = True
 
@@ -170,5 +177,5 @@ class Button(object):
         self.last_state = self.state
 
     def update(self):
-        if random.random() < (1.0 / 30):
+        if random.random() < self.frequency:
             self.toggle()
