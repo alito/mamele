@@ -12,45 +12,6 @@ using namespace std;
 const char score_description_filename[] = "score_description.txt";
 const char gameover_description_filename[] = "gameover_description.txt";
 
-/*****************************************************************************/
-/* Utility function adapted from hiscore.c in MAME */
-/*	hexstring_to_number extracts and returns the value of a hexadecimal field from the
-	string pointed to by string starting at start_position.
-
-	When hexstring_to_number returns, start_position points to the character following
-	the first non-hexadecimal digit
-
-*/
-
-static u32 hexstring_to_number (const string& description_string, size_t& start_position)
-{
-	u32 result = 0;
-	while (description_string.length() > start_position)
-	{
-		char c = description_string[start_position++];
-		int digit;
-
-		if (c>='0' && c<='9')
-		{
-			digit = c-'0';
-		}
-		else if (c>='a' && c<='f')
-		{
-			digit = 10+c-'a';
-		}
-		else if (c>='A' && c<='F')
-		{
-			digit = 10+c-'A';
-		}
-		else
-		{
-			break;
-		}
-		result = result*16 + digit;
-	}
-	return result;
-}
-
 /*
 String converter using strtol but keeping the same interface
 */
@@ -90,23 +51,6 @@ static bool is_mem_range(const string& score_line)
 	return (score_line.length() > 2) && (score_line[0] == '@') && (score_line[1] == ':');
 }
 
-
-/* Split the textual description of the scoreline into the components that we understand */
-static bool set_memory_description_from_scoreline(le_score_memory_description& description, const string& score_line) {
-	if (is_mem_range(score_line)) {
-		size_t start_index = 2;
-
-		description.cpu = next_description_string(score_line, start_index);
-		description.address_space_name = next_description_string(score_line, start_index);
-		description.address = hexstring_to_number (score_line, start_index);
-		description.number_of_bytes = hexstring_to_number (score_line, start_index);		
-		return true;
-	} else {
-		cerr << "not a mem range" << endl;
-		description.encoding = 0;
-		return false;
-	}
-}
 
 /* Expand posix shell variables (home directories ~ is what we are after) */
 static string get_full_path(const string& path) {
@@ -197,13 +141,13 @@ std::string find_description_for_game(const std::string& filename, const std::st
 
 /* Get where to find the current score details for the given game */
 le_score_memory_description get_score_details(const std::string& game_name, const std::string& description_files_directory) {
-	le_score_memory_description description;
+	le_score_memory_description score_encoding;
 
 	string filename = find_description_filename(score_description_filename, description_files_directory);
 
 	if (filename.empty()) {
 		cerr << "Could not find '" << score_description_filename << "'" << endl;
-		return description;
+		return score_encoding;
 	}
 
 
@@ -211,47 +155,32 @@ le_score_memory_description get_score_details(const std::string& game_name, cons
 	   wakichuki:
 	   parramata:
 
-	   @:maincpu:program:40a2:3 hexreadable
+	   @:maincpu:program:4433:4:hexreadable
 
 	 */
 
 	string encoding_description = find_description_for_game(filename.c_str(), game_name);
-	string location = "";
-	if (encoding_description.length() > 0) {
-		size_t space = encoding_description.find_first_of(" \t");
-		if (space == string::npos) {
-			cerr << "Faulty location entry: " << encoding_description << endl;
+	if ((encoding_description.length() > 0) && (is_mem_range(encoding_description))) {
+
+		size_t start_index = 2;
+
+		score_encoding.cpu = next_description_string(encoding_description, start_index);
+		score_encoding.address_space_name = next_description_string(encoding_description, start_index);
+		score_encoding.address = string_to_number(encoding_description, start_index);
+		score_encoding.number_of_bytes = string_to_number(encoding_description, start_index);
+		
+		string encoding_name = next_description_string(encoding_description, start_index);
+		if (encoding_name == "hexreadable") {
+			score_encoding.encoding = LE_ENCODING_HEXREADABLE;
 		} else {
-			location = encoding_description.substr(0, space);
-			if (set_memory_description_from_scoreline(description, location)) {
-				size_t encoding_start = encoding_description.find_first_not_of(" \t", space);
-				if (encoding_start == string::npos) {
-					cerr << "Faulty encoding description: " << encoding_description << endl;
-				} else {
-					size_t encoding_finish = encoding_description.find_last_not_of(" \t\n");
-					string encoding_name;
-
-					if (encoding_finish == string::npos) {
-						encoding_name = encoding_description.substr(encoding_start);
-					} else {
-						encoding_name = encoding_description.substr(encoding_start, encoding_finish - encoding_start + 1);
-					}
-
-					if (encoding_name == "hexreadable") {
-						description.encoding = LE_ENCODING_HEXREADABLE;
-					} else {
-						cerr << "Don't recognise encoding '" << encoding_name << "'" << endl;
-						description.encoding = LE_ENCODING_INVALID;
-					}
-
-				}
-			}
+			cerr << "Don't recognise encoding '" << encoding_name << "'" << endl;
+			score_encoding.encoding = LE_ENCODING_INVALID;
 		}
 	} else {
 		cerr << "Didn't find a score entry for " << game_name << endl;
 	}
 
-	return description;
+	return score_encoding;
 }
 
 /* Get where to find whether the game is over for the given game */

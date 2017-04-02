@@ -1,5 +1,6 @@
 """
-Helps to work out what memory changes when the game ends.
+Helps to work out what memory locations change when the game is over.
+
 Press the 's' key when the game starts. Pressing the 'w' key will write the last 100 frames,
 a list of memory bits that were never set to 0, and a list of memory bits that were
 never set to 1.
@@ -151,6 +152,7 @@ class GameOverSleuth(object):
 
                 image_filename = os.path.join(directory, 'image_%s.png' % index)
                 image = Image.frombuffer("RGBA",(self.width, self.height), self.images[frame],'raw', ("BGRA",0,1))
+                image.putalpha(255)
                 image.save(image_filename)
 
                 frame += 1
@@ -197,24 +199,12 @@ class GameOverSleuth(object):
 
 
     def update(self, score, game_over, video_frame):
-        """
-        This will be called with a score if available (otherwise zero), and the video_frame
-        
-        The frame can be converted to a nice PIL image with something like
-
-        frame = PIL.Image.frombuffer("RGBA",(self.width, self.height),video_frame,'raw', ("BGRA",0,1))
-
-        Return the number of frames you want skipped before being called again.  Due to conversions, it's much faster
-        to return a positive number here than to keep an internal count on when to react
-        """
-
-
         self.handle_input()        
         self.update_count += 1
         self.current_score = score
 
         self.images[(self.update_count-1) % self.frames] = video_frame[:]
-        
+
         return 0  #number of frames you want to skip
 
     
@@ -222,18 +212,10 @@ class GameOverSleuth(object):
         return self.actions
 
     def check_reset(self):
-        """
-        This will be called after get_actions every frameskip frames. Return whether
-        you want the emulator reset
-        """ 
         return False
 
     
     def shutdown(self):
-        """
-        This will be called when MAME shuts down
-        """
-
         # set the terminal back to normality
         curses.nocbreak()
         self.stdscr.keypad(False)

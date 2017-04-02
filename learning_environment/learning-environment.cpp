@@ -115,38 +115,39 @@ static inline void copy_from_memory (running_machine &machine, const char* cpu, 
 /* Read the current score */
 static int get_current_score(running_machine &machine) {
 	int score = 0;
-	u8 *data;
+	static u8 *score_buffer = nullptr;
 
 	if (score_memory_description.encoding == LE_ENCODING_INVALID) return 0;
 
-	data = (u8 *) malloc (score_memory_description.number_of_bytes);
+	if (score_buffer == nullptr) {
+		score_buffer = (u8 *) malloc (score_memory_description.number_of_bytes);
+	}
 	copy_from_memory (machine, score_memory_description.cpu, score_memory_description.address_space_name, 
 					score_memory_description.address, 
-					score_memory_description.number_of_bytes, data);
+					score_memory_description.number_of_bytes, score_buffer);
 
 	/*
-	fprintf(stderr,"bytes\t");
-	for (i = 0; i < scoreMemRange.num_bytes; i++) {
+	cerr << score_memory_description.number_of_bytes << " bytes:\t ";
+	for (int i = 0; i < score_memory_description.number_of_bytes; i++) {
 
-		fprintf(stderr,"%ub ",data[i]);
+		cerr << (int) score_buffer[i];
 	}
-	fprintf(stderr,"\n");
+	cerr << endl;
 	*/
 	
 	if (score_memory_description.encoding == LE_ENCODING_HEXREADABLE) {
 		/* encoding that maps each hex to a decimal place
 		* eg 0x34 = 34 
-		* or 0x4832 = 4832
+		* or 0x4832 = 3248
 		*/
 		for (int i = score_memory_description.number_of_bytes-1 ; i >= 0 ; i--) {
-			score = score * 10 + ((data[i] & (unsigned char) 0xF0) >> 4);
-			score = score * 10 + (data[i] & (unsigned char) 0xF);
+			score = score * 10 + ((score_buffer[i] & (unsigned char) 0xF0) >> 4);
+			score = score * 10 + (score_buffer[i] & (unsigned char) 0xF);
 		}
 	} else {
 		cerr << "Encoding type " << score_memory_description.encoding << " not implemented" << endl;
 	}
 
-	free(data);
 	return score;
 }
 
@@ -206,17 +207,15 @@ static void initialise_buttons_used(running_machine &machine) {
 
 	/* based on code from ui/inputmap.cpp */
 
-	/* iterate over the input ports and add menu items */
+	/* iterate over the input ports */
 	for (auto &port : machine.ioport().ports())
 	{
 		for (ioport_field &field : port.second->fields())
 		{
 			ioport_type_class type_class = field.type_class();
 
-			/* add if we match the group, we have a valid name,  and the input is digital */
 			if (field.enabled() && (type_class == INPUT_CLASS_CONTROLLER || type_class == INPUT_CLASS_MISC || type_class == INPUT_CLASS_KEYBOARD))
 			{
-
 				input_seq mame_sequence = field.seq(SEQ_TYPE_STANDARD);
 				if (mame_sequence.is_valid()) {
 
