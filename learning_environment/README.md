@@ -73,13 +73,7 @@ See [the HOWTO.md file](HOWTO.md).
 History
 =======
 
-This project started in 2005 as xmameac as a patch to xmame, then moved to sdlmame when xmame died,
-and then changed name to CCPMAME when sdlmame got absorbed into the mainline MAME. With the 
-recent flourishing of environments for machine learning agents seemingly triggered by DeepMind's
-success using the ALE environment and the transition of MAME to the GPL licence, I've put this
-up in GitHub as a self-contained fork.
-
-Details under [NEWS.md](NEWS.md)
+Under [NEWS.md](NEWS.md)
 
 License
 =======
