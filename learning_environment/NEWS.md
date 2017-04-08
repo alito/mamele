@@ -1,3 +1,12 @@
+2017-04-08 - v0.4.1-183
+-----------------------
+
+* Change the interface so that if Python bindings return None for a method, we can be more efficient in not doing work
+* Add a -le_datapath parameter to specify where the score and game over description files are
+* Quit when there are errors in the Python driver
+* Fix game over detection for Galaxian. 
+* Add support for circus, ripcord, crash and sidetrac.
+
 2017-02-26 - v0.4.0-183
 -----------------
 
