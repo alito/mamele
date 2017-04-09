@@ -348,37 +348,37 @@ le_functions le_get_functions (const char* args) {
 					p_shutdown_func = PySequence_GetItem(p_value, 4);
 					p_consume_memory_func = PySequence_GetItem(p_value, 5);
 					if (!p_start_func || (!PyCallable_Check(p_start_func))) {
-						if (p_start_func) {
+						if (p_start_func && p_start_func != Py_None) {
 							fprintf(stderr,"Start function not usable, skipping\n");
 						}
 						p_start_func = NULL;
 					}					
 					if (!p_update_func || (!PyCallable_Check(p_update_func))) {
-						if (p_update_func) {
+						if (p_update_func && p_update_func != Py_None) {
 							fprintf(stderr,"Update function not usable, skipping\n");
 						}
 						p_update_func = NULL;
 					}
 					if (!p_get_actions_func || (!PyCallable_Check(p_get_actions_func))) {
-						if (p_get_actions_func) {
+						if (p_get_actions_func && p_get_actions_func != Py_None) {
 							fprintf(stderr,"Get actions function not usable, skipping\n");
 						}
 						p_get_actions_func = NULL;
 					}
 					if (!p_check_reset_func || (!PyCallable_Check(p_check_reset_func))) {
-						if (p_check_reset_func) {
+						if (p_check_reset_func && p_check_reset_func != Py_None) {
 							fprintf(stderr,"Check reset function not usable, skipping\n");
 						}
 						p_check_reset_func = NULL;
 					}					
 					if (!p_shutdown_func || (!PyCallable_Check(p_shutdown_func))) {
-						if (p_shutdown_func) {
+						if (p_shutdown_func && p_shutdown_func != Py_None) {
 							fprintf(stderr,"Shutdown function not usable, skipping\n");
 						}
 						p_shutdown_func = NULL;
 					}
 					if (!p_consume_memory_func || (!PyCallable_Check(p_consume_memory_func))) {
-						if (p_consume_memory_func) {
+						if (p_consume_memory_func && p_consume_memory_func != Py_None) {
 							fprintf(stderr,"Consume memory function not usable, skipping\n");
 						}
 						p_consume_memory_func = NULL;
