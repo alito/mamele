@@ -22,7 +22,7 @@ import struct
 import curses
 from PIL import Image
 
-DefaultFrames = 100
+DefaultFrames = 200
 
 
 def atatime(iterator, count):
@@ -61,7 +61,7 @@ def write_memory_to_filename(filename, memory, region_starts):
         for start, region in zip(region_starts, memory):
             # print the memory in a readable format, 50 bytes at a time
             memory_out.write("Starting at %s\n" % start)
-            for line in atatime(region[1], 50):
+            for line in atatime(region, 50):
                 memory_out.write('%s\n' % ''.join('%02x' % ord(byte) for byte in line))
 
 def write_differences_to_filename(filename, differences):
@@ -235,7 +235,7 @@ class GameOverSleuth(object):
                     self.unpackers = [struct.Struct('!' + 'B' * len(region)) for region in current]
 
                 self.game_over_snapshots.append([list(unpacker.unpack(region[:])) for unpacker, region in zip(self.unpackers, current)])
-                self.stdscr.addstr(0, 0, "Snashot taken")
+                self.stdscr.addstr(0, 0, "Snapshot taken")
             else:
                 self.stdscr.addstr(0, 0, "Not ready")
 

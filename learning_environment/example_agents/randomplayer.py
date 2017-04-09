@@ -157,7 +157,7 @@ class Button(object):
         self.number_in_c = number_in_c
 
         if self.number_in_c >= 10:
-            self.frequency = 1.0 / 250.
+            self.frequency = 1.0 / 2500.
         else:
             self.frequency = 1.0 / 30.
 
