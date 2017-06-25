@@ -15,7 +15,7 @@ galaxian:
 
 @:maincpu:program:16546:3:hexreadable
 
-puckmana:
+puckmanb:
 @:maincpu:program:20096:4 hexreadable
 
 circus:
@@ -25,3 +25,7 @@ ripcord:
 crash:
 sidetrac:
 @:maincpu:program:10:3:hexreadable
+
+targ:
+@:maincpu:program:189:2:hexreadable
+
