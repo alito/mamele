@@ -1,3 +1,12 @@
+2017-06-25 - v4.2.183
+---------------------
+
+* Score-finder script
+* Less useless warnings
+* Score for targ
+* Get rid off the '0.' prefix to every version. It doesn't help anyone
+
+
 2017-04-08 - v0.4.1-183
 -----------------------
 
