@@ -18,10 +18,7 @@
 
 
 TODO:
-  - check PIO PortB wiring in real machines
-  - write some own code for the ZRE-PP to find the SIO in address space and then do something cool with it :)
   - get other rom versions and games
-  - document the light-organ related stuff
 
 
 NOTES:
@@ -87,7 +84,7 @@ i/o ports:
   - Revision 2 -
   80 - 83 ZRE-PP UB857D  (Z80 CTC)
   84 - 87 ZRE-PP UB855D  (Z80 PIO)
-  ?? - ?? ZRE-PP UB8560D (Z80 SIO)
+  88 - 8B ZRE-PP UB8560D (Z80 SIO)
 
   read:
   83        CTC COUNT 3 (IN1)
@@ -125,17 +122,21 @@ I currently haven't figured out how the I/O port handling for the book-
 mark system works.
 
 Uniquely the Poly-Play has a light organ which totally confuses you whilst
-playing the automaton. Bits 1-5 of PORTB control the organ but it's not
-emulated now. ;) (An external artwork file could be created that simulates
-this.)
+playing the automaton. Bits 0-2 of PORTB control the organ.
 
 ***************************************************************************/
 
 #include "emu.h"
+#include "includes/polyplay.h"
+
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "includes/polyplay.h"
+
+#include "screen.h"
+#include "speaker.h"
+
 #include "polyplay.lh"
+
 
 static const z80_daisy_config daisy_chain_zre[] =
 {
@@ -262,7 +263,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( polyplay_io_zrepp, AS_IO, 8, polyplay_state )
 	AM_IMPORT_FROM(polyplay_io_zre)
-	// TODO: add SIO ports here
+	AM_RANGE(0x88, 0x8b) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_device, cd_ba_r, cd_ba_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( polyplay )
@@ -307,7 +308,7 @@ GFXDECODE_END
 
 
 /* the machine driver */
-static MACHINE_CONFIG_START( polyplay_zre, polyplay_state )
+static MACHINE_CONFIG_START( polyplay_zre )
 	/* basic machine hardware */
 	MCFG_CPU_ADD(Z80CPU_TAG, Z80, POLYPLAY_MAIN_CLOCK / 4) /* UB880D */
 	MCFG_Z80_DAISY_CHAIN(daisy_chain_zre)
@@ -349,7 +350,7 @@ static MACHINE_CONFIG_START( polyplay_zre, polyplay_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( polyplay_zrepp, polyplay_state )
+static MACHINE_CONFIG_START( polyplay_zrepp )
 	MCFG_FRAGMENT_ADD( polyplay_zre )
 
 	/* basic machine hardware */
@@ -433,6 +434,6 @@ ROM_START( polyplay2c )
 ROM_END
 
 /* game driver */
-GAMEL( 1986, polyplay,   0,         polyplay_zre,   polyplay, driver_device, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE)",            0, layout_polyplay )
-GAMEL( 1989, polyplay2,  0,         polyplay_zrepp, polyplay, driver_device, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE-PP)",         0, layout_polyplay )
-GAMEL( 1989, polyplay2c, polyplay2, polyplay_zrepp, polyplay, driver_device, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE-PP - Czech)", 0, layout_polyplay )
+GAMEL( 1986, polyplay,   0,         polyplay_zre,   polyplay, polyplay_state, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE)",            0, layout_polyplay )
+GAMEL( 1989, polyplay2,  0,         polyplay_zrepp, polyplay, polyplay_state, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE-PP)",         0, layout_polyplay )
+GAMEL( 1989, polyplay2c, polyplay2, polyplay_zrepp, polyplay, polyplay_state, 0, ROT0, "VEB Polytechnik Karl-Marx-Stadt", "Poly-Play (ZRE-PP - Czech)", 0, layout_polyplay )

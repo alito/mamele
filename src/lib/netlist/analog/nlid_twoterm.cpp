@@ -38,7 +38,7 @@ generic_diode::generic_diode(device_t &dev, pstring name)
 
 void generic_diode::set_param(const nl_double Is, const nl_double n, nl_double gmin)
 {
-	static const double csqrt2 = std::sqrt(2.0);
+	static constexpr double csqrt2 = 1.414213562373095048801688724209; //std::sqrt(2.0);
 	m_Is = Is;
 	m_logIs = std::log(Is);
 	m_n = n;
@@ -88,9 +88,9 @@ NETLIB_UPDATE(twoterm)
 	/* only called if connected to a rail net ==> notify the solver to recalculate */
 	/* we only need to call the non-rail terminal */
 	if (m_P.has_net() && !m_P.net().isRailNet())
-		m_P.schedule_solve();
+		m_P.solve_now();
 	else if (m_N.has_net() && !m_N.net().isRailNet())
-		m_N.schedule_solve();
+		m_N.solve_now();
 }
 
 // ----------------------------------------------------------------------------------------

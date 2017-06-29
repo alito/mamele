@@ -644,6 +644,8 @@ if (CPUS["SH2"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/sh2/sh2.cpp",
 		MAME_DIR .. "src/devices/cpu/sh2/sh2.h",
+		MAME_DIR .. "src/devices/cpu/sh2/sh2comn.cpp",
+		MAME_DIR .. "src/devices/cpu/sh2/sh2comn.h",
 		MAME_DIR .. "src/devices/cpu/sh2/sh2fe.cpp",
 		MAME_DIR .. "src/devices/cpu/sh2/sh7604_bus.cpp",
 		MAME_DIR .. "src/devices/cpu/sh2/sh7604_bus.h",
@@ -651,8 +653,6 @@ if (CPUS["SH2"]~=null) then
 		MAME_DIR .. "src/devices/cpu/sh2/sh7604_sci.h",
 		MAME_DIR .. "src/devices/cpu/sh2/sh7604_wdt.cpp",
 		MAME_DIR .. "src/devices/cpu/sh2/sh7604_wdt.h",
-		--MAME_DIR .. "src/devices/cpu/sh2/sh2comn.cpp",
-		--MAME_DIR .. "src/devices/cpu/sh2/sh2comn.h",
 		--MAME_DIR .. "src/devices/cpu/sh2/sh2drc.cpp",
 	}
 end
@@ -695,6 +695,7 @@ if (CPUS["HPHYBRID"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid.cpp",
 		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid.h",
+		MAME_DIR .. "src/devices/cpu/hphybrid/hphybrid_defs.h",
 	}
 end
 
@@ -743,6 +744,7 @@ if (CPUS["E1"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xs.cpp",
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xs.h",
+		MAME_DIR .. "src/devices/cpu/e132xs/32xsdefs.h",
 		MAME_DIR .. "src/devices/cpu/e132xs/e132xsop.hxx",
 	}
 end
@@ -768,19 +770,19 @@ if (CPUS["IE15"]~=null or _OPTIONS["with-tools"]) then
 end
 
 --------------------------------------------------
--- Intel 4004
---@src/devices/cpu/i4004/i4004.h,CPUS["I4004"] = true
+-- Intel MCS-40
+--@src/devices/cpu/mcs40/mcs40.h,CPUS["MCS40"] = true
 --------------------------------------------------
 
-if (CPUS["I4004"]~=null) then
+if (CPUS["MCS40"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/cpu/i4004/i4004.cpp",
-		MAME_DIR .. "src/devices/cpu/i4004/i4004.h",
+		MAME_DIR .. "src/devices/cpu/mcs40/mcs40.cpp",
+		MAME_DIR .. "src/devices/cpu/mcs40/mcs40.h",
 	}
 end
 
-if (CPUS["I4004"]~=null or _OPTIONS["with-tools"]) then
-	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/i4004/4004dasm.cpp")
+if (CPUS["MCS40"]~=null or _OPTIONS["with-tools"]) then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/mcs40/mcs40dasm.cpp")
 end
 
 --------------------------------------------------
@@ -1149,6 +1151,7 @@ if (CPUS["PSX"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/psx/psx.cpp",
 		MAME_DIR .. "src/devices/cpu/psx/psx.h",
+		MAME_DIR .. "src/devices/cpu/psx/psxdefs.h",
 		MAME_DIR .. "src/devices/cpu/psx/gte.cpp",
 		MAME_DIR .. "src/devices/cpu/psx/gte.h",
 		MAME_DIR .. "src/devices/cpu/psx/dma.cpp",
@@ -1306,12 +1309,15 @@ end
 --------------------------------------------------
 -- Motorola 680x
 --@src/devices/cpu/m6800/m6800.h,CPUS["M6800"] = true
+--@src/devices/cpu/m6800/m6801.h,CPUS["M6800"] = true
 --------------------------------------------------
 
 if (CPUS["M6800"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/m6800/m6800.cpp",
 		MAME_DIR .. "src/devices/cpu/m6800/m6800.h",
+		MAME_DIR .. "src/devices/cpu/m6800/m6801.cpp",
+		MAME_DIR .. "src/devices/cpu/m6800/m6801.h",
 		MAME_DIR .. "src/devices/cpu/m6800/6800ops.hxx",
 		MAME_DIR .. "src/devices/cpu/m6800/6800tbl.hxx",
 	}
@@ -1330,7 +1336,7 @@ if (CPUS["M6805"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/m6805/m6805.cpp",
 		MAME_DIR .. "src/devices/cpu/m6805/m6805.h",
-		MAME_DIR .. "src/devices/cpu/m6805/6805defs.h",
+		MAME_DIR .. "src/devices/cpu/m6805/m6805defs.h",
 		MAME_DIR .. "src/devices/cpu/m6805/6805ops.hxx",
 		MAME_DIR .. "src/devices/cpu/m6805/m68705.cpp",
 		MAME_DIR .. "src/devices/cpu/m6805/m68705.h",
@@ -1676,6 +1682,7 @@ if (CPUS["RSP"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/cpu/rsp/rsp.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rsp.h",
+		MAME_DIR .. "src/devices/cpu/rsp/rspdefs.h",
 		MAME_DIR .. "src/devices/cpu/rsp/rspdrc.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rspfe.cpp",
 		MAME_DIR .. "src/devices/cpu/rsp/rspfe.h",
@@ -1758,7 +1765,7 @@ end
 
 if (CPUS["SM510"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/cpu/sm510/sm510.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm510base.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510.h",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510op.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm510core.cpp",
@@ -1766,9 +1773,10 @@ if (CPUS["SM510"]~=null) then
 		MAME_DIR .. "src/devices/cpu/sm510/sm500.h",
 		MAME_DIR .. "src/devices/cpu/sm510/sm500op.cpp",
 		MAME_DIR .. "src/devices/cpu/sm510/sm500core.cpp",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2.h",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2op.cpp",
-		MAME_DIR .. "src/devices/cpu/sm510/kb1013vk1-2core.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm5acore.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590.h",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590op.cpp",
+		MAME_DIR .. "src/devices/cpu/sm510/sm590core.cpp",
 	}
 end
 

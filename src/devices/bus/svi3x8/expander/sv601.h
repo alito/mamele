@@ -6,10 +6,10 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_BUS_SVI3X8_EXPANDER_SV601_H
+#define MAME_BUS_SVI3X8_EXPANDER_SV601_H
 
-#ifndef __SVI3X8_EXPANDER_SV601_H__
-#define __SVI3X8_EXPANDER_SV601_H__
+#pragma once
 
 #include "expander.h"
 #include "bus/svi3x8/slot/slot.h"
@@ -44,7 +44,7 @@ public:
 	virtual void bk32_w(int state) override;
 
 protected:
-	virtual machine_config_constructor device_mconfig_additions() const override;
+	virtual void device_add_mconfig(machine_config &config) override;
 	virtual void device_start() override;
 
 private:
@@ -52,6 +52,6 @@ private:
 };
 
 // device type definition
-extern const device_type SV601;
+DECLARE_DEVICE_TYPE(SV601, sv601_device)
 
-#endif // __SVI3X8_EXPANDER_SV601_H__
+#endif // MAME_BUS_SVI3X8_EXPANDER_SV601_H

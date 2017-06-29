@@ -1,9 +1,9 @@
 // license:BSD-3-Clause
 // copyright-holders:Sandro Ronco
-#pragma once
+#ifndef MAME_BUS_IQ151_DISC2_H
+#define MAME_BUS_IQ151_DISC2_H
 
-#ifndef __IQ151_DISC2_H__
-#define __IQ151_DISC2_H__
+#pragma once
 
 #include "iq151.h"
 #include "machine/upd765.h"
@@ -22,16 +22,14 @@ public:
 	// construction/destruction
 	iq151_disc2_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual machine_config_constructor device_mconfig_additions() const override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-
-	DECLARE_FLOPPY_FORMATS( floppy_formats );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	// optional information overrides
+	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override;
 
 	// iq151cart_interface overrides
 	virtual void read(offs_t offset, uint8_t &data) override;
@@ -39,6 +37,7 @@ protected:
 	virtual void io_write(offs_t offset, uint8_t data) override;
 
 private:
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 	required_device<upd765a_device> m_fdc;
 	uint8_t *     m_rom;
@@ -47,6 +46,6 @@ private:
 
 
 // device type definition
-extern const device_type IQ151_DISC2;
+DECLARE_DEVICE_TYPE(IQ151_DISC2, iq151_disc2_device)
 
-#endif  /* __IQ151_DISC2_H__ */
+#endif // MAME_BUS_IQ151_DISC2_H

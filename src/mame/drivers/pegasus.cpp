@@ -38,13 +38,15 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/m6809/m6809.h"
-#include "machine/6821pia.h"
-#include "imagedev/cassette.h"
-#include "sound/wave.h"
-#include "bus/generic/slot.h"
 #include "bus/generic/carts.h"
+#include "bus/generic/slot.h"
+#include "cpu/m6809/m6809.h"
+#include "imagedev/cassette.h"
+#include "machine/6821pia.h"
+#include "sound/wave.h"
+#include "screen.h"
 #include "softlist.h"
+#include "speaker.h"
 
 
 class pegasus_state : public driver_device
@@ -421,7 +423,7 @@ image_init_result pegasus_state::load_cart(device_image_interface &image, generi
 		return image_init_result::FAIL;
 	}
 
-	if (image.software_entry() != nullptr && size == 0)
+	if (image.loaded_through_softlist() && size == 0)
 	{
 		// we might be loading a cart compatible with all sockets!
 		// so try to get region "rom"
@@ -475,7 +477,7 @@ DRIVER_INIT_MEMBER(pegasus_state, pegasus)
 	pegasus_decrypt_rom(base);
 }
 
-static MACHINE_CONFIG_START( pegasus, pegasus_state )
+static MACHINE_CONFIG_START( pegasus )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6809E, XTAL_4MHz)  // actually a 6809C - 4MHZ clock coming in, 1MHZ internally
 	MCFG_CPU_PROGRAM_MAP(pegasus_mem)
@@ -572,6 +574,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1981, pegasus,  0,       0,    pegasus,   pegasus, pegasus_state, pegasus, "Technosys",   "Aamber Pegasus", MACHINE_NO_SOUND_HW )
-COMP( 1981, pegasusm, pegasus, 0,    pegasusm,  pegasus, pegasus_state, pegasus, "Technosys",   "Aamber Pegasus with RAM expansion unit", MACHINE_NO_SOUND_HW )
+//    YEAR  NAME      PARENT   COMPAT  MACHINE    INPUT    STATE          INIT     COMPANY       FULLNAME                                  FLAGS
+COMP( 1981, pegasus,  0,       0,      pegasus,   pegasus, pegasus_state, pegasus, "Technosys",  "Aamber Pegasus",                         MACHINE_NO_SOUND_HW )
+COMP( 1981, pegasusm, pegasus, 0,      pegasusm,  pegasus, pegasus_state, pegasus, "Technosys",  "Aamber Pegasus with RAM expansion unit", MACHINE_NO_SOUND_HW )

@@ -5,10 +5,15 @@
     Pole Position hardware
 
 *************************************************************************/
+#ifndef MAME_INCLUDES_POLEPOS_H
+#define MAME_INCLUDES_POLEPOS_H
+
+#pragma once
 
 #include "machine/gen_latch.h"
 #include "sound/namco.h"
 #include "sound/discrete.h"
+#include "screen.h"
 
 struct filter2_context
 {
@@ -115,7 +120,6 @@ public:
 	DECLARE_READ8_MEMBER(steering_changed_r);
 	DECLARE_READ8_MEMBER(steering_delta_r);
 	DECLARE_WRITE8_MEMBER(bootleg_soundlatch_w);
-	DECLARE_READ8_MEMBER(sound_z80_nmi_ack_r);
 	DECLARE_DRIVER_INIT(polepos2);
 	TILE_GET_INFO_MEMBER(bg_get_tile_info);
 	TILE_GET_INFO_MEMBER(tx_get_tile_info);
@@ -160,6 +164,8 @@ private:
 	filter2_context m_filter_engine[3];
 };
 
-extern const device_type POLEPOS;
+DECLARE_DEVICE_TYPE(POLEPOS, polepos_sound_device)
 
 DISCRETE_SOUND_EXTERN( polepos );
+
+#endif // MAME_INCLUDES_POLEPOS_H

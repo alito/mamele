@@ -25,6 +25,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "screen.h"
 
 
 class argo_state : public driver_device
@@ -40,7 +41,7 @@ public:
 		, m_maincpu(*this, "maincpu")
 		, m_p_videoram(*this, "videoram")
 		, m_p_chargen(*this, "chargen")
-		{ }
+	{ }
 
 	DECLARE_WRITE8_MEMBER(argo_videoram_w);
 	DECLARE_READ8_MEMBER(argo_io_r);
@@ -81,7 +82,7 @@ READ8_MEMBER(argo_state::argo_io_r)
 	{
 	case 0xA1: // keyboard
 		char kbdrow[6];
-		sprintf(kbdrow,"X%X",offset>>8);
+		sprintf(kbdrow,"X%X",uint8_t(offset>>8));
 		return ioport(kbdrow)->read();
 
 	case 0xE8: // wants bit 4 low then high
@@ -113,7 +114,7 @@ WRITE8_MEMBER(argo_state::argo_io_w)
 		{
 			uint8_t *RAM = memregion("videoram")->base();
 			m_scroll_ctrl = 0;
-			memcpy(RAM, RAM+80, 24*80);
+			memmove(RAM, RAM+80, 24*80);
 		}
 		break;
 
@@ -341,7 +342,7 @@ uint32_t argo_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, 
 	return 0;
 }
 
-static MACHINE_CONFIG_START( argo, argo_state )
+static MACHINE_CONFIG_START( argo )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 3500000)
 	MCFG_CPU_PROGRAM_MAP(argo_mem)
@@ -374,5 +375,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY           FULLNAME       FLAGS */
-COMP( 1986, argo,  0,      0,       argo,     argo, argo_state,    argo,     "<unknown>",   "Argo", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+/*    YEAR  NAME   PARENT  COMPAT   MACHINE   INPUT  STATE        INIT    COMPANY        FULLNAME  FLAGS */
+COMP( 1986, argo,  0,      0,       argo,     argo,  argo_state,  argo,   "<unknown>",   "Argo",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

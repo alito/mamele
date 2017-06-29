@@ -6,10 +6,10 @@
 
 \*********************************/
 
-#pragma once
+#ifndef MAME_CPU_ARCOMPACT_ARCOMPACT_H
+#define MAME_CPU_ARCOMPACT_ARCOMPACT_H
 
-#ifndef __ARCOMPACT_H__
-#define __ARCOMPACT_H__
+#pragma once
 
 enum
 {
@@ -840,8 +840,8 @@ private:
 	inline uint8_t READ8(uint32_t address) { return m_program->read_byte(address << 0); }
 	inline void WRITE8(uint32_t address, uint8_t data){     m_program->write_byte(address << 0, data); }
 
-	inline  uint64_t READAUX(uint64_t address) { return m_io->read_dword(address *4); }
-	inline void WRITEAUX(uint64_t address, uint32_t data) { m_io->write_dword(address *4, data); }
+	inline uint64_t READAUX(uint64_t address) { return m_io->read_dword(address); }
+	inline void WRITEAUX(uint64_t address, uint32_t data) { m_io->write_dword(address, data); }
 
 
 	int check_condition(uint8_t condition);
@@ -894,7 +894,7 @@ private:
 #define CONDITION_LT ((STATUS32_CHECK_N && !STATUS32_CHECK_V) || (!STATUS32_CHECK_N && STATUS32_CHECK_V))
 #define CONDITION_MI (STATUS32_CHECK_N)
 
-extern const device_type ARCA5;
 
+DECLARE_DEVICE_TYPE(ARCA5, arcompact_device)
 
-#endif /* __ARCOMPACT_H__ */
+#endif // MAME_CPU_ARCOMPACT_ARCOMPACT_H

@@ -30,11 +30,13 @@ TODO
 
 #include "emu.h"
 #include "cpu/s2650/s2650.h"
-#include "machine/keyboard.h"
-#include "imagedev/snapquik.h"
 #include "imagedev/cassette.h"
-#include "sound/wave.h"
+#include "imagedev/snapquik.h"
+#include "machine/keyboard.h"
 #include "sound/beep.h"
+#include "sound/wave.h"
+#include "screen.h"
+#include "speaker.h"
 
 class cd2650_state : public driver_device
 {
@@ -51,8 +53,8 @@ public:
 
 	DECLARE_READ8_MEMBER(keyin_r);
 	DECLARE_WRITE8_MEMBER(beep_w);
-	DECLARE_WRITE8_MEMBER(kbd_put);
-	DECLARE_READ8_MEMBER(cass_r);
+	void kbd_put(u8 data);
+	DECLARE_READ_LINE_MEMBER(cass_r);
 	DECLARE_WRITE_LINE_MEMBER(cass_w);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(cd2650);
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -79,7 +81,7 @@ WRITE_LINE_MEMBER( cd2650_state::cass_w )
 	m_cass->output(state ? -1.0 : +1.0);
 }
 
-READ8_MEMBER( cd2650_state::cass_r )
+READ_LINE_MEMBER( cd2650_state::cass_r )
 {
 	return (m_cass->input() > 0.03) ? 1 : 0;
 }
@@ -100,8 +102,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cd2650_io, AS_IO, 8, cd2650_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	//AM_RANGE(0x80, 0x84) disk i/o
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( cd2650_data, AS_DATA, 8, cd2650_state)
 	AM_RANGE(S2650_DATA_PORT,S2650_DATA_PORT) AM_READWRITE(keyin_r, beep_w)
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cass_r)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -180,7 +184,7 @@ static GFXDECODE_START( cd2650 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, cd2650_charlayout, 0, 1 )
 GFXDECODE_END
 
-WRITE8_MEMBER( cd2650_state::kbd_put )
+void cd2650_state::kbd_put(u8 data)
 {
 	if (data)
 		m_term_data = data;
@@ -255,12 +259,14 @@ QUICKLOAD_LOAD_MEMBER( cd2650_state, cd2650 )
 	return result;
 }
 
-static MACHINE_CONFIG_START( cd2650, cd2650_state )
+static MACHINE_CONFIG_START( cd2650 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",S2650, XTAL_1MHz)
 	MCFG_CPU_PROGRAM_MAP(cd2650_mem)
 	MCFG_CPU_IO_MAP(cd2650_io)
-	MCFG_S2650_FLAG_HANDLER(WRITELINE(cd2650_state, cass_w))
+	MCFG_CPU_DATA_MAP(cd2650_data)
+	MCFG_S2650_SENSE_INPUT(READLINE(cd2650_state, cass_r))
+	MCFG_S2650_FLAG_OUTPUT(WRITELINE(cd2650_state, cass_w))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -285,7 +291,7 @@ static MACHINE_CONFIG_START( cd2650, cd2650_state )
 
 	/* Devices */
 	MCFG_DEVICE_ADD("keyboard", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(cd2650_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(cd2650_state, kbd_put))
 	MCFG_CASSETTE_ADD( "cassette" )
 MACHINE_CONFIG_END
 
@@ -312,5 +318,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS          INIT     COMPANY        FULLNAME       FLAGS */
-COMP( 1977, cd2650, 0,      0,       cd2650,    cd2650, driver_device,  0,   "Central Data",   "CD 2650", 0 )
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS          INIT  COMPANY         FULLNAME   FLAGS
+COMP( 1977, cd2650, 0,      0,       cd2650,    cd2650, cd2650_state,  0,    "Central Data", "CD 2650", 0 )

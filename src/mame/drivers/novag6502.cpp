@@ -11,7 +11,7 @@
     such as Arena(in editmode).
 
     TODO:
-    - cforteb emulation (was initially sforteba romset)
+    - cforte ACIA?
     - verify supercon IRQ and beeper frequency
     - sforte irq active time (21.5us is too long)
     - sforte/sexpert led handling is correct?
@@ -29,11 +29,13 @@ Super Constellation Chess Computer (model 844):
 ******************************************************************************
 
 Constellation Forte:
-- x
+- R65C02P4 @ 5MHz (10MHz XTAL)
+- 2*2KB RAM(NEC D449C-3), 2*32KB ROM(27C256)
+- HLCD0538P, 10-digit 7seg LCD display
+- TTL, 18 LEDs, 8*8 chessboard buttons
 
-When it was first added to MAME as skeleton driver in mmodular.c, this romset
-was assumed to be Super Forte B, but it definitely isn't. I/O is similar to
-Super Constellation, let's assume for now it's a Constellation Forte B.
+When it was first added to MAME as skeleton driver in mmodular.c, cforteb romset
+was assumed to be Super Forte B, but it definitely isn't. I/O is similar to supercon.
 
 
 ******************************************************************************
@@ -54,13 +56,19 @@ instead of magnet sensors.
 
 #include "emu.h"
 #include "includes/novagbase.h"
+
+#include "bus/rs232/rs232.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6502/m65c02.h"
-#include "bus/rs232/rs232.h"
+#include "cpu/m6502/r65c02.h"
 #include "machine/mos6551.h"
 #include "machine/nvram.h"
+#include "video/hlcd0538.h"
+#include "screen.h"
+#include "speaker.h"
 
 // internal artwork
+#include "novag_cforte.lh" // clickable
 #include "novag_sexpert.lh" // clickable
 #include "novag_sforte.lh" // clickable
 #include "novag_supercon.lh" // clickable
@@ -70,8 +78,11 @@ class novag6502_state : public novagbase_state
 {
 public:
 	novag6502_state(const machine_config &mconfig, device_type type, const char *tag)
-		: novagbase_state(mconfig, type, tag)
+		: novagbase_state(mconfig, type, tag),
+		m_hlcd0538(*this, "hlcd0538")
 	{ }
+
+	optional_device<hlcd0538_device> m_hlcd0538;
 
 	TIMER_DEVICE_CALLBACK_MEMBER(irq_on) { m_maincpu->set_input_line(M6502_IRQ_LINE, ASSERT_LINE); }
 	TIMER_DEVICE_CALLBACK_MEMBER(irq_off) { m_maincpu->set_input_line(M6502_IRQ_LINE, CLEAR_LINE); }
@@ -81,6 +92,12 @@ public:
 	DECLARE_WRITE8_MEMBER(supercon_control_w);
 	DECLARE_READ8_MEMBER(supercon_input1_r);
 	DECLARE_READ8_MEMBER(supercon_input2_r);
+
+	// Constellation Forte
+	void cforte_prepare_display();
+	DECLARE_WRITE64_MEMBER(cforte_lcd_output_w);
+	DECLARE_WRITE8_MEMBER(cforte_mux_w);
+	DECLARE_WRITE8_MEMBER(cforte_control_w);
 
 	// Super Expert
 	DECLARE_WRITE8_MEMBER(sexpert_leds_w);
@@ -322,6 +339,71 @@ READ8_MEMBER(novag6502_state::supercon_input2_r)
 
 
 /******************************************************************************
+    Constellation Forte
+******************************************************************************/
+
+// TTL/generic
+
+void novag6502_state::cforte_prepare_display()
+{
+	// 3 led rows
+	display_matrix(8, 3, m_led_data, m_led_select, false);
+
+	// lcd panel (mostly handled in cforte_lcd_output_w)
+	set_display_segmask(0x3ff0, 0xff);
+	set_display_size(8, 3+13);
+	display_update();
+}
+
+WRITE64_MEMBER(novag6502_state::cforte_lcd_output_w)
+{
+	// 4 rows used
+	u32 rowdata[4];
+	for (int i = 0; i < 4; i++)
+		rowdata[i] = (data >> i & 1) ? u32(data >> 8) : 0;
+
+	// 2 segments per row
+	for (int dig = 0; dig < 13; dig++)
+	{
+		m_display_state[dig+3] = 0;
+		for (int i = 0; i < 4; i++)
+			m_display_state[dig+3] |= ((rowdata[i] >> (2*dig) & 3) << (2*i));
+
+		m_display_state[dig+3] = BITSWAP8(m_display_state[dig+3],7,2,0,4,6,5,3,1);
+	}
+
+	cforte_prepare_display();
+}
+
+WRITE8_MEMBER(novag6502_state::cforte_mux_w)
+{
+	// d0-d7: input mux, led data
+	m_inp_mux = m_led_data = data;
+	cforte_prepare_display();
+}
+
+WRITE8_MEMBER(novag6502_state::cforte_control_w)
+{
+	// d0: HLCD0538 data in
+	// d1: HLCD0538 clk
+	// d2: HLCD0538 lcd
+	m_hlcd0538->write_data(data & 1);
+	m_hlcd0538->write_clk(data >> 1 & 1);
+	m_hlcd0538->write_lcd(data >> 2 & 1);
+
+	// d3: unused?
+
+	// d4-d6: select led row
+	m_led_select = data >> 4 & 7;
+	cforte_prepare_display();
+
+	// d7: enable beeper
+	m_beeper->set_state(data >> 7 & 1);
+}
+
+
+
+/******************************************************************************
     Super Expert
 ******************************************************************************/
 
@@ -383,8 +465,10 @@ void novag6502_state::sexpert_set_cpu_freq()
 
 MACHINE_RESET_MEMBER(novag6502_state, sexpert)
 {
-	membank("bank1")->set_entry(0);
 	novagbase_state::machine_reset();
+
+	sexpert_set_cpu_freq();
+	membank("bank1")->set_entry(0);
 }
 
 DRIVER_INIT_MEMBER(novag6502_state, sexpert)
@@ -433,7 +517,7 @@ WRITE8_MEMBER(novag6502_state::sforte_lcd_data_w)
     Address Maps
 ******************************************************************************/
 
-// Super Constellation
+// Super Constellation / Constellation Forte
 
 static ADDRESS_MAP_START( supercon_map, AS_PROGRAM, 8, novag6502_state )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE("nvram")
@@ -444,13 +528,10 @@ static ADDRESS_MAP_START( supercon_map, AS_PROGRAM, 8, novag6502_state )
 	AM_RANGE(0x2000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-
-// Constellation Forte
-
 static ADDRESS_MAP_START( cforte_map, AS_PROGRAM, 8, novag6502_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_RAM
-	AM_RANGE(0x2000, 0xffff) AM_ROM
+	AM_RANGE(0x1e00, 0x1e00) AM_READWRITE(supercon_input2_r, cforte_mux_w)
+	AM_RANGE(0x1f00, 0x1f00) AM_READWRITE(supercon_input1_r, cforte_control_w)
+	AM_IMPORT_FROM( supercon_map )
 ADDRESS_MAP_END
 
 
@@ -483,7 +564,7 @@ ADDRESS_MAP_END
     Input Ports
 ******************************************************************************/
 
-static INPUT_PORTS_START( cb_buttons )
+INPUT_PORTS_START( novag_cb_buttons )
 	PORT_START("IN.0")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("Board Sensor")
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("Board Sensor")
@@ -565,7 +646,7 @@ static INPUT_PORTS_START( cb_buttons )
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("Board Sensor")
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( cb_magnets )
+INPUT_PORTS_START( novag_cb_magnets )
 	PORT_START("IN.0")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_TOGGLE PORT_NAME("Board Sensor")
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_TOGGLE PORT_NAME("Board Sensor")
@@ -649,7 +730,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( supercon )
-	PORT_INCLUDE( cb_buttons )
+	PORT_INCLUDE( novag_cb_buttons )
 
 	PORT_MODIFY("IN.0")
 	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_I) PORT_NAME("New Game")
@@ -682,6 +763,43 @@ static INPUT_PORTS_START( supercon )
 	PORT_MODIFY("IN.7")
 	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_Q) PORT_NAME("Go")
 	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_1) PORT_NAME("Take Back")
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( cforte )
+	PORT_INCLUDE( novag_cb_buttons )
+
+	PORT_MODIFY("IN.0")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_I) PORT_NAME("New Game")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_8) PORT_NAME("Player/Player / Gambit/Large / King")
+
+	PORT_MODIFY("IN.1")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_U) PORT_NAME("Verify/Set Up / Pro-Op")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_7) PORT_NAME("Random/Tour/Normal / Training Level / Queen")
+
+	PORT_MODIFY("IN.2")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_Y) PORT_NAME("Change Color / Time Control / Priority")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_6) PORT_NAME("Sound / Depth Search / Bishop")
+
+	PORT_MODIFY("IN.3")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_T) PORT_NAME("Flip Display / Clear Board / Clear Book")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_5) PORT_NAME("Solve Mate / Infinite / Knight")
+
+	PORT_MODIFY("IN.4")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_NAME("Print Moves / Print Evaluations / Print Book")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_4) PORT_NAME("Print Board / Interface / Rook")
+
+	PORT_MODIFY("IN.5")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_E) PORT_NAME("Trace Forward / Auto Play / No/End")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_3) PORT_NAME("Print List / Acc. Time / Pawn")
+
+	PORT_MODIFY("IN.6")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_W) PORT_NAME("Hint / Next Best / Yes/Start")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_2) PORT_NAME("Set Level")
+
+	PORT_MODIFY("IN.7")
+	PORT_BIT(0x100, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_Q) PORT_NAME("Go / ->")
+	PORT_BIT(0x200, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_1) PORT_NAME("Take Back / Restore / <-")
 INPUT_PORTS_END
 
 
@@ -738,12 +856,12 @@ INPUT_CHANGED_MEMBER(novag6502_state::sexpert_cpu_freq)
 }
 
 static INPUT_PORTS_START( sexpert )
-	PORT_INCLUDE( cb_magnets )
+	PORT_INCLUDE( novag_cb_magnets )
 	PORT_INCLUDE( sexy_shared )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sforte )
-	PORT_INCLUDE( cb_buttons )
+	PORT_INCLUDE( novag_cb_buttons )
 	PORT_INCLUDE( sexy_shared )
 INPUT_PORTS_END
 
@@ -753,7 +871,7 @@ INPUT_PORTS_END
     Machine Drivers
 ******************************************************************************/
 
-static MACHINE_CONFIG_START( supercon, novag6502_state )
+static MACHINE_CONFIG_START( supercon )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, XTAL_8MHz/2)
@@ -767,29 +885,35 @@ static MACHINE_CONFIG_START( supercon, novag6502_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beeper", BEEP, 1000) // guessed
+	MCFG_SOUND_ADD("beeper", BEEP, 1024) // guessed
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( cforte, novag6502_state )
+static MACHINE_CONFIG_START( cforte )
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M65C02, 5000000) // 5MHz
-	MCFG_CPU_PERIODIC_INT_DRIVER(novag6502_state, irq0_line_hold, 250) // guessed
+	MCFG_CPU_ADD("maincpu", R65C02, XTAL_10MHz/2)
 	MCFG_CPU_PROGRAM_MAP(cforte_map)
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_on", novag6502_state, irq_on, attotime::from_hz(XTAL_32_768kHz/128)) // 256Hz
+	MCFG_TIMER_START_DELAY(attotime::from_hz(XTAL_32_768kHz/128) - attotime::from_usec(11)) // active for 11us
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_off", novag6502_state, irq_off, attotime::from_hz(XTAL_32_768kHz/128))
 
-	//MCFG_NVRAM_ADD_1FILL("nvram")
+	MCFG_NVRAM_ADD_1FILL("nvram")
+
+	/* video hardware */
+	MCFG_DEVICE_ADD("hlcd0538", HLCD0538, 0)
+	MCFG_HLCD0538_WRITE_COLS_CB(WRITE64(novag6502_state, cforte_lcd_output_w))
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", novagbase_state, display_decay_tick, attotime::from_msec(1))
-	//MCFG_DEFAULT_LAYOUT(layout_novag_cforte)
+	MCFG_DEFAULT_LAYOUT(layout_novag_cforte)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beeper", BEEP, 1000) // guessed
+	MCFG_SOUND_ADD("beeper", BEEP, XTAL_32_768kHz/32) // 1024Hz
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( sexpert, novag6502_state )
+static MACHINE_CONFIG_START( sexpert )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M65C02, XTAL_10MHz/2) // or XTAL_12MHz/2
@@ -842,7 +966,7 @@ static MACHINE_CONFIG_DERIVED( sforte, sexpert )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(sforte_map)
 	MCFG_TIMER_MODIFY("irq_on")
-	MCFG_TIMER_START_DELAY(attotime::from_hz(XTAL_32_768kHz/128) - attotime::from_usec(15)) // active for ?us
+	MCFG_TIMER_START_DELAY(attotime::from_hz(XTAL_32_768kHz/128) - attotime::from_usec(11)) // active for ?us (assume same as cforte)
 
 	MCFG_DEFAULT_LAYOUT(layout_novag_sforte)
 MACHINE_CONFIG_END
@@ -860,8 +984,14 @@ ROM_START( supercon )
 ROM_END
 
 
+ROM_START( cfortea )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD("a_903_l", 0x0000, 0x8000, CRC(01e7e306) SHA1(6a2b982bb0f412a63f5d3603958dd863e38669d9) ) // NEC D27C256AD-12
+	ROM_LOAD("a_903_h", 0x8000, 0x8000, CRC(c5a5573f) SHA1(7e11eb2f3d96bc41386a14a19635427a386ec1ec) ) // "
+ROM_END
+
 ROM_START( cforteb )
-	ROM_REGION( 0x18000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("forte_b_l.bin", 0x0000, 0x8000, CRC(e3d194a1) SHA1(80457580d7c57e07895fd14bfdaf14b30952afca) )
 	ROM_LOAD("forte_b_h.bin", 0x8000, 0x8000, CRC(dd824be8) SHA1(cd8666b6b525887f9fc48a730b71ceabcf07f3b9) )
 ROM_END
@@ -930,17 +1060,18 @@ ROM_END
     Drivers
 ******************************************************************************/
 
-/*    YEAR  NAME       PARENT    COMPAT  MACHINE   INPUT     INIT                      COMPANY, FULLNAME, FLAGS */
-CONS( 1984, supercon,  0,        0,      supercon, supercon, driver_device,   0,       "Novag", "Super Constellation", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME       PARENT   CMP MACHINE   INPUT     STATE            INIT     COMPANY, FULLNAME, FLAGS
+CONS( 1984, supercon,  0,        0, supercon, supercon, novag6502_state, 0,       "Novag", "Super Constellation", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1986, cforteb,   0,        0,      cforte,   supercon, driver_device,   0,       "Novag", "Constellation Forte (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_NOT_WORKING )
+CONS( 1986, cfortea,   0,        0, cforte,   cforte,   novag6502_state, 0,       "Novag", "Constellation Forte (version A)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1986, cforteb,   cfortea,  0, cforte,   cforte,   novag6502_state, 0,       "Novag", "Constellation Forte (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1987, sfortea,   0,        0,      sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version A, set 1)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1987, sfortea1,  sfortea,  0,      sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version A, set 2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1988, sforteb,   sfortea,  0,      sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1990, sfortec,   sfortea,  0,      sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version C)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1987, sfortea,   0,        0, sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version A, set 1)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1987, sfortea1,  sfortea,  0, sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version A, set 2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1988, sforteb,   sfortea,  0, sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1990, sfortec,   sfortea,  0, sforte,   sforte,   novag6502_state, sexpert, "Novag", "Super Forte (version C)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
 
-CONS( 1987, sexperta,  0,        0,      sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version A)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1988, sexpertb,  sexperta, 0,      sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1990, sexpertc,  sexperta, 0,      sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version C, V3.6)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1990, sexpertc1, sexperta, 0,      sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version C, V1.2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1987, sexperta,  0,        0, sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version A)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1988, sexpertb,  sexperta, 0, sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1990, sexpertc,  sexperta, 0, sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version C, V3.6)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+CONS( 1990, sexpertc1, sexperta, 0, sexpert,  sexpert,  novag6502_state, sexpert, "Novag", "Super Expert (version C, V1.2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )

@@ -121,6 +121,7 @@ namespace netlist
 				f = true;
 			}
 		}
+		//FIXME: Use power terminals!
 		if (!f)
 			log().warning(MW_1_NO_POWER_TERMINALS_ON_DEVICE_1, out_proxied->device().name());
 		else
@@ -165,7 +166,7 @@ namespace netlist
 				m_RV.update_dev();
 			}
 			m_RV.set(NL_FCONST(1.0) / R, V, 0.0);
-			m_RV.m_P.schedule_after(NLTIME_FROM_NS(1));
+			m_RV.m_P.schedule_solve_after(NLTIME_FROM_NS(1));
 		}
 	}
 

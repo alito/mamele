@@ -6,8 +6,11 @@
 
 #include "emu.h"
 #include "includes/s11c.h"
+
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
+#include "speaker.h"
+
 #include "s11c.lh"
 
 
@@ -147,7 +150,7 @@ DRIVER_INIT_MEMBER(s11c_state,s11c)
 	timer->adjust(attotime::from_ticks(S11_IRQ_CYCLES,E_CLOCK),1);
 }
 
-static MACHINE_CONFIG_START( s11c, s11c_state )
+static MACHINE_CONFIG_START( s11c )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6808, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(s11c_main_map)

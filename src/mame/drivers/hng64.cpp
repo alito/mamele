@@ -435,13 +435,14 @@ or Fatal Fury for example).
 */
 
 
-
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "cpu/mips/mips3.h"
-#include "machine/nvram.h"
 #include "includes/hng64.h"
+
+#include "cpu/mips/mips3.h"
+#include "cpu/z80/z80.h"
+#include "machine/nvram.h"
 #include "machine/hng64_net.h"
+
 
 /* TODO: NOT measured! */
 #define PIXEL_CLOCK         ((HNG64_MASTER_CLOCK*2)/4) // x 2 is due of the interlaced screen ...
@@ -1515,6 +1516,8 @@ void hng64_state::machine_start()
 	{
 		m_videoregs[i] = 0xdeadbeef;
 	}
+
+	m_3dfifo_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(hng64_state::hng64_3dfifo_processed), this));
 }
 
 void hng64_state::machine_reset()
@@ -1529,7 +1532,7 @@ void hng64_state::machine_reset()
 
 MACHINE_CONFIG_EXTERN(hng64_audio);
 
-static MACHINE_CONFIG_START(hng64, hng64_state)
+static MACHINE_CONFIG_START(hng64)
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", VR4300BE, HNG64_MASTER_CLOCK)     // actually R4300
 	MCFG_MIPS3_ICACHE_SIZE(16384)
@@ -1546,7 +1549,7 @@ static MACHINE_CONFIG_START(hng64, hng64_state)
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 	MCFG_SCREEN_UPDATE_DRIVER(hng64_state, screen_update_hng64)
-	MCFG_SCREEN_VBLANK_DRIVER(hng64_state, screen_eof_hng64)
+	MCFG_SCREEN_VBLANK_CALLBACK(WRITELINE(hng64_state, screen_vblank_hng64))
 
 	MCFG_PALETTE_ADD("palette", 0x1000)
 	MCFG_PALETTE_FORMAT(XRGB)

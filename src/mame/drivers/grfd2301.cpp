@@ -30,9 +30,10 @@ A sticker on the back panel says: GenRad, Culver City CA, Model 2301-9001
 
 *************************************************************************************************************/
 
-
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "screen.h"
+
 
 class grfd2301_state : public driver_device
 {
@@ -107,7 +108,7 @@ uint32_t grfd2301_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-static MACHINE_CONFIG_START( grfd2301, grfd2301_state )
+static MACHINE_CONFIG_START( grfd2301 )
 	// basic machine hardware
 	MCFG_CPU_ADD("maincpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(grfd2301_mem)
@@ -134,4 +135,4 @@ ROM_START( grfd2301 )
 	ROM_LOAD( "c10_char.bin", 0x0000, 0x2000, BAD_DUMP CRC(cb530b6f) SHA1(95590bbb433db9c4317f535723b29516b9b9fcbf))
 ROM_END
 
-COMP( 198?, grfd2301, 0, 0, grfd2301, grfd2301, driver_device, 0, "Genrad",  "Futuredata 2301 Network Processor", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+COMP( 198?, grfd2301, 0, 0, grfd2301, grfd2301, grfd2301_state, 0, "Genrad",  "Futuredata 2301 Network Processor", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )

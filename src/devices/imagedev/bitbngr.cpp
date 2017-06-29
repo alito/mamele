@@ -15,14 +15,14 @@
     IMPLEMENTATION
 ***************************************************************************/
 
-const device_type BITBANGER = &device_creator<bitbanger_device>;
+DEFINE_DEVICE_TYPE(BITBANGER, bitbanger_device, "bitbanger", "Bitbanger")
 
 /*-------------------------------------------------
     ctor
 -------------------------------------------------*/
 
 bitbanger_device::bitbanger_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, BITBANGER, "Bitbanger", tag, owner, clock, "bitbanger", __FILE__),
+	device_t(mconfig, BITBANGER, tag, owner, clock),
 	device_image_interface(mconfig, *this),
 	m_interface(nullptr)
 {
@@ -64,17 +64,6 @@ uint32_t bitbanger_device::input(void *buffer, uint32_t length)
 
 void bitbanger_device::device_start(void)
 {
-}
-
-
-
-/*-------------------------------------------------
-    device_config_complete
--------------------------------------------------*/
-
-void bitbanger_device::device_config_complete(void)
-{
-	update_names(BITBANGER, "bitbngr", "bitb");
 }
 
 

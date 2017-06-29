@@ -53,15 +53,17 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "machine/z80ctc.h"
-#include "machine/z80pio.h"
-#include "machine/z80dart.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "imagedev/cassette.h"
-#include "sound/speaker.h"
-#include "sound/wave.h"
 #include "machine/k7659kb.h"
+#include "machine/z80ctc.h"
+#include "machine/z80dart.h"
+#include "machine/z80pio.h"
+#include "sound/spkrdev.h"
+#include "sound/wave.h"
+#include "screen.h"
+#include "speaker.h"
 
 
 class pcm_state : public driver_device
@@ -79,7 +81,8 @@ public:
 		, m_cass(*this, "cassette")
 		, m_p_videoram(*this, "videoram")
 		, m_p_chargen(*this, "chargen")
-		{ }
+	{
+	}
 
 	DECLARE_READ8_MEMBER( pcm_85_r );
 	DECLARE_WRITE_LINE_MEMBER( pcm_82_w );
@@ -247,7 +250,7 @@ static GFXDECODE_START( pcm )
 	GFXDECODE_ENTRY( "chargen", 0x0000, pcm_charlayout, 0, 1 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_START( pcm, pcm_state )
+static MACHINE_CONFIG_START( pcm )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_10MHz /4)
 	MCFG_CPU_PROGRAM_MAP(pcm_mem)
@@ -323,5 +326,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY        FULLNAME       FLAGS */
-COMP( 1988, pcm,    0,      0,       pcm,       pcm, driver_device,      0,  "Mugler/Mathes",  "PC/M", 0)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE       INIT  COMPANY           FULLNAME  FLAGS */
+COMP( 1988, pcm,    0,      0,       pcm,       pcm,   pcm_state,  0,    "Mugler/Mathes",  "PC/M",   0)

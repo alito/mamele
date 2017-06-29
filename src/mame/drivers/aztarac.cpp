@@ -16,12 +16,14 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "cpu/m68000/m68000.h"
 #include "includes/aztarac.h"
-#include "sound/ay8910.h"
+
+#include "cpu/m68000/m68000.h"
+#include "cpu/z80/z80.h"
 #include "machine/nvram.h"
 #include "machine/watchdog.h"
+#include "sound/ay8910.h"
+#include "speaker.h"
 
 
 /*************************************
@@ -145,7 +147,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static MACHINE_CONFIG_START( aztarac, aztarac_state )
+static MACHINE_CONFIG_START( aztarac )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)
@@ -229,4 +231,4 @@ ROM_END
  *
  *************************************/
 
-GAME( 1983, aztarac, 0, aztarac, aztarac, driver_device, 0, ROT0, "Centuri", "Aztarac", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, aztarac, 0, aztarac, aztarac, aztarac_state, 0, ROT0, "Centuri", "Aztarac", MACHINE_SUPPORTS_SAVE )

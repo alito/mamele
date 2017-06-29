@@ -6,10 +6,10 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_VIDEO_RAMDAC_H
+#define MAME_VIDEO_RAMDAC_H
 
-#ifndef __ramdacDEV_H__
-#define __ramdacDEV_H__
+#pragma once
 
 
 
@@ -50,6 +50,7 @@ public:
 	// I/O operations
 	DECLARE_READ8_MEMBER( index_r );
 	DECLARE_READ8_MEMBER( pal_r );
+	DECLARE_READ8_MEMBER( mask_r );
 	DECLARE_WRITE8_MEMBER( index_w );
 	DECLARE_WRITE8_MEMBER( index_r_w );
 	DECLARE_WRITE8_MEMBER( pal_w );
@@ -85,7 +86,6 @@ private:
 
 
 // device type definition
-extern const device_type RAMDAC;
+DECLARE_DEVICE_TYPE(RAMDAC, ramdac_device)
 
-
-#endif
+#endif // MAME_VIDEO_RAMDAC_H

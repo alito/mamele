@@ -21,7 +21,7 @@ state_manager_t::~state_manager_t()
 
 
 
-void state_manager_t::save_state_ptr(const void *owner, const pstring &stname, const datatype_t dt, const std::size_t count, void *ptr)
+void state_manager_t::save_state_ptr(const void *owner, const pstring &stname, const datatype_t &dt, const std::size_t count, void *ptr)
 {
 	auto p = plib::make_unique<entry_t>(stname, dt, owner, count, ptr);
 	m_save.push_back(std::move(p));
@@ -39,7 +39,7 @@ void state_manager_t::remove_save_items(const void *owner)
 	for (auto i = m_custom.begin(); i != m_custom.end(); )
 	{
 		if (i->get()->m_owner == owner)
-			i = m_save.erase(i);
+			i = m_custom.erase(i);
 		else
 			i++;
 	}

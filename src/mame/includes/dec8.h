@@ -6,6 +6,7 @@
 #include "video/decbac06.h"
 #include "video/deckarn.h"
 #include "video/decmxc06.h"
+#include "video/decrmc3.h"
 
 class dec8_state : public driver_device
 {
@@ -45,7 +46,7 @@ public:
 	optional_device<deco_karnovsprites_device> m_spritegen_krn;
 	optional_device<deco_mxc06_device> m_spritegen_mxc;
 	required_device<gfxdecode_device> m_gfxdecode;
-	required_device<palette_device> m_palette;
+	required_device<deco_rmc3_device> m_palette;
 	required_device<generic_latch_8_device> m_soundlatch;
 
 	/* memory pointers */
@@ -148,7 +149,6 @@ public:
 	DECLARE_VIDEO_START(gondo);
 	DECLARE_VIDEO_START(garyoret);
 	DECLARE_VIDEO_START(ghostb);
-	DECLARE_PALETTE_INIT(ghostb);
 	DECLARE_VIDEO_START(oscar);
 	DECLARE_VIDEO_START(srdarwin);
 	DECLARE_VIDEO_START(cobracom);
@@ -160,7 +160,7 @@ public:
 	uint32_t screen_update_oscar(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_srdarwin(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_cobracom(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void screen_eof_dec8(screen_device &screen, bool state);
+	DECLARE_WRITE_LINE_MEMBER(screen_vblank_dec8);
 	INTERRUPT_GEN_MEMBER(gondo_interrupt);
 	INTERRUPT_GEN_MEMBER(oscar_interrupt);
 	void srdarwin_draw_sprites(  bitmap_ind16 &bitmap, const rectangle &cliprect, int pri );

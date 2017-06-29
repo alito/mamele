@@ -6,10 +6,10 @@
 
 **********************************************************************/
 
-#pragma once
+#ifndef MAME_BUS_SAT_CTRL_MULTITAP_H
+#define MAME_BUS_SAT_CTRL_MULTITAP_H
 
-#ifndef __SATURN_MULTITAP__
-#define __SATURN_MULTITAP__
+#pragma once
 
 
 #include "ctrl.h"
@@ -29,13 +29,13 @@ public:
 	// construction/destruction
 	saturn_multitap_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual machine_config_constructor device_mconfig_additions() const override;
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	// optional information overrides
+	virtual void device_add_mconfig(machine_config &config) override;
 
 	// device_saturn_control_port_interface overrides
 	virtual uint8_t read_ctrl(uint8_t offset) override;
@@ -53,7 +53,6 @@ private:
 
 
 // device type definition
-extern const device_type SATURN_MULTITAP;
+DECLARE_DEVICE_TYPE(SATURN_MULTITAP, saturn_multitap_device)
 
-
-#endif
+#endif // MAME_BUS_SAT_CTRL_MULTITAP_H

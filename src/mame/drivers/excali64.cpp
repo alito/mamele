@@ -30,22 +30,27 @@ ToDo:
 
 
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "video/mc6845.h"
-#include "machine/i8251.h"
-#include "bus/rs232/rs232.h"
-//#include "machine/clock.h"
-#include "machine/pit8253.h"
-#include "machine/i8255.h"
+
 #include "bus/centronics/ctronics.h"
+#include "bus/rs232/rs232.h"
+#include "cpu/z80/z80.h"
 #include "imagedev/cassette.h"
-#include "sound/wave.h"
-#include "sound/speaker.h"
-#include "machine/z80dma.h"
-#include "machine/rescap.h"
 #include "machine/74123.h"
+#include "machine/i8251.h"
+#include "machine/i8255.h"
+#include "machine/pit8253.h"
+#include "machine/rescap.h"
 #include "machine/wd_fdc.h"
+#include "machine/z80dma.h"
+#include "sound/spkrdev.h"
+#include "sound/wave.h"
+#include "video/mc6845.h"
+
+#include "screen.h"
+#include "speaker.h"
+
 #include "formats/excali64_dsk.h"
+
 
 class excali64_state : public driver_device
 {
@@ -107,7 +112,7 @@ private:
 	required_device<z80dma_device> m_dma;
 	required_device<ttl74123_device> m_u12;
 	required_device<centronics_device> m_centronics;
-	required_device<wd2793_t> m_fdc;
+	required_device<wd2793_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 };
@@ -135,7 +140,7 @@ static ADDRESS_MAP_START(excali64_io, AS_IO, 8, excali64_state)
 	AM_RANGE(0xe4, 0xe7) AM_WRITE(porte4_w)
 	AM_RANGE(0xe8, 0xeb) AM_READ(porte8_r)
 	AM_RANGE(0xec, 0xef) AM_WRITE(portec_w)
-	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE("fdc", wd2793_t, read, write)
+	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE("fdc", wd2793_device, read, write)
 ADDRESS_MAP_END
 
 
@@ -539,7 +544,7 @@ MC6845_UPDATE_ROW( excali64_state::update_row )
 	}
 }
 
-static MACHINE_CONFIG_START( excali64, excali64_state )
+static MACHINE_CONFIG_START( excali64 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_16MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(excali64_mem)
@@ -642,5 +647,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT     CLASS         INIT        COMPANY         FULLNAME        FLAGS */
-COMP( 1984, excali64, 0,      0,       excali64,  excali64, driver_device, 0,  "BGR Computers", "Excalibur 64", 0 )
+//    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT     CLASS           INIT  COMPANY          FULLNAME        FLAGS
+COMP( 1984, excali64, 0,      0,       excali64,  excali64, excali64_state, 0,    "BGR Computers", "Excalibur 64", 0 )

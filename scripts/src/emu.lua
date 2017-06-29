@@ -39,6 +39,7 @@ includedirs {
 
 files {
 	MAME_DIR .. "src/emu/emu.h",
+	MAME_DIR .. "src/emu/emufwd.h",
 	MAME_DIR .. "src/emu/main.h",
 	MAME_DIR .. "src/emu/main.cpp",
 	MAME_DIR .. "src/emu/gamedrv.h",
@@ -83,6 +84,8 @@ files {
 	MAME_DIR .. "src/emu/dinvram.h",
 	MAME_DIR .. "src/emu/dioutput.cpp",
 	MAME_DIR .. "src/emu/dioutput.h",
+	MAME_DIR .. "src/emu/dipalette.cpp",
+	MAME_DIR .. "src/emu/dipalette.h",
 	MAME_DIR .. "src/emu/dipty.cpp",
 	MAME_DIR .. "src/emu/dipty.h",
 	MAME_DIR .. "src/emu/dirom.cpp",
@@ -120,6 +123,8 @@ files {
 	MAME_DIR .. "src/emu/emupal.h",
 	MAME_DIR .. "src/emu/fileio.cpp",
 	MAME_DIR .. "src/emu/fileio.h",
+	MAME_DIR .. "src/emu/http.h",
+	MAME_DIR .. "src/emu/http.cpp",
 	MAME_DIR .. "src/emu/image.cpp",
 	MAME_DIR .. "src/emu/image.h",
 	MAME_DIR .. "src/emu/input.cpp",

@@ -111,14 +111,20 @@
 ****************************************************************************/
 
 #include "emu.h"
+
 #include "cpu/i8085/i8085.h"
-#include "machine/keyboard.h"
-#include "sound/speaker.h"
-#include "sound/wave.h"
 #include "imagedev/cassette.h"
 #include "machine/ay31015.h"
-#include "formats/sol_cas.h"
+#include "machine/keyboard.h"
+#include "sound/spkrdev.h"
+#include "sound/wave.h"
+
+#include "screen.h"
 #include "softlist.h"
+#include "speaker.h"
+
+#include "formats/sol_cas.h"
+
 
 struct cass_data_t {
 	struct {
@@ -173,7 +179,7 @@ public:
 	DECLARE_WRITE8_MEMBER( sol20_fb_w );
 	DECLARE_WRITE8_MEMBER( sol20_fd_w );
 	DECLARE_WRITE8_MEMBER( sol20_fe_w );
-	DECLARE_WRITE8_MEMBER( kbd_put );
+	void kbd_put(u8 data);
 	DECLARE_DRIVER_INIT(sol20);
 	TIMER_CALLBACK_MEMBER(sol20_cassette_tc);
 	TIMER_CALLBACK_MEMBER(sol20_boot);
@@ -716,7 +722,7 @@ static GFXDECODE_START( sol20 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, sol20_charlayout, 0, 1 )
 GFXDECODE_END
 
-WRITE8_MEMBER( sol20_state::kbd_put )
+void sol20_state::kbd_put(u8 data)
 {
 	if (data)
 	{
@@ -725,7 +731,7 @@ WRITE8_MEMBER( sol20_state::kbd_put )
 	}
 }
 
-static MACHINE_CONFIG_START( sol20, sol20_state )
+static MACHINE_CONFIG_START( sol20 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",I8080, XTAL_14_31818MHz/7)
 	MCFG_CPU_PROGRAM_MAP(sol20_mem)
@@ -771,7 +777,7 @@ static MACHINE_CONFIG_START( sol20, sol20_state )
 	MCFG_AY31015_TX_CLOCK(4800.0)
 	MCFG_AY31015_RX_CLOCK(4800.0)
 	MCFG_DEVICE_ADD("keyboard", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(sol20_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(sol20_state, kbd_put))
 
 	MCFG_SOFTWARE_LIST_ADD("cass_list", "sol20_cass")
 MACHINE_CONFIG_END
@@ -799,5 +805,5 @@ ROM_START( sol20 )
 ROM_END
 
 /* Driver */
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT               COMPANY                 FULLNAME  FLAGS */
+//    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT   COMPANY                             FULLNAME  FLAGS
 COMP( 1976, sol20,  0,      0,      sol20,   sol20, sol20_state, sol20, "Processor Technology Corporation", "SOL-20", 0 )

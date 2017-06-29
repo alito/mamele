@@ -22,28 +22,50 @@
 #include "clipper.h"
 
 #define VERBOSE 0
-#if VERBOSE
-#define LOG_INTERRUPT(...) logerror(__VA_ARGS__)
-#else
-#define LOG_INTERRUPT(...)
-#endif
+#define LOG_INTERRUPT(...) do { if (VERBOSE) logerror(__VA_ARGS__); } while (false)
 
-const device_type CLIPPER_C100 = &device_creator<clipper_c100_device>;
-const device_type CLIPPER_C300 = &device_creator<clipper_c300_device>;
-const device_type CLIPPER_C400 = &device_creator<clipper_c400_device>;
+// convenience macros for frequently used instruction fields
+#define R1 (m_info.r1)
+#define R2 (m_info.r2)
+
+// macros for setting psw condition codes
+#define FLAGS(C,V,Z,N) \
+	m_psw = (m_psw & ~(PSW_C | PSW_V | PSW_Z | PSW_N)) | (((C) << 3) | ((V) << 2) | ((Z) << 1) | ((N) << 0));
+#define FLAGS_CV(C,V) \
+	m_psw = (m_psw & ~(PSW_C | PSW_V)) | (((C) << 3) | ((V) << 2));
+#define FLAGS_ZN(Z,N) \
+	m_psw = (m_psw & ~(PSW_Z | PSW_N)) | (((Z) << 1) | ((N) << 0));
+
+// over/underflow for addition/subtraction from here: http://stackoverflow.com/questions/199333/how-to-detect-integer-overflow-in-c-c
+#define OF_ADD(a, b) ((b > 0) && (a > INT_MAX - b))
+#define UF_ADD(a, b) ((b < 0) && (a < INT_MIN - b))
+#define OF_SUB(a, b) ((b < 0) && (a > INT_MAX + b))
+#define UF_SUB(a, b) ((b > 0) && (a < INT_MIN + b))
+
+// CLIPPER logic for carry and overflow flags
+#define C_ADD(a, b) ((u32)a + (u32)b < (u32)a)
+#define V_ADD(a, b) (OF_ADD((s32)a, (s32)b) || UF_ADD((s32)a, (s32)b))
+#define C_SUB(a, b) ((u32)a < (u32)b)
+#define V_SUB(a, b) (OF_SUB((s32)a, (s32)b) || UF_SUB((s32)a, (s32)b))
+
+DEFINE_DEVICE_TYPE(CLIPPER_C100, clipper_c100_device, "clipper_c100", "C100 CLIPPER")
+DEFINE_DEVICE_TYPE(CLIPPER_C300, clipper_c300_device, "clipper_c300", "C300 CLIPPER")
+DEFINE_DEVICE_TYPE(CLIPPER_C400, clipper_c400_device, "clipper_c400", "C400 CLIPPER")
 
 clipper_c100_device::clipper_c100_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: clipper_device(mconfig, CLIPPER_C100, "C100 CLIPPER", tag, owner, clock, "C100", __FILE__) { }
+	: clipper_device(mconfig, CLIPPER_C100, tag, owner, clock, 0) { }
 
 clipper_c300_device::clipper_c300_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: clipper_device(mconfig, CLIPPER_C300, "C300 CLIPPER", tag, owner, clock, "C300", __FILE__) { }
+	: clipper_device(mconfig, CLIPPER_C300, tag, owner, clock, 0) { }
 
 clipper_c400_device::clipper_c400_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock)
-	: clipper_device(mconfig, CLIPPER_C400, "C400 CLIPPER", tag, owner, clock, "C400", __FILE__) { }
+	: clipper_device(mconfig, CLIPPER_C400, tag, owner, clock, SSW_ID_C400R4) { }
 
-clipper_device::clipper_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, u32 clock, const char *shortname, const char *source)
-	: cpu_device(mconfig, type, name, tag, owner, clock, shortname, source),
+clipper_device::clipper_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, const u32 cpuid)
+	: cpu_device(mconfig, type, tag, owner, clock),
 	m_pc(0),
+	m_psw(0),
+	m_ssw(cpuid),
 	m_r(m_rs),
 	m_insn_config("insn", ENDIANNESS_LITTLE, 32, 32, 0),
 	m_data_config("data", ENDIANNESS_LITTLE, 32, 32, 0),
@@ -146,7 +168,7 @@ void clipper_device::device_reset()
 	 *   ssw: EI, TP, M, U, K, KU, UU, P cleared, ID set from hardware, others undefined
 	 */
 	m_psw = 0;
-	m_ssw = 0;
+	set_ssw(0);
 
 	m_r = SSW(U) ? m_ru : m_rs;
 
@@ -401,7 +423,7 @@ int clipper_device::execute_instruction ()
 			m_psw = m_r[R2];
 		else if (!SSW(U) && (R1 == 1 || R1 == 3))
 		{
-			m_ssw = m_r[R2];
+			set_ssw(m_r[R2]);
 			m_r = SSW(U) ? m_ru : m_rs;
 		}
 		// FLAGS: CVZN
@@ -1245,10 +1267,10 @@ int clipper_device::execute_instruction ()
 			case 0x04:
 				// reti: restore psw, ssw and pc from supervisor stack
 				LOG_INTERRUPT("reti r%d, ssp = %08x, pc = %08x, next_pc = %08x\n",
-					(macro >> 4) & 0xf, m_rs[(m_info.macro >> 4) & 0xf], m_pc, m_program->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 8));
+					(m_info.macro >> 4) & 0xf, m_rs[(m_info.macro >> 4) & 0xf], m_pc, m_data->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 8));
 
 				m_psw = m_data->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 0);
-				m_ssw = m_data->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 4);
+				set_ssw(m_data->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 4));
 				next_pc = m_data->read_dword(m_rs[(m_info.macro >> 4) & 0xf] + 8);
 
 				m_rs[(m_info.macro >> 4) & 0xf] += 12;
@@ -1303,7 +1325,7 @@ int clipper_device::execute_instruction ()
 */
 u32 clipper_device::intrap(u32 vector, u32 pc, u32 cts, u32 mts)
 {
-	LOG_INTERRUPT("intrap - vector %x, pc = 0x%08x, next_pc = 0x%08x, ssp = 0x%08x\n", vector, pc, m_program->read_dword(vector + 4), m_rs[15]);
+	LOG_INTERRUPT("intrap - vector %x, pc = 0x%08x, next_pc = 0x%08x, ssp = 0x%08x\n", vector, pc, m_data->read_dword(vector + 4), m_rs[15]);
 
 	// set cts and mts to indicate source of exception
 	m_psw = (m_psw & ~(PSW_CTS | PSW_MTS)) | mts | cts;
@@ -1324,7 +1346,7 @@ u32 clipper_device::intrap(u32 vector, u32 pc, u32 cts, u32 mts)
 	m_rs[15] -= 24;
 
 	// load ssw from trap vector and set previous mode
-	m_ssw = (m_data->read_dword(vector + 0) & ~SSW_P) | (SSW(U) << 1);
+	set_ssw((m_data->read_dword(vector + 0) & ~(SSW(P))) | (SSW(U) << 1));
 
 	// clear psw
 	m_psw = 0;

@@ -14,19 +14,24 @@
 **************************************************************************************/
 
 #include "emu.h"
+
 #include "cpu/m6809/m6809.h"
-#include "video/mc6845.h"
+#include "imagedev/cassette.h"
 #include "machine/6821pia.h"
 #include "machine/6850acia.h"
 #include "machine/clock.h"
 #include "sound/2203intf.h"
-#include "sound/speaker.h"
+#include "sound/spkrdev.h"
 #include "sound/wave.h"
-#include "imagedev/cassette.h"
+#include "video/mc6845.h"
+
 #include "bus/bml3/bml3bus.h"
 #include "bus/bml3/bml3mp1802.h"
 #include "bus/bml3/bml3mp1805.h"
 #include "bus/bml3/bml3kanji.h"
+
+#include "screen.h"
+#include "speaker.h"
 
 // System clock definitions, from the MB-6890 servce manual, p.48:
 
@@ -959,7 +964,7 @@ static SLOT_INTERFACE_START(bml3_cards)
 SLOT_INTERFACE_END
 
 
-static MACHINE_CONFIG_START( bml3_common, bml3_state )
+static MACHINE_CONFIG_START( bml3_common )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M6809, CPU_CLOCK)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", bml3_state,  bml3_timer_firq)
@@ -1108,7 +1113,7 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT                      COMPANY    FULLNAME                        FLAGS */
-COMP( 1980, bml3,   0,      0,       bml3,      bml3,    driver_device,    0,      "Hitachi", "MB-6890 Basic Master Level 3", MACHINE_NOT_WORKING)
-COMP( 1982, bml3mk2,bml3,   0,       bml3mk2,   bml3,    driver_device,    0,      "Hitachi", "MB-6891 Basic Master Level 3 Mark 2", MACHINE_NOT_WORKING)
-COMP( 1983, bml3mk5,bml3,   0,       bml3mk5,   bml3,    driver_device,    0,      "Hitachi", "MB-6892 Basic Master Level 3 Mark 5", MACHINE_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT  STATE       INIT  COMPANY    FULLNAME                               FLAGS */
+COMP( 1980, bml3,   0,      0,       bml3,      bml3,  bml3_state, 0,    "Hitachi", "MB-6890 Basic Master Level 3",        MACHINE_NOT_WORKING)
+COMP( 1982, bml3mk2,bml3,   0,       bml3mk2,   bml3,  bml3_state, 0,    "Hitachi", "MB-6891 Basic Master Level 3 Mark 2", MACHINE_NOT_WORKING)
+COMP( 1983, bml3mk5,bml3,   0,       bml3mk5,   bml3,  bml3_state, 0,    "Hitachi", "MB-6892 Basic Master Level 3 Mark 5", MACHINE_NOT_WORKING)

@@ -6,10 +6,10 @@
 
 **********************************************************************/
 
-#pragma once
+#ifndef MAME_BUS_VIP_VP595_H
+#define MAME_BUS_VIP_VP595_H
 
-#ifndef __VP595__
-#define __VP595__
+#pragma once
 
 #include "exp.h"
 #include "sound/cdp1863.h"
@@ -29,12 +29,10 @@ public:
 	// construction/destruction
 	vp595_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual machine_config_constructor device_mconfig_additions() const override;
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
+	virtual void device_add_mconfig(machine_config &config) override;
 
 	// device_vip_expansion_card_interface overrides
 	virtual void vip_io_w(address_space &space, offs_t offset, uint8_t data) override;
@@ -46,7 +44,6 @@ private:
 
 
 // device type definition
-extern const device_type VP595;
+DECLARE_DEVICE_TYPE(VP595, vp595_device)
 
-
-#endif
+#endif // MAME_BUS_VIP_VP595_H

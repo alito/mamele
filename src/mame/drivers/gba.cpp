@@ -12,12 +12,15 @@
 
 #include "emu.h"
 #include "includes/gba.h"
+
 #include "bus/gba/rom.h"
 #include "cpu/arm7/arm7.h"
 #include "cpu/arm7/arm7core.h"
 #include "sound/gb.h"
 #include "sound/volt_reg.h"
 #include "softlist.h"
+#include "speaker.h"
+
 
 /* Sound Registers */
 #define SOUNDCNT_L  HWLO(0x080)  /* 0x4000080  2  R/W   Control Stereo/Volume/Enable */
@@ -1141,8 +1144,9 @@ READ32_MEMBER(gba_state::gba_bios_r)
 			return 0;
 	}
 
-	if (m_maincpu->state_int(ARM7_PC) >= 0x4000)
+	if (m_maincpu->pc() >= 0x4000)
 	{
+		//printf("GBA protection: blocking PC=%x\n", m_maincpu->pc());
 		return 0;
 	}
 
@@ -1393,7 +1397,7 @@ static SLOT_INTERFACE_START(gba_cart)
 SLOT_INTERFACE_END
 
 
-static MACHINE_CONFIG_START( gbadv, gba_state )
+static MACHINE_CONFIG_START( gbadv )
 
 	MCFG_CPU_ADD("maincpu", ARM7, XTAL_16_777216MHz)
 	MCFG_CPU_PROGRAM_MAP(gba_map)
@@ -1431,5 +1435,5 @@ ROM_START( gba )
 ROM_END
 
 
-/*    YEAR  NAME PARENT COMPAT MACHINE INPUT   INIT   COMPANY     FULLNAME */
-CONS(2001, gba, 0,     0,     gbadv,  gbadv, driver_device, 0, "Nintendo", "Game Boy Advance", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND)
+//   YEAR  NAME PARENT COMPAT MACHINE INPUT  STATE      INIT  COMPANY     FULLNAME            FLAGS
+CONS(2001, gba, 0,     0,     gbadv,  gbadv, gba_state, 0,    "Nintendo", "Game Boy Advance", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND)

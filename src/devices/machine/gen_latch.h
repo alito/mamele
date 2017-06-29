@@ -6,10 +6,10 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_MACHINE_GEN_LATCH_H
+#define MAME_MACHINE_GEN_LATCH_H
 
-#ifndef MAME_DEVICES_MACHINE_GEN_LATCH_H
-#define MAME_DEVICES_MACHINE_GEN_LATCH_H
+#pragma once
 
 
 
@@ -17,8 +17,8 @@
 //  DEVICE TYPE DECLARATIONS
 //**************************************************************************
 
-extern const device_type GENERIC_LATCH_8;
-extern const device_type GENERIC_LATCH_16;
+DECLARE_DEVICE_TYPE(GENERIC_LATCH_8, generic_latch_8_device)
+DECLARE_DEVICE_TYPE(GENERIC_LATCH_16, generic_latch_16_device)
 
 
 //**************************************************************************
@@ -34,6 +34,9 @@ extern const device_type GENERIC_LATCH_16;
 #define MCFG_GENERIC_LATCH_DATA_PENDING_CB(_devcb) \
 	devcb = &generic_latch_base_device::set_data_pending_callback(*device, DEVCB_##_devcb);
 
+#define MCFG_GENERIC_LATCH_SEPARATE_ACKNOWLEDGE(_ack) \
+	generic_latch_base_device::set_separate_acknowledge(*device, _ack);
+
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -45,11 +48,13 @@ class generic_latch_base_device : public device_t
 {
 protected:
 	// construction/destruction
-	generic_latch_base_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, u32 clock, const char *shortname, const char *source);
+	generic_latch_base_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
 
 public:
 	// static configuration
-	template<class _Object> static devcb_base &set_data_pending_callback(device_t &device, _Object object) { return downcast<generic_latch_base_device &>(device).m_data_pending_cb.set_callback(object); }
+	template <class Object> static devcb_base &set_data_pending_callback(device_t &device, Object &&cb)
+	{ return downcast<generic_latch_base_device &>(device).m_data_pending_cb.set_callback(std::forward<Object>(cb)); }
+	static void set_separate_acknowledge(device_t &device, bool ack) { downcast<generic_latch_base_device &>(device).m_separate_acknowledge = ack; }
 
 	DECLARE_READ_LINE_MEMBER(pending_r);
 
@@ -57,10 +62,12 @@ protected:
 	virtual void device_start() override;
 	virtual void device_reset() override;
 
+	bool has_separate_acknowledge() const { return m_separate_acknowledge; }
 	bool is_latch_written() const { return m_latch_written; }
 	void set_latch_written(bool latch_written);
 
 private:
+	bool                    m_separate_acknowledge;
 	bool                    m_latch_written;
 	devcb_write_line        m_data_pending_cb;
 };
@@ -82,6 +89,9 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( preset_w );
 	DECLARE_WRITE_LINE_MEMBER( clear_w );
 
+	DECLARE_READ8_MEMBER( acknowledge_r );
+	DECLARE_WRITE8_MEMBER( acknowledge_w );
+
 	void preset_w(u8 value) { m_latched_value = value; }
 
 protected:
@@ -90,7 +100,7 @@ protected:
 	void sync_callback(void *ptr, s32 param);
 
 private:
-	u8                      m_latched_value;
+	u8 m_latched_value;
 };
 
 
@@ -118,17 +128,8 @@ protected:
 	void sync_callback(void *ptr, s32 param);
 
 private:
-	u16                     m_latched_value;
+	u16 m_latched_value;
 };
 
 
-//**************************************************************************
-//  TEMPALTE INSTANTIATIONS
-//**************************************************************************
-
-extern template class device_finder<generic_latch_8_device, false>;
-extern template class device_finder<generic_latch_8_device, true>;
-extern template class device_finder<generic_latch_16_device, false>;
-extern template class device_finder<generic_latch_16_device, true>;
-
-#endif  // MAME_DEVICES_MACHINE_GEN_LATCH_H
+#endif  // MAME_MACHINE_GEN_LATCH_H

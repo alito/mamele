@@ -19,6 +19,8 @@
 #include "bus/vc4000/slot.h"
 #include "bus/vc4000/rom.h"
 
+#include "screen.h"
+
 // define this to use digital inputs instead of the slow
 // autocentering analog mame joys
 #define ANALOG_HACK
@@ -105,7 +107,7 @@ public:
 	DECLARE_READ8_MEMBER(vc4000_key_r);
 	DECLARE_READ8_MEMBER(vc4000_video_r);
 	DECLARE_WRITE8_MEMBER(vc4000_video_w);
-	DECLARE_READ8_MEMBER(vc4000_vsync_r);
+	DECLARE_READ_LINE_MEMBER(vc4000_vsync_r);
 	DECLARE_READ8_MEMBER(elektor_cass_r);
 	DECLARE_WRITE8_MEMBER(elektor_cass_w);
 	vc4000_video_t m_video;

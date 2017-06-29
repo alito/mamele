@@ -3,8 +3,14 @@
 /******************************************************************************
 *
 *  Fidelity Electronics chess machines base class
+*  main driver is fidelz80.cpp
 *
 ******************************************************************************/
+
+#pragma once
+
+#ifndef DRIVERS_FIDELBASE_H
+#define DRIVERS_FIDELBASE_H
 
 #include "sound/dac.h"
 #include "sound/s14001a.h"
@@ -48,7 +54,7 @@ public:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(scc_cartridge);
 
 	// display common
-	int m_display_wait;             // led/lamp off-delay in microseconds (default 33ms)
+	int m_display_wait;             // led/lamp off-delay in milliseconds (default 33ms)
 	int m_display_maxy;             // display matrix number of rows
 	int m_display_maxx;             // display matrix number of columns (max 31 for now)
 
@@ -67,3 +73,9 @@ protected:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 };
+
+
+INPUT_PORTS_EXTERN( fidel_cb_buttons );
+INPUT_PORTS_EXTERN( fidel_cb_magnets );
+
+#endif // DRIVERS_FIDELBASE_H

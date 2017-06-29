@@ -1,5 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Olivier Galibert
+#include "machine/74157.h"
+#include "machine/upd4701.h"
 #include "sound/msm5205.h"
 #include "sound/2203intf.h"
 
@@ -60,6 +62,7 @@ public:
 	DECLARE_WRITE8_MEMBER(bank1_w);
 	DECLARE_WRITE8_MEMBER(bank2_w);
 	DECLARE_WRITE8_MEMBER(bank3_w);
+	DECLARE_WRITE8_MEMBER(coin_control_w);
 	DECLARE_WRITE8_MEMBER(mcu_control_w);
 	DECLARE_READ8_MEMBER(mcu_control_r);
 	DECLARE_WRITE8_MEMBER(taitol_bankc_w);
@@ -73,7 +76,7 @@ public:
 	DECLARE_VIDEO_START(taito_l);
 	DECLARE_MACHINE_RESET(taito_l);
 	u32 screen_update_taitol(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void screen_eof_taitol(screen_device &screen, bool state);
+	DECLARE_WRITE_LINE_MEMBER(screen_vblank_taitol);
 	TIMER_DEVICE_CALLBACK_MEMBER(vbl_interrupt);
 	IRQ_CALLBACK_MEMBER(irq_callback);
 	void taitol_chardef14_m(int offset);
@@ -113,20 +116,10 @@ public:
 		, m_audio_cpu(*this, "audiocpu")
 		, m_audio_prg(*this, "audiocpu")
 		, m_audio_bnk(*this, "bank7")
-		, m_dswa(*this, "DSWA")
-		, m_dswb(*this, "DSWB")
-		, m_in0(*this, "IN0")
-		, m_in1(*this, "IN1")
-		, m_in2(*this, "IN2")
-		, m_mux_ctrl(0)
 	{
 	}
 
-	DECLARE_WRITE8_MEMBER(control2_w);
 	DECLARE_WRITE8_MEMBER(sound_bankswitch_w);
-	DECLARE_READ8_MEMBER(mux_r);
-	DECLARE_WRITE8_MEMBER(mux_w);
-	DECLARE_WRITE8_MEMBER(mux_ctrl_w);
 
 protected:
 	virtual void state_register() override;
@@ -135,14 +128,6 @@ protected:
 	required_device<cpu_device> m_audio_cpu;
 	required_region_ptr<u8>     m_audio_prg;
 	optional_memory_bank        m_audio_bnk;
-
-	required_ioport             m_dswa;
-	required_ioport             m_dswb;
-	required_ioport             m_in0;
-	required_ioport             m_in1;
-	required_ioport             m_in2;
-
-	u8  m_mux_ctrl;
 };
 
 
@@ -214,16 +199,10 @@ public:
 	taitol_1cpu_state(const machine_config &mconfig, device_type type, const char *tag)
 		: taitol_state(mconfig, type, tag)
 		, m_ymsnd(*this, "ymsnd")
-		, m_porte0_tag(nullptr)
-		, m_porte1_tag(nullptr)
-		, m_portf0_tag(nullptr)
-		, m_portf1_tag(nullptr)
-		, m_extport(0)
+		, m_mux(*this, {"dswmuxl", "dswmuxh", "inmuxl", "inmuxh"})
 	{
 	}
 
-	DECLARE_READ8_MEMBER(portA_r);
-	DECLARE_READ8_MEMBER(portB_r);
 	DECLARE_READ8_MEMBER(extport_select_and_ym2203_r);
 
 	DECLARE_DRIVER_INIT(plottinga);
@@ -238,13 +217,7 @@ protected:
 	virtual void taito_machine_reset() override;
 
 	required_device<ym2203_device>  m_ymsnd;
-
-	char const *m_porte0_tag;
-	char const *m_porte1_tag;
-	char const *m_portf0_tag;
-	char const *m_portf1_tag;
-
-	int         m_extport;
+	optional_device_array<ls157_device, 4> m_mux;
 };
 
 
@@ -253,30 +226,17 @@ class horshoes_state : public taitol_1cpu_state
 public:
 	horshoes_state(const machine_config &mconfig, device_type type, const char *tag)
 		: taitol_1cpu_state(mconfig, type, tag)
-		, m_analog0(*this, "AN0")
-		, m_analog1(*this, "AN1")
-		, m_trackx(0)
-		, m_tracky(0)
+		, m_upd4701(*this, "upd4701")
 	{
 	}
 
 	DECLARE_READ8_MEMBER(tracky_reset_r);
 	DECLARE_READ8_MEMBER(trackx_reset_r);
-	DECLARE_READ8_MEMBER(tracky_lo_r);
-	DECLARE_READ8_MEMBER(tracky_hi_r);
-	DECLARE_READ8_MEMBER(trackx_lo_r);
-	DECLARE_READ8_MEMBER(trackx_hi_r);
+	DECLARE_READ8_MEMBER(trackball_r);
 	DECLARE_WRITE8_MEMBER(bankg_w);
 
 	DECLARE_MACHINE_RESET(horshoes);
 
 protected:
-	virtual void state_register() override;
-	virtual void taito_machine_reset() override;
-
-	required_ioport m_analog0;
-	required_ioport m_analog1;
-
-	int m_trackx;
-	int m_tracky;
+	required_device<upd4701_device> m_upd4701;
 };

@@ -119,7 +119,7 @@ namespace netlist
 		, m_cnt(*this, "m_cnt", 0)
 		, m_off(*this, "m_off", netlist_time::zero())
 		{
-			m_inc[0] = netlist_time::from_double(1.0 / (m_freq()*2.0));
+			m_inc[0] = netlist_time::from_double(1.0 / (m_freq() * 2.0));
 
 			connect(m_feedback, m_Q);
 			{
@@ -127,8 +127,8 @@ namespace netlist
 				std::vector<pstring> pat(plib::psplit(m_pattern(),","));
 				m_off = netlist_time::from_double(m_offset());
 
-				unsigned long pati[256];
-				m_size = pat.size();
+				unsigned long pati[32];
+				m_size = static_cast<std::uint8_t>(pat.size());
 				unsigned long total = 0;
 				for (unsigned i=0; i<m_size; i++)
 				{
@@ -155,10 +155,10 @@ namespace netlist
 
 		logic_input_t m_feedback;
 		logic_output_t m_Q;
-		netlist_time m_inc[32];
-		state_var<unsigned> m_cnt;
+		state_var_u8 m_cnt;
+		std::uint8_t m_size;
 		state_var<netlist_time> m_off;
-		std::size_t m_size;
+		netlist_time m_inc[32];
 	};
 
 	// -----------------------------------------------------------------------------
@@ -306,6 +306,7 @@ namespace netlist
 		, m_N(*this, "N", 1)
 		, m_func(*this, "FUNC", "A0")
 		, m_Q(*this, "Q")
+		, m_compiled(this->name() + ".FUNCC", this, this->netlist().state())
 		{
 			std::vector<pstring> inps;
 			for (int i=0; i < m_N(); i++)
@@ -315,7 +316,7 @@ namespace netlist
 				inps.push_back(n);
 				m_vals.push_back(0.0);
 			}
-			m_precompiled.compile(inps, m_func());
+			m_compiled.compile(inps, m_func());
 		}
 
 	protected:
@@ -331,7 +332,7 @@ namespace netlist
 		std::vector<std::unique_ptr<analog_input_t>> m_I;
 
 		std::vector<double> m_vals;
-		plib::pfunction m_precompiled;
+		plib::pfunction m_compiled;
 	};
 
 	// -----------------------------------------------------------------------------

@@ -16,10 +16,12 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "sound/2203intf.h"
-#include "video/mc6845.h"
 #include "machine/i8255.h"
+#include "sound/2203intf.h"
 #include "sound/beep.h"
+#include "video/mc6845.h"
+#include "screen.h"
+#include "speaker.h"
 
 
 class multi8_state : public driver_device
@@ -32,7 +34,7 @@ public:
 		, m_ppi(*this, "ppi8255_0")
 		, m_crtc(*this, "crtc")
 		, m_beeper(*this, "beeper")
-		{ }
+	{ }
 
 	DECLARE_WRITE8_MEMBER(multi8_6845_w);
 	DECLARE_READ8_MEMBER(key_input_r);
@@ -615,7 +617,7 @@ void multi8_state::machine_reset()
 	m_mcu_init = 0;
 }
 
-static MACHINE_CONFIG_START( multi8, multi8_state )
+static MACHINE_CONFIG_START( multi8 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(multi8_mem)
@@ -678,5 +680,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY      FULLNAME       FLAGS */
-COMP( 1983, multi8, 0,      0,       multi8,    multi8, driver_device,  0,     "Mitsubishi", "Multi 8 (Mitsubishi)", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   STATE          INIT   COMPANY       FULLNAME                FLAGS
+COMP( 1983, multi8, 0,      0,       multi8,    multi8, multi8_state,  0,     "Mitsubishi", "Multi 8 (Mitsubishi)", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

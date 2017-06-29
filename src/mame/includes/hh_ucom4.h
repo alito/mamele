@@ -6,13 +6,13 @@
 
 */
 
-#ifndef _HH_UCOM4_H_
-#define _HH_UCOM4_H_
+#ifndef MAME_INCLUDES_HH_UCOM4_H
+#define MAME_INCLUDES_HH_UCOM4_H
 
+#include "cpu/ucom4/ucom4.h"
+#include "sound/spkrdev.h"
 
 #include "rendlay.h"
-#include "cpu/ucom4/ucom4.h"
-#include "sound/speaker.h"
 
 
 class hh_ucom4_state : public driver_device
@@ -44,7 +44,7 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(single_interrupt_line);
 
 	// display common
-	int m_display_wait;             // led/lamp off-delay in microseconds (default 33ms)
+	int m_display_wait;             // led/lamp off-delay in milliseconds (default 33ms)
 	int m_display_maxy;             // display matrix number of rows
 	int m_display_maxx;             // display matrix number of columns (max 31 for now)
 
@@ -67,4 +67,4 @@ protected:
 };
 
 
-#endif /* _HH_UCOM4_H_ */
+#endif // MAME_INCLUDES_HH_UCOM4_H

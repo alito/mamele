@@ -8,17 +8,14 @@
 
 ***************************************************************************/
 
-#pragma once
-
 #ifndef MAME_EMU_DEBUG_DEBUGCPU_H
 #define MAME_EMU_DEBUG_DEBUGCPU_H
+
+#pragma once
 
 #include "express.h"
 
 #include <set>
-
-
-namespace util { namespace xml { class data_node; } }
 
 
 //**************************************************************************
@@ -113,7 +110,7 @@ public:
 		offs_t address() const { return m_address; }
 		offs_t length() const { return m_length; }
 		const char *condition() const { return m_condition.original_string(); }
-		const char *action() const { return m_action.c_str(); }
+		const std::string &action() const { return m_action; }
 
 		// setters
 		void setEnabled(bool value) { m_enabled = value; }
@@ -171,6 +168,7 @@ public:
 
 	// commonly-used pass-throughs
 	int logaddrchars() const { return (m_memory != nullptr && m_memory->has_space(AS_PROGRAM)) ? m_memory->space(AS_PROGRAM).logaddrchars() : 8; }
+	bool is_octal() const { return (m_memory != nullptr && m_memory->has_space(AS_PROGRAM)) ? m_memory->space(AS_PROGRAM).is_octal() : false; }
 	device_t& device() const { return m_device; }
 
 	// hooks used by the rest of the system
@@ -577,10 +575,10 @@ private:
 	static const size_t NUM_TEMP_VARIABLES;
 
 	/* expression handlers */
-	u64 expression_read_memory(void *param, const char *name, expression_space space, u32 address, int size);
+	u64 expression_read_memory(void *param, const char *name, expression_space space, u32 address, int size, bool disable_se);
 	u64 expression_read_program_direct(address_space &space, int opcode, offs_t address, int size);
 	u64 expression_read_memory_region(const char *rgntag, offs_t address, int size);
-	void expression_write_memory(void *param, const char *name, expression_space space, u32 address, int size, u64 data);
+	void expression_write_memory(void *param, const char *name, expression_space space, u32 address, int size, u64 data, bool disable_se);
 	void expression_write_program_direct(address_space &space, int opcode, offs_t address, int size, u64 data);
 	void expression_write_memory_region(const char *rgntag, offs_t address, int size, u64 data);
 	expression_error::error_code expression_validate(void *param, const char *name, expression_space space);
@@ -601,14 +599,13 @@ private:
 	device_t *  m_visiblecpu;
 	device_t *  m_breakcpu;
 
-	FILE *      m_source_file;          // script source file
+	std::unique_ptr<std::istream> m_source_file;        // script source file
 
 	std::unique_ptr<symbol_table> m_symtable;           // global symbol table
 
 	bool        m_within_instruction_hook;
 	bool        m_vblank_occurred;
 	bool        m_memory_modified;
-	bool        m_debugger_access;
 
 	int         m_execution_state;
 	device_t *  m_stop_when_not_device; // stop execution when the device ceases to be this

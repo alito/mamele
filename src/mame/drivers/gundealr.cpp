@@ -6,10 +6,20 @@ Gun Dealer memory map
 
 driver by Nicola Salmoria
 
-Yam! Yam!? runs on the same hardware but has a protection device which can
+The custom graphics chips at locations labeled GA 1, GA 2 and GA 3 (x2) are
+surface-scratched on common blue boards. However, a Tecmo-licensed green
+PCB reveals them to be none other than NMK-901, NMK-902 and NMK-903.
+
+Yam! Yam!? runs on similar hardware but has a protection device which can
            access RAM at e000. Program writes to e000 and expects a value back
            at e001, then jumps to subroutines at e010 and e020. Also, the
            player and coin inputs appear magically at e004-e006.
+
+Despite not using GFX customs or MCU protection and lacking Dooyong labels,
+gundealrbl might be a factory conversion of Yam! Yam!? rather than a
+bootleg, as its board has the same NMK-style markings for the ROM and PROM
+locations. In place of the MCU here is a small daughterboard with three
+SN74LS245N buffers, a resistor array and an Altera EP320PC.
 
 0000-7fff ROM
 8000-bfff ROM (banked)
@@ -59,9 +69,13 @@ Z80 CPU - 12MHz/2
 ***************************************************************************/
 
 #include "emu.h"
+#include "includes/gundealr.h"
+
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
-#include "includes/gundealr.h"
+#include "screen.h"
+#include "speaker.h"
+
 
 WRITE8_MEMBER(gundealr_state::yamyam_bankswitch_w)
 {
@@ -410,7 +424,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(gundealr_state::gundealr_scanline)
 		m_maincpu->set_input_line_and_vector(0, HOLD_LINE,0xcf); /* RST 10h */
 }
 
-static MACHINE_CONFIG_START( gundealr, gundealr_state )
+static MACHINE_CONFIG_START( gundealr )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)   /* 6 MHz verified for Yam! Yam!? */
@@ -510,6 +524,10 @@ static MACHINE_CONFIG_DERIVED( yamyam, gundealr )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("mcusim", gundealr_state, yamyam_mcu_sim, attotime::from_hz(6000000/60)) /* 6mhz confirmed */
 MACHINE_CONFIG_END
 
+static MACHINE_CONFIG_DERIVED( gundealrbl, yamyam )
+	MCFG_DEVICE_REMOVE("mcusim")
+MACHINE_CONFIG_END
+
 
 /***************************************************************************
 
@@ -565,7 +583,7 @@ ROM_START( gundealrt )
 	ROM_LOAD( "82s129.7i", 0x0100, 0x0100, NO_DUMP)
 ROM_END
 
-ROM_START( gundealrbl ) // bootleg with gfx customs done out in TTL logic, different proms, patched code rom
+ROM_START( gundealrbl ) // gfx customs done out in TTL logic, different proms, patched code rom
 	ROM_REGION( 0x30000, "maincpu", 0 ) /* 64k for code + 128k for banks */
 	ROM_LOAD( "29.2.am27c512.f10",   0x00000, 0x10000, CRC(7981751e) SHA1(3138581bcff84a11670ba54cbca608d590055b4e) ) // almost == gundealr "1.3j", 5 bytes different: (what does this change?)
 	ROM_RELOAD(               0x10000, 0x10000 )    /* banked at 0x8000-0xbfff */
@@ -645,11 +663,11 @@ ROM_END
 
 
 
-GAME( 1990, gundealr,  0,        gundealr, gundealr, driver_device, 0, ROT270, "Dooyong", "Gun Dealer",                MACHINE_SUPPORTS_SAVE )
-GAME( 1990, gundealra, gundealr, gundealr, gundealr, driver_device, 0, ROT270, "Dooyong", "Gun Dealer (alt card set)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, gundealrt, gundealr, gundealr, gundealt, driver_device, 0, ROT270, "Dooyong (Tecmo license)", "Gun Dealer (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, gundealrbl, gundealr, yamyam, gundealr, driver_device,  0, ROT270, "bootleg", "Gun Dealer (bootleg)",               MACHINE_SUPPORTS_SAVE )
+GAME( 1990, gundealr,   0,        gundealr, gundealr, gundealr_state, 0, ROT270, "Dooyong", "Gun Dealer",                MACHINE_SUPPORTS_SAVE )
+GAME( 1990, gundealra,  gundealr, gundealr, gundealr, gundealr_state, 0, ROT270, "Dooyong", "Gun Dealer (alt card set)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, gundealrt,  gundealr, gundealr, gundealt, gundealr_state, 0, ROT270, "Dooyong (Tecmo license)", "Gun Dealer (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, gundealrbl, gundealr, gundealrbl, gundealr, gundealr_state, 0, ROT270, "Dooyong", "Gun Dealer (Yam! Yam!? hardware)", MACHINE_SUPPORTS_SAVE )
 
-GAME( 1990, yamyam,    0,        yamyam,   yamyam, driver_device,   0, ROT0,   "Dooyong", "Yam! Yam!?",                MACHINE_SUPPORTS_SAVE )
-GAME( 1990, yamyamk,   yamyam,   yamyam,   yamyam, driver_device,   0, ROT0,   "Dooyong", "Yam! Yam!? (Korea)",        MACHINE_SUPPORTS_SAVE )
-GAME( 1990, wiseguy,   yamyam,   yamyam,   yamyam, driver_device,   0, ROT0,   "Dooyong", "Wise Guy",                  MACHINE_SUPPORTS_SAVE )
+GAME( 1990, yamyam,     0,        yamyam,   yamyam,   gundealr_state, 0, ROT0,   "Dooyong", "Yam! Yam!?",                MACHINE_SUPPORTS_SAVE )
+GAME( 1990, yamyamk,    yamyam,   yamyam,   yamyam,   gundealr_state, 0, ROT0,   "Dooyong", "Yam! Yam!? (Korea)",        MACHINE_SUPPORTS_SAVE )
+GAME( 1990, wiseguy,    yamyam,   yamyam,   yamyam,   gundealr_state, 0, ROT0,   "Dooyong", "Wise Guy",                  MACHINE_SUPPORTS_SAVE )

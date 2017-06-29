@@ -1,9 +1,9 @@
 // license:BSD-3-Clause
 // copyright-holders:Curt Coder
-#pragma once
+#ifndef MAME_BUS_ABCBUS_SIO_H
+#define MAME_BUS_ABCBUS_SIO_H
 
-#ifndef __ABC_SIO__
-#define __ABC_SIO__
+#pragma once
 
 #include "abcbus.h"
 #include "machine/z80ctc.h"
@@ -24,14 +24,14 @@ public:
 	// construction/destruction
 	abc_sio_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual machine_config_constructor device_mconfig_additions() const override;
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	// optional information overrides
+	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual void device_add_mconfig(machine_config &config) override;
 
 	// device_abcbus_interface overrides
 	virtual void abcbus_cs(uint8_t data) override;
@@ -45,8 +45,6 @@ private:
 
 
 // device type definition
-extern const device_type ABC_SIO;
+DECLARE_DEVICE_TYPE(ABC_SIO, abc_sio_device)
 
-
-
-#endif
+#endif // MAME_BUS_ABCBUS_SIO_H

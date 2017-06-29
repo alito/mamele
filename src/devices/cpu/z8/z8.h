@@ -6,27 +6,69 @@
 
 **********************************************************************/
 
+#ifndef MAME_CPU_Z8_Z8_H
+#define MAME_CPU_Z8_Z8_H
+
 #pragma once
 
-#ifndef __Z8_H__
-#define __Z8_H__
+
+#define MCFG_Z8_PORT_P0_READ_CB(_devcb) \
+	devcb = &z8_device::set_input_cb(*device, 0, DEVCB_##_devcb);
+
+#define MCFG_Z8_PORT_P1_READ_CB(_devcb) \
+	devcb = &z8_device::set_input_cb(*device, 1, DEVCB_##_devcb);
+
+#define MCFG_Z8_PORT_P2_READ_CB(_devcb) \
+	devcb = &z8_device::set_input_cb(*device, 2, DEVCB_##_devcb);
+
+#define MCFG_Z8_PORT_P3_READ_CB(_devcb) \
+	devcb = &z8_device::set_input_cb(*device, 3, DEVCB_##_devcb);
 
 
-enum
-{
-	Z8_PC, Z8_SP, Z8_RP, Z8_T0, Z8_T1,
+#define MCFG_Z8_PORT_P0_WRITE_CB(_devcb) \
+	devcb = &z8_device::set_output_cb(*device, 0, DEVCB_##_devcb);
 
-	Z8_R0, Z8_R1, Z8_R2, Z8_R3, Z8_R4, Z8_R5, Z8_R6, Z8_R7, Z8_R8, Z8_R9, Z8_R10, Z8_R11, Z8_R12, Z8_R13, Z8_R14, Z8_R15
-};
+#define MCFG_Z8_PORT_P1_WRITE_CB(_devcb) \
+	devcb = &z8_device::set_output_cb(*device, 1, DEVCB_##_devcb);
+
+#define MCFG_Z8_PORT_P2_WRITE_CB(_devcb) \
+	devcb = &z8_device::set_output_cb(*device, 2, DEVCB_##_devcb);
+
+#define MCFG_Z8_PORT_P3_WRITE_CB(_devcb) \
+	devcb = &z8_device::set_output_cb(*device, 3, DEVCB_##_devcb);
 
 
-class z8_device :  public cpu_device
+class z8_device : public cpu_device
 {
 public:
-	// construction/destruction
-	z8_device(const machine_config &mconfig, device_type type, const char *name, const char *_tag, device_t *_owner, uint32_t _clock, const char *shortname, const char *source, int size);
+	// static configuration
+	template<class Object>
+	static devcb_base &set_input_cb(device_t &device, int port, Object &&object)
+	{
+		assert(port >= 0 && port < 4);
+		return downcast<z8_device &>(device).m_input_cb[port].set_callback(std::forward<Object>(object));
+	}
+	template<class Object>
+	static devcb_base &set_output_cb(device_t &device, int port, Object &&object)
+	{
+		assert(port >= 0 && port < 4);
+		return downcast<z8_device &>(device).m_output_cb[port].set_callback(std::forward<Object>(object));
+	}
 
 protected:
+	enum
+	{
+		Z8_PC, Z8_SP, Z8_RP,
+		Z8_IMR, Z8_IRQ, Z8_IPR,
+		Z8_P01M, Z8_P3M, Z8_P2M,
+		Z8_PRE0, Z8_T0, Z8_PRE1, Z8_T1, Z8_TMR,
+
+		Z8_R0, Z8_R1, Z8_R2, Z8_R3, Z8_R4, Z8_R5, Z8_R6, Z8_R7, Z8_R8, Z8_R9, Z8_R10, Z8_R11, Z8_R12, Z8_R13, Z8_R14, Z8_R15
+	};
+
+	// construction/destruction
+	z8_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int size);
+
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
@@ -41,13 +83,12 @@ protected:
 	virtual void execute_set_input(int inputnum, int state) override;
 
 	// device_memory_interface overrides
-	virtual const address_space_config *memory_space_config(address_spacenum spacenum = AS_0) const override
+	virtual const address_space_config *memory_space_config(address_spacenum spacenum) const override
 	{
 		switch ( spacenum )
 		{
 			case AS_PROGRAM:   return &m_program_config;
 			case AS_DATA:      return &m_data_config;
-			case AS_IO:        return &m_io_config;
 			default:           return nullptr;
 		}
 		return nullptr;
@@ -67,12 +108,14 @@ protected:
 private:
 	address_space_config m_program_config;
 	address_space_config m_data_config;
-	address_space_config m_io_config;
 
 	address_space *m_program;
 	direct_read_data *m_direct;
 	address_space *m_data;
-	address_space *m_io;
+
+	// callbacks
+	devcb_read8 m_input_cb[4];
+	devcb_write8 m_output_cb[4];
 
 	/* registers */
 	uint16_t m_pc;              /* program counter */
@@ -292,32 +335,31 @@ private:
 class z8601_device : public z8_device
 {
 public:
-	z8601_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock);
+	z8601_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 };
 
 
 class ub8830d_device : public z8_device
 {
 public:
-	ub8830d_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock);
+	ub8830d_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 };
 
 
 class z8611_device : public z8_device
 {
 public:
-	z8611_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock);
+	z8611_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 };
 
 
-/* Zilog Z8601 */
-extern const device_type Z8601;
+// Zilog Z8601
+DECLARE_DEVICE_TYPE(Z8601, z8601_device)
 
-/* VEB Mikroelektronik Erfurt UB8830D MME */
-extern const device_type UB8830D;
+// VEB Mikroelektronik Erfurt UB8830D MME
+DECLARE_DEVICE_TYPE(UB8830D, ub8830d_device)
 
-/* Zilog Z8611 */
-extern const device_type Z8611;
+// Zilog Z8611
+DECLARE_DEVICE_TYPE(Z8611, z8611_device)
 
-
-#endif
+#endif // MAME_CPU_Z8_Z8_H

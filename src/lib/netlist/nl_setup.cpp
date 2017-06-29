@@ -41,8 +41,6 @@ setup_t::~setup_t()
 	m_param_values.clear();
 
 	m_sources.clear();
-
-	pstring::resetmem();
 }
 
 pstring setup_t::build_fqn(const pstring &obj_name) const
@@ -83,7 +81,7 @@ void setup_t::register_dev(const pstring &classname, const pstring &name)
 	m_device_factory.push_back(std::pair<pstring, factory::element_t *>(build_fqn(name), f));
 }
 
-bool setup_t::device_exists(const pstring name) const
+bool setup_t::device_exists(const pstring &name) const
 {
 	for (auto e : m_device_factory)
 	{
@@ -97,7 +95,7 @@ bool setup_t::device_exists(const pstring name) const
 void setup_t::register_model(const pstring &model_in)
 {
 	auto pos = model_in.find(" ");
-	if (pos == model_in.end())
+	if (pos == pstring::npos)
 		log().fatal(MF_1_UNABLE_TO_PARSE_MODEL_1, model_in);
 	pstring model = model_in.left(pos).trim().ucase();
 	pstring def = model_in.substr(pos + 1).trim();
@@ -147,7 +145,7 @@ pstring setup_t::termtype_as_str(detail::core_terminal_t &in) const
 	return pstring("Error");
 }
 
-pstring setup_t::get_initial_param_val(const pstring name, const pstring def)
+pstring setup_t::get_initial_param_val(const pstring &name, const pstring &def)
 {
 	auto i = m_param_values.find(name);
 	if (i != m_param_values.end())
@@ -156,7 +154,7 @@ pstring setup_t::get_initial_param_val(const pstring name, const pstring def)
 		return def;
 }
 
-double setup_t::get_initial_param_val(const pstring name, const double def)
+double setup_t::get_initial_param_val(const pstring &name, const double def)
 {
 	auto i = m_param_values.find(name);
 	if (i != m_param_values.end())
@@ -170,7 +168,7 @@ double setup_t::get_initial_param_val(const pstring name, const double def)
 		return def;
 }
 
-int setup_t::get_initial_param_val(const pstring name, const int def)
+int setup_t::get_initial_param_val(const pstring &name, const int def)
 {
 	auto i = m_param_values.find(name);
 	if (i != m_param_values.end())
@@ -184,7 +182,7 @@ int setup_t::get_initial_param_val(const pstring name, const int def)
 		return def;
 }
 
-void setup_t::register_param(pstring name, param_t &param)
+void setup_t::register_param(const pstring &name, param_t &param)
 {
 	if (!m_params.insert({param.name(), param_ref_t(param.name(), param.device(), param)}).second)
 		log().fatal(MF_1_ADDING_PARAMETER_1_TO_PARAMETER_LIST, name);
@@ -222,7 +220,7 @@ void setup_t::register_link(const pstring &sin, const pstring &sout)
 	register_link_fqn(build_fqn(sin), build_fqn(sout));
 }
 
-void setup_t::remove_connections(const pstring pin)
+void setup_t::remove_connections(const pstring &pin)
 {
 	pstring pinfn = build_fqn(pin);
 	bool found = false;
@@ -243,7 +241,7 @@ void setup_t::remove_connections(const pstring pin)
 }
 
 
-void setup_t::register_frontier(const pstring attach, const double r_IN, const double r_OUT)
+void setup_t::register_frontier(const pstring &attach, const double r_IN, const double r_OUT)
 {
 	pstring frontier_name = plib::pfmt("frontier_{1}")(m_frontier_cnt);
 	m_frontier_cnt++;
@@ -275,7 +273,7 @@ void setup_t::register_frontier(const pstring attach, const double r_IN, const d
 
 void setup_t::register_param(const pstring &param, const double value)
 {
-	register_param(param, plib::pfmt("{1}").e(value,".9"));
+	register_param(param, plib::pfmt("{1:.9}").e(value));
 }
 
 void setup_t::register_param(const pstring &param, const pstring &value)
@@ -415,7 +413,7 @@ devices::nld_base_proxy *setup_t::get_d_a_proxy(detail::core_terminal_t &out)
 
 devices::nld_base_proxy *setup_t::get_a_d_proxy(detail::core_terminal_t &inp)
 {
-	nl_assert(inp.is_analog());
+	nl_assert(inp.is_logic());
 
 	logic_input_t &incast = dynamic_cast<logic_input_t &>(inp);
 	devices::nld_base_proxy *proxy = incast.get_proxy();
@@ -765,11 +763,11 @@ void setup_t::start_devices()
 	}
 }
 
-plib::plog_base<NL_DEBUG> &setup_t::log()
+plib::plog_base<netlist_t, NL_DEBUG> &setup_t::log()
 {
 	return netlist().log();
 }
-const plib::plog_base<NL_DEBUG> &setup_t::log() const
+const plib::plog_base<netlist_t, NL_DEBUG> &setup_t::log() const
 {
 	return netlist().log();
 }
@@ -791,13 +789,13 @@ static pstring model_string(detail::model_map_t &map)
 void setup_t::model_parse(const pstring &model_in, detail::model_map_t &map)
 {
 	pstring model = model_in;
-	pstring::iterator pos(nullptr);
+	std::size_t pos = 0;
 	pstring key;
 
 	while (true)
 	{
 		pos = model.find("(");
-		if (pos != model.end()) break;
+		if (pos != pstring::npos) break;
 
 		key = model.ucase();
 		auto i = m_models.find(key);
@@ -818,19 +816,19 @@ void setup_t::model_parse(const pstring &model_in, detail::model_map_t &map)
 			log().fatal(MF_1_MODEL_NOT_FOUND, model_in);
 	}
 
-	pstring remainder=model.substr(pos+1).trim();
+	pstring remainder = model.substr(pos + 1).trim();
 	if (!remainder.endsWith(")"))
 		log().fatal(MF_1_MODEL_ERROR_1, model);
 	// FIMXE: Not optimal
-	remainder = remainder.left(remainder.begin() + (remainder.len() - 1));
+	remainder = remainder.left(remainder.length() - 1);
 
 	std::vector<pstring> pairs(plib::psplit(remainder," ", true));
 	for (pstring &pe : pairs)
 	{
 		auto pose = pe.find("=");
-		if (pose == pe.end())
+		if (pose == pstring::npos)
 			log().fatal(MF_1_MODEL_ERROR_ON_PAIR_1, model);
-		map[pe.left(pose).ucase()] = pe.substr(pose+1);
+		map[pe.left(pose).ucase()] = pe.substr(pose + 1);
 	}
 }
 
@@ -854,7 +852,7 @@ nl_double setup_t::model_value(detail::model_map_t &map, const pstring &entity)
 	pstring tmp = model_value_str(map, entity);
 
 	nl_double factor = NL_FCONST(1.0);
-	auto p = tmp.begin() + (tmp.len() - 1);
+	auto p = std::next(tmp.begin(), static_cast<pstring::difference_type>(tmp.length() - 1));
 	switch (*p)
 	{
 		case 'M': factor = 1e6; break;
@@ -870,7 +868,7 @@ nl_double setup_t::model_value(detail::model_map_t &map, const pstring &entity)
 			log().fatal(MF_1_UNKNOWN_NUMBER_FACTOR_IN_1, entity);
 	}
 	if (factor != NL_FCONST(1.0))
-		tmp = tmp.left(tmp.begin() + (tmp.len() - 1));
+		tmp = tmp.left(tmp.length() - 1);
 	return tmp.as_double() * factor;
 }
 
@@ -945,7 +943,7 @@ void setup_t::include(const pstring &netlist_name)
 	log().fatal(MF_1_NOT_FOUND_IN_SOURCE_COLLECTION, netlist_name);
 }
 
-std::unique_ptr<plib::pistream> setup_t::get_data_stream(const pstring name)
+std::unique_ptr<plib::pistream> setup_t::get_data_stream(const pstring &name)
 {
 	for (auto &source : m_sources)
 	{
@@ -967,7 +965,6 @@ bool setup_t::parse_stream(plib::putf8_reader &istrm, const pstring &name)
 	plib::putf8_writer owrt(ostrm);
 
 	plib::ppreprocessor(&m_defines).process(istrm, owrt);
-
 	plib::pimemstream istrm2(ostrm);
 	plib::putf8_reader reader2(istrm2);
 	return parser_t(reader2, *this).parse(name);
@@ -976,7 +973,7 @@ bool setup_t::parse_stream(plib::putf8_reader &istrm, const pstring &name)
 void setup_t::register_define(pstring defstr)
 {
 	auto p = defstr.find("=");
-	if (p != defstr.end())
+	if (p != pstring::npos)
 		register_define(defstr.left(p), defstr.substr(p+1));
 	else
 		register_define(defstr, "1");
@@ -1000,12 +997,12 @@ bool source_t::parse(const pstring &name)
 
 std::unique_ptr<plib::pistream> source_string_t::stream(const pstring &name)
 {
-	return plib::make_unique_base<plib::pistream, plib::pimemstream>(m_str.c_str(), m_str.len());
+	return plib::make_unique_base<plib::pistream, plib::pimemstream>(m_str.c_str(), m_str.mem_t_size());
 }
 
 std::unique_ptr<plib::pistream> source_mem_t::stream(const pstring &name)
 {
-	return plib::make_unique_base<plib::pistream, plib::pimemstream>(m_str.c_str(), m_str.len());
+	return plib::make_unique_base<plib::pistream, plib::pimemstream>(m_str.c_str(), m_str.mem_t_size());
 }
 
 std::unique_ptr<plib::pistream> source_file_t::stream(const pstring &name)

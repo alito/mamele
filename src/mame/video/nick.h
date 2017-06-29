@@ -6,13 +6,14 @@
 
 **********************************************************************/
 
-#pragma once
+#ifndef MAME_VIDEO_NICK_H
+#define MAME_VIDEO_NICK_H
 
-#ifndef __NICK__
-#define __NICK__
+#pragma once
 
 #include "machine/rescap.h"
 #include "video/resnet.h"
+#include "screen.h"
 
 
 
@@ -167,8 +168,6 @@ private:
 
 
 // device type definition
-extern const device_type NICK;
+DECLARE_DEVICE_TYPE(NICK, nick_device)
 
-
-
-#endif
+#endif // MAME_VIDEO_NICK_H

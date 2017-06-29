@@ -1,7 +1,10 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood, ElSemi
 /* IGS 028 */
+#ifndef MAME_MACHINE_IGS028_H
+#define MAME_MACHINE_IGS028_H
 
+#pragma once
 
 
 class igs028_device : public device_t
@@ -24,5 +27,6 @@ protected:
 };
 
 
+DECLARE_DEVICE_TYPE(IGS028, igs028_device)
 
-extern const device_type IGS028;
+#endif // MAME_MACHINE_IGS028_H

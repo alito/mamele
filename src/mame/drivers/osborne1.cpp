@@ -58,7 +58,7 @@ Schematics specify a WD1793 floppy controller, but we're using the Fujitsu
 equivalent MB8877 here.  Is it known that the original machines used one or
 the other exclusively?  In any case MAME emulates them identically.
 
-The installing the SCREEN-PAC requires the CPU and character generator ROM
+Installation of the SCREEN-PAC requires the CPU and character generator ROM
 to be transplanted to the add-on board, and cables run to the sockets that
 previously held these chips.  It contains additional RAM clocked at twice
 the speed of the main system RAM.  Writes to video memory get sent to this
@@ -72,9 +72,8 @@ character generator ROM, so the mainboard's character generator ROM doesn't
 need to be moved.  However, it doesn't behave like the SCREEN-PAC.  It uses
 a Synertek SY6545-1 with its pixel clock derived from a 12.288MHz crystal
 mapped at 0x04/0x05 in I/O space.  It runs at 640x240 (80x24) at just below
-60Hz and doesn't allow resolution switching.  We don't know how video RAM
-contention on video RAM is handled, or whether the CRTC can generate VBL
-interrupts.
+60Hz and doesn't allow resolution switching.  We don't know how contention
+for video RAM is handled, or whether the CRTC can generate VBL interrupts.
 
 
 TODO:
@@ -93,6 +92,8 @@ TODO:
 #include "includes/osborne1.h"
 
 #include "bus/rs232/rs232.h"
+#include "screen.h"
+#include "speaker.h"
 
 #include "softlist.h"
 
@@ -278,7 +279,7 @@ static GFXDECODE_START( osborne1 )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_START( osborne1, osborne1_state )
+static MACHINE_CONFIG_START( osborne1 )
 	MCFG_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)
 	MCFG_CPU_PROGRAM_MAP(osborne1_mem)
 	MCFG_CPU_DECRYPTED_OPCODES_MAP(osborne1_op)
@@ -337,7 +338,7 @@ static MACHINE_CONFIG_START( osborne1, osborne1_state )
 	MCFG_SOFTWARE_LIST_ADD("flop_list","osborne1")
 MACHINE_CONFIG_END
 
-MACHINE_CONFIG_DERIVED_CLASS( osborne1nv, osborne1, osborne1nv_state )
+MACHINE_CONFIG_DERIVED( osborne1nv, osborne1 )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_IO_MAP(osborne1nv_io)
 
@@ -386,6 +387,6 @@ ROM_START( osborne1nv )
 	ROM_LOAD( "character_generator_6-29-84.14", 0x0000, 0x800, CRC(6c1eab0d) SHA1(b04459d377a70abc9155a5486003cb795342c801) )
 ROM_END
 
-/*    YEAR  NAME        PARENT    COMPAT  MACHINE     INPUT       CLASS            INIT        COMPANY          FULLNAME                   FLAGS */
-COMP( 1981, osborne1,   0,        0,      osborne1,   osborne1,   osborne1_state,  osborne1,   "Osborne",       "Osborne-1",               MACHINE_SUPPORTS_SAVE )
-COMP( 1984, osborne1nv, osborne1, 0,      osborne1nv, osborne1nv, osborne1_state,  osborne1,   "Osborne/Nuevo", "Osborne-1 (Nuevo Video)", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME        PARENT    COMPAT  MACHINE     INPUT       CLASS              INIT        COMPANY          FULLNAME                   FLAGS
+COMP( 1981, osborne1,   0,        0,      osborne1,   osborne1,   osborne1_state,    osborne1,   "Osborne",       "Osborne-1",               MACHINE_SUPPORTS_SAVE )
+COMP( 1984, osborne1nv, osborne1, 0,      osborne1nv, osborne1nv, osborne1nv_state,  osborne1,   "Osborne/Nuevo", "Osborne-1 (Nuevo Video)", MACHINE_SUPPORTS_SAVE )

@@ -40,6 +40,8 @@ MB7051 - fuse programmed prom.
 #include "sound/mea8000.h"
 #include "sound/volt_reg.h"
 #include "sound/wave.h"
+#include "screen.h"
+#include "speaker.h"
 
 
 
@@ -730,7 +732,7 @@ QUICKLOAD_LOAD_MEMBER( homelab_state,homelab)
 }
 
 /* Machine driver */
-static MACHINE_CONFIG_START( homelab, homelab_state )
+static MACHINE_CONFIG_START( homelab )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_8MHz / 2)
 	MCFG_CPU_PROGRAM_MAP(homelab2_mem)
@@ -762,7 +764,7 @@ static MACHINE_CONFIG_START( homelab, homelab_state )
 	MCFG_QUICKLOAD_ADD("quickload", homelab_state, homelab, "htp", 2)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( homelab3, homelab_state )
+static MACHINE_CONFIG_START( homelab3 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(homelab3_mem)
@@ -795,7 +797,7 @@ static MACHINE_CONFIG_START( homelab3, homelab_state )
 	MCFG_QUICKLOAD_ADD("quickload", homelab_state, homelab, "htp", 2)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( brailab4, homelab_state )
+static MACHINE_CONFIG_START( brailab4 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(brailab4_mem)
@@ -908,9 +910,9 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME        PARENT     COMPAT  MACHINE      INPUT      INIT       COMPANY                    FULLNAME   FLAGS */
-COMP( 1982, homelab2,   0,         0,      homelab,     homelab, driver_device,   0,        "Jozsef and Endre Lukacs", "Homelab 2 / Aircomp 16", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
-COMP( 1983, homelab3,   homelab2,  0,      homelab3,    homelab3, driver_device,  0,        "Jozsef and Endre Lukacs", "Homelab 3", MACHINE_NOT_WORKING )
-COMP( 1984, homelab4,   homelab2,  0,      homelab3,    homelab3, driver_device,  0,        "Jozsef and Endre Lukacs", "Homelab 4", MACHINE_NOT_WORKING )
-COMP( 1984, brailab4,   homelab2,  0,      brailab4,    brailab4, homelab_state,  brailab4, "Jozsef and Endre Lukacs", "Brailab 4", MACHINE_NOT_WORKING )
-COMP( 1988, braiplus,   homelab2,  0,      brailab4,    brailab4, homelab_state,  brailab4, "Jozsef and Endre Lukacs", "Brailab Plus", MACHINE_NOT_WORKING | MACHINE_IS_SKELETON )
+/*    YEAR  NAME        PARENT     COMPAT  MACHINE      INPUT     STATE           INIT      COMPANY                    FULLNAME                  FLAGS */
+COMP( 1982, homelab2,   0,         0,      homelab,     homelab,  homelab_state,  0,        "Jozsef and Endre Lukacs", "Homelab 2 / Aircomp 16", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+COMP( 1983, homelab3,   homelab2,  0,      homelab3,    homelab3, homelab_state,  0,        "Jozsef and Endre Lukacs", "Homelab 3",              MACHINE_NOT_WORKING )
+COMP( 1984, homelab4,   homelab2,  0,      homelab3,    homelab3, homelab_state,  0,        "Jozsef and Endre Lukacs", "Homelab 4",              MACHINE_NOT_WORKING )
+COMP( 1984, brailab4,   homelab2,  0,      brailab4,    brailab4, homelab_state,  brailab4, "Jozsef and Endre Lukacs", "Brailab 4",              MACHINE_NOT_WORKING )
+COMP( 1988, braiplus,   homelab2,  0,      brailab4,    brailab4, homelab_state,  brailab4, "Jozsef and Endre Lukacs", "Brailab Plus",           MACHINE_NOT_WORKING | MACHINE_IS_SKELETON )

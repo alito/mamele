@@ -631,8 +631,8 @@ inline void z80_device::ret_cond(bool cond, uint8_t opcode)
  ***************************************************************/
 inline void z80_device::retn()
 {
-	LOG(("Z80 '%s' RETN m_iff1:%d m_iff2:%d\n",
-		tag(), m_iff1, m_iff2));
+	LOG(("Z80 RETN m_iff1:%d m_iff2:%d\n",
+		m_iff1, m_iff2));
 	pop(m_pc);
 	WZ = PC;
 	m_iff1 = m_iff2;
@@ -2536,8 +2536,8 @@ OP(fd,ff) { illegal_1(); op_ff();                            } /* DB   FD       
 
 OP(illegal,2)
 {
-	logerror("Z80 '%s' ill. opcode $ed $%02x\n",
-			tag(), m_decrypted_opcodes_direct->read_byte((PCD-1)&0xffff));
+	logerror("Z80 ill. opcode $ed $%02x\n",
+			m_decrypted_opcodes_direct->read_byte((PCD-1)&0xffff));
 }
 
 /**********************************************************
@@ -3160,7 +3160,7 @@ void z80_device::take_interrupt()
 	// fetch the IRQ vector
 	device_z80daisy_interface *intf = daisy_get_irq_device();
 	int irq_vector = (intf != nullptr) ? intf->z80daisy_irq_ack() : standard_irq_callback_member(*this, 0);
-	LOG(("Z80 '%s' single int. irq_vector $%02x\n", tag(), irq_vector));
+	LOG(("Z80 single int. irq_vector $%02x\n", irq_vector));
 
 	/* Interrupt mode 2. Call [i:databyte] */
 	if( m_im == 2 )
@@ -3171,7 +3171,7 @@ void z80_device::take_interrupt()
 		irq_vector = (irq_vector & 0xff) | (m_i << 8);
 		push(m_pc);
 		rm16(irq_vector, m_pc);
-		LOG(("Z80 '%s' IM2 [$%04x] = $%04x\n", tag(), irq_vector, PCD));
+		LOG(("Z80 IM2 [$%04x] = $%04x\n", irq_vector, PCD));
 		/* CALL opcode timing + 'interrupt latency' cycles */
 		m_icount -= m_cc_op[0xcd] + m_cc_ex[0xff];
 	}
@@ -3190,7 +3190,7 @@ void z80_device::take_interrupt()
 		/* Interrupt mode 0. We check for CALL and JP instructions, */
 		/* if neither of these were found we assume a 1 byte opcode */
 		/* was placed on the databus                                */
-		LOG(("Z80 '%s' IM0 $%04x\n", tag(), irq_vector));
+		LOG(("Z80 IM0 $%04x\n", irq_vector));
 
 		/* check for nop */
 		if (irq_vector != 0x00)
@@ -3692,18 +3692,12 @@ void z80_device::z80_set_cycle_tables(const uint8_t *op, const uint8_t *cb, cons
 
 
 z80_device::z80_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	cpu_device(mconfig, Z80, "Z80", tag, owner, clock, "z80", __FILE__),
-	z80_daisy_chain_interface(mconfig, *this),
-	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_decrypted_opcodes_config("decrypted_opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_io_config("io", ENDIANNESS_LITTLE, 8, 16, 0),
-	m_irqack_cb(*this),
-	m_refresh_cb(*this)
+	z80_device(mconfig, Z80, tag, owner, clock)
 {
 }
 
-z80_device::z80_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source) :
-	cpu_device(mconfig, type, name, tag, owner, clock, shortname, source),
+z80_device::z80_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
+	cpu_device(mconfig, type, tag, owner, clock),
 	z80_daisy_chain_interface(mconfig, *this),
 	m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0),
 	m_decrypted_opcodes_config("decrypted_opcodes", ENDIANNESS_LITTLE, 8, 16, 0),
@@ -3724,11 +3718,11 @@ const address_space_config *z80_device::memory_space_config(address_spacenum spa
 	}
 }
 
-const device_type Z80 = &device_creator<z80_device>;
+DEFINE_DEVICE_TYPE(Z80, z80_device, "z80", "Z80")
 
 nsc800_device::nsc800_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: z80_device(mconfig, NSC800, "NSC800", tag, owner, clock, "nsc800", __FILE__)
+	: z80_device(mconfig, NSC800, tag, owner, clock)
 {
 }
 
-const device_type NSC800 = &device_creator<nsc800_device>;
+DEFINE_DEVICE_TYPE(NSC800, nsc800_device, "nsc800", "NSC800")

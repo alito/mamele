@@ -21,8 +21,8 @@
 */
 
 #include "emu.h"
-#include "debugger.h"
 #include "z8.h"
+#include "debugger.h"
 
 /***************************************************************************
     CONSTANTS
@@ -152,9 +152,9 @@ enum
 #define PRE1        m_r[Z8_REGISTER_PRE1]
 
 
-const device_type Z8601 = &device_creator<z8601_device>;
-const device_type UB8830D = &device_creator<ub8830d_device>;
-const device_type Z8611 = &device_creator<z8611_device>;
+DEFINE_DEVICE_TYPE(Z8601,   z8601_device,   "z8601",   "Z8601")
+DEFINE_DEVICE_TYPE(UB8830D, ub8830d_device, "ub8830d", "UB8830D")
+DEFINE_DEVICE_TYPE(Z8611,   z8611_device,   "z8611",   "Z8611")
 
 
 /***************************************************************************
@@ -170,29 +170,30 @@ static ADDRESS_MAP_START( program_4kb, AS_PROGRAM, 8, z8_device )
 ADDRESS_MAP_END
 
 
-z8_device::z8_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source, int size)
-	: cpu_device(mconfig, type, name, tag, owner, clock, shortname, source)
-	, m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0, ( size == 4 ) ? ADDRESS_MAP_NAME(program_4kb) : ADDRESS_MAP_NAME(program_2kb))
+z8_device::z8_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int size)
+	: cpu_device(mconfig, type, tag, owner, clock)
+	, m_program_config("program", ENDIANNESS_LITTLE, 8, 16, 0, (size == 4) ? ADDRESS_MAP_NAME(program_4kb) : ADDRESS_MAP_NAME(program_2kb))
 	, m_data_config("data", ENDIANNESS_LITTLE, 8, 16, 0)
-	, m_io_config("io", ENDIANNESS_LITTLE, 8, 2, 0)
+	, m_input_cb{{*this}, {*this}, {*this}, {*this}}
+	, m_output_cb{{*this}, {*this}, {*this}, {*this}}
 {
 }
 
 
-z8601_device::z8601_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock)
-	: z8_device(mconfig, Z8601, "Z8601", _tag, _owner, _clock, "z8601", __FILE__, 2)
+z8601_device::z8601_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: z8_device(mconfig, Z8601, tag, owner, clock, 2)
 {
 }
 
 
-ub8830d_device::ub8830d_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock)
-	: z8_device(mconfig, UB8830D, "UB8830D", _tag, _owner, _clock, "ub8830d", __FILE__, 2)
+ub8830d_device::ub8830d_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: z8_device(mconfig, UB8830D, tag, owner, clock, 2)
 {
 }
 
 
-z8611_device::z8611_device(const machine_config &mconfig, const char *_tag, device_t *_owner, uint32_t _clock)
-	: z8_device(mconfig, Z8611, "Z8611", _tag, _owner, _clock, "z8611", __FILE__, 4)
+z8611_device::z8611_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: z8_device(mconfig, Z8611, tag, owner, clock, 4)
 {
 }
 
@@ -242,7 +243,7 @@ uint8_t z8_device::register_read(uint8_t offset)
 
 		if (!(P3M & Z8_P3M_P0_STROBED))
 		{
-			if (mask) m_input[offset] = m_io->read_byte(offset);
+			if (mask) m_input[offset] = m_input_cb[0](0, mask);
 		}
 
 		data |= m_input[offset] & mask;
@@ -258,7 +259,7 @@ uint8_t z8_device::register_read(uint8_t offset)
 
 		if ((P3M & Z8_P3M_P33_P34_MASK) != Z8_P3M_P33_P34_DAV1_RDY1)
 		{
-			if (mask) m_input[offset] = m_io->read_byte(offset);
+			if (mask) m_input[offset] = m_input_cb[1](0, mask);
 		}
 
 		data |= m_input[offset] & mask;
@@ -269,7 +270,7 @@ uint8_t z8_device::register_read(uint8_t offset)
 
 		if (!(P3M & Z8_P3M_P2_STROBED))
 		{
-			if (mask) m_input[offset] = m_io->read_byte(offset);
+			if (mask) m_input[offset] = m_input_cb[2](0, mask);
 		}
 
 		data = (m_input[offset] & mask) | (m_output[offset] & ~mask);
@@ -282,7 +283,7 @@ uint8_t z8_device::register_read(uint8_t offset)
 			mask = 0x0f;
 		}
 
-		if (mask) m_input[offset] = m_io->read_byte(offset);
+		if (mask) m_input[offset] = m_input_cb[3](0, mask);
 
 		data = (m_input[offset] & mask) | (m_output[offset] & ~mask);
 		break;
@@ -327,19 +328,19 @@ void z8_device::register_write(uint8_t offset, uint8_t data)
 		m_output[offset] = data;
 		if ((P01M & Z8_P01M_P0L_MODE_MASK) == Z8_P01M_P0L_MODE_OUTPUT) mask |= 0x0f;
 		if ((P01M & Z8_P01M_P0H_MODE_MASK) == Z8_P01M_P0H_MODE_OUTPUT) mask |= 0xf0;
-		if (mask) m_io->write_byte(offset, data & mask);
+		if (mask) m_output_cb[0](0, data & mask, mask);
 		break;
 
 	case Z8_REGISTER_P1:
 		m_output[offset] = data;
 		if ((P01M & Z8_P01M_P1_MODE_MASK) == Z8_P01M_P1_MODE_OUTPUT) mask = 0xff;
-		if (mask) m_io->write_byte(offset, data & mask);
+		if (mask) m_output_cb[1](0, data & mask, mask);
 		break;
 
 	case Z8_REGISTER_P2:
 		m_output[offset] = data;
 		mask = m_r[Z8_REGISTER_P2M] ^ 0xff;
-		if (mask) m_io->write_byte(offset, data & mask);
+		if (mask) m_output_cb[2](0, data & mask, mask);
 		break;
 
 	case Z8_REGISTER_P3:
@@ -351,7 +352,7 @@ void z8_device::register_write(uint8_t offset, uint8_t data)
 			mask = 0xf0;
 		}
 
-		if (mask) m_io->write_byte(offset, data & mask);
+		if (mask) m_output_cb[3](0, data & mask, mask);
 		break;
 
 	case Z8_REGISTER_SIO:
@@ -361,7 +362,7 @@ void z8_device::register_write(uint8_t offset, uint8_t data)
 		if (data & Z8_TMR_LOAD_T0)
 		{
 			m_t0 = T0;
-			m_t0_timer->adjust(attotime::zero, 0, attotime::from_hz(m_clock / 2 / 4 / ((PRE0 >> 2) + 1)));
+			m_t0_timer->adjust(attotime::zero, 0, cycles_to_attotime(4 * ((PRE0 >> 2) + 1)));
 		}
 
 		m_t0_timer->enable(data & Z8_TMR_ENABLE_T0);
@@ -369,7 +370,7 @@ void z8_device::register_write(uint8_t offset, uint8_t data)
 		if (data & Z8_TMR_LOAD_T1)
 		{
 			m_t1 = T1;
-			m_t1_timer->adjust(attotime::zero, 0, attotime::from_hz(m_clock / 2 / 4 / ((PRE1 >> 2) + 1)));
+			m_t1_timer->adjust(attotime::zero, 0, cycles_to_attotime(4 * ((PRE1 >> 2) + 1)));
 		}
 
 		m_t1_timer->enable(data & Z8_TMR_ENABLE_T1);
@@ -641,7 +642,7 @@ TIMER_CALLBACK_MEMBER( z8_device::t0_tick )
 	if (m_t0 == 0)
 	{
 		m_t0 = T0;
-		m_t0_timer->adjust(attotime::zero, 0, attotime::from_hz(m_clock / 2 / 4 / ((PRE0 >> 2) + 1)));
+		m_t0_timer->adjust(attotime::zero, 0, cycles_to_attotime(4 * ((PRE0 >> 2) + 1)));
 		m_t0_timer->enable(PRE0 & Z8_PRE0_COUNT_MODULO_N);
 		m_irq[4] = ASSERT_LINE;
 	}
@@ -654,7 +655,7 @@ TIMER_CALLBACK_MEMBER( z8_device::t1_tick )
 	if (m_t1 == 0)
 	{
 		m_t1 = T1;
-		m_t1_timer->adjust(attotime::zero, 0, attotime::from_hz(m_clock / 2 / 4 / ((PRE1 >> 2) + 1)));
+		m_t1_timer->adjust(attotime::zero, 0, cycles_to_attotime(4 * ((PRE1 >> 2) + 1)));
 		m_t1_timer->enable(PRE1 & Z8_PRE0_COUNT_MODULO_N);
 		m_irq[5] = ASSERT_LINE;
 	}
@@ -666,6 +667,11 @@ TIMER_CALLBACK_MEMBER( z8_device::t1_tick )
 
 void z8_device::device_start()
 {
+	for (auto &cb : m_input_cb)
+		cb.resolve_safe(0xff);
+	for (auto &cb : m_output_cb)
+		cb.resolve_safe();
+
 	/* set up the state table */
 	{
 		state_add(Z8_PC,         "PC",        m_pc);
@@ -674,9 +680,18 @@ void z8_device::device_start()
 		state_add(Z8_SP,         "SP",        m_fake_sp).callimport().callexport();
 		state_add(STATE_GENSP,   "GENSP",     m_fake_sp).callimport().callexport().noshow();
 		state_add(Z8_RP,         "RP",        m_r[Z8_REGISTER_RP]);
-		state_add(Z8_T0,         "T0",        m_t0);
-		state_add(Z8_T1,         "T1",        m_t1);
 		state_add(STATE_GENFLAGS, "GENFLAGS", m_r[Z8_REGISTER_FLAGS]).noshow().formatstr("%6s");
+		state_add(Z8_IMR,        "IMR",       m_r[Z8_REGISTER_IMR]);
+		state_add(Z8_IRQ,        "IRQ",       m_r[Z8_REGISTER_IRQ]);
+		state_add(Z8_IPR,        "IPR",       m_r[Z8_REGISTER_IPR]);
+		state_add(Z8_P01M,       "P01M",      m_r[Z8_REGISTER_P01M]);
+		state_add(Z8_P3M,        "P3M",       m_r[Z8_REGISTER_P3M]);
+		state_add(Z8_P2M,        "P2M",       m_r[Z8_REGISTER_P2M]);
+		state_add(Z8_PRE0,       "PRE0",      m_r[Z8_REGISTER_PRE0]);
+		state_add(Z8_T0,         "T0",        m_t0);
+		state_add(Z8_PRE1,       "PRE1",      m_r[Z8_REGISTER_PRE1]);
+		state_add(Z8_T1,         "T1",        m_t1);
+		state_add(Z8_TMR,        "TMR",       m_r[Z8_REGISTER_TMR]);
 
 		for (int regnum = 0; regnum < 16; regnum++)
 			state_add(Z8_R0 + regnum, string_format("R%d", regnum).c_str(), m_fake_r[regnum]).callimport().callexport();
@@ -686,7 +701,6 @@ void z8_device::device_start()
 	m_program = &space(AS_PROGRAM);
 	m_direct = &m_program->direct();
 	m_data = &space(AS_DATA);
-	m_io = &space(AS_IO);
 
 	/* allocate timers */
 	m_t0_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(z8_device::t0_tick), this));
@@ -732,7 +746,7 @@ void z8_device::execute_run()
 		debugger_instruction_hook(this, m_pc);
 
 		/* TODO: sample interrupts */
-		m_input[3] = m_io->read_byte(3);
+		m_input[3] = m_input_cb[3]();
 
 		/* fetch opcode */
 		opcode = fetch();
@@ -755,8 +769,8 @@ void z8_device::device_reset()
 	m_pc = 0x000c;
 
 	register_write(Z8_REGISTER_TMR, 0x00);
-	register_write(Z8_REGISTER_PRE1, register_read(Z8_REGISTER_PRE1) & 0xfc);
-	register_write(Z8_REGISTER_PRE0, register_read(Z8_REGISTER_PRE0) & 0xfe);
+	register_write(Z8_REGISTER_PRE1, PRE1 & 0xfc);
+	register_write(Z8_REGISTER_PRE0, PRE0 & 0xfe);
 	register_write(Z8_REGISTER_P2M, 0xff);
 	register_write(Z8_REGISTER_P3M, 0x00);
 	register_write(Z8_REGISTER_P01M, 0x4d);

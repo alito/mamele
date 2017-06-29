@@ -329,7 +329,7 @@ private:
 class diode_model_t : public param_model_t
 {
 public:
-	diode_model_t(device_t &device, const pstring name, const pstring val)
+	diode_model_t(device_t &device, const pstring &name, const pstring &val)
 	: param_model_t(device, name, val)
 	, m_IS(*this, "IS")
 	, m_N(*this, "N")
@@ -356,7 +356,7 @@ public:
 	}
 
 	template <class CLASS>
-	NETLIB_NAME(D)(CLASS &owner, const pstring name, const pstring model)
+	NETLIB_NAME(D)(CLASS &owner, const pstring &name, const pstring &model)
 	: NETLIB_NAME(twoterm)(owner, name)
 	, m_model(*this, "MODEL", model)
 	, m_D(*this, "m_D")
@@ -392,6 +392,7 @@ public:
 	, m_R(*this, "R", 0.1)
 	, m_V(*this, "V", 0.0)
 	, m_func(*this,"FUNC", "")
+	, m_compiled(this->name() + ".FUNCC", this, this->netlist().state())
 	{
 		register_subalias("P", m_P);
 		register_subalias("N", m_N);
@@ -422,6 +423,7 @@ public:
 	NETLIB_CONSTRUCTOR_DERIVED(CS, twoterm)
 	, m_I(*this, "I", 1.0)
 	, m_func(*this,"FUNC", "")
+	, m_compiled(this->name() + ".FUNCC", this, this->netlist().state())
 	{
 		register_subalias("P", m_P);
 		register_subalias("N", m_N);

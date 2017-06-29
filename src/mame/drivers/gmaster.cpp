@@ -5,12 +5,18 @@
 ******************************************************************************/
 
 #include "emu.h"
+
 #include "cpu/upd7810/upd7810.h"
-#include "sound/speaker.h"
+#include "sound/spkrdev.h"
+
 #include "bus/generic/slot.h"
 #include "bus/generic/carts.h"
+
 #include "rendlay.h"
+#include "screen.h"
 #include "softlist.h"
+#include "speaker.h"
+
 
 class gmaster_state : public driver_device
 {
@@ -323,7 +329,7 @@ void gmaster_state::machine_start()
 }
 
 
-static MACHINE_CONFIG_START( gmaster, gmaster_state )
+static MACHINE_CONFIG_START( gmaster )
 	MCFG_CPU_ADD("maincpu", UPD7810, XTAL_12MHz/2/*?*/)  // upd78c11 in the unit
 	MCFG_CPU_PROGRAM_MAP(gmaster_mem)
 	MCFG_UPD7810_PORTA_READ_CB(IOPORT("JOY"))

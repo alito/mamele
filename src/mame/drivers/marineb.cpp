@@ -38,10 +38,16 @@ write
 ***************************************************************************/
 
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "sound/ay8910.h"
 #include "includes/marineb.h"
 
+#include "cpu/z80/z80.h"
+#include "sound/ay8910.h"
+#include "screen.h"
+#include "speaker.h"
+
+#define MASTER_CLOCK (XTAL_12MHz)
+#define CPU_CLOCK (MASTER_CLOCK/4)
+#define SOUND_CLOCK (MASTER_CLOCK/8)
 
 void marineb_state::machine_reset()
 {
@@ -531,10 +537,10 @@ INTERRUPT_GEN_MEMBER(marineb_state::wanted_vblank_irq)
 }
 
 
-static MACHINE_CONFIG_START( marineb, marineb_state )
+static MACHINE_CONFIG_START( marineb )
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80, 3072000)   /* 3.072 MHz */
+	MCFG_CPU_ADD("maincpu", Z80, CPU_CLOCK)   /* 3 MHz? */
 	MCFG_CPU_PROGRAM_MAP(marineb_map)
 	MCFG_CPU_IO_MAP(marineb_io_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", marineb_state,  marineb_vblank_irq)
@@ -555,7 +561,7 @@ static MACHINE_CONFIG_START( marineb, marineb_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ay1", AY8910, 1500000)
+	MCFG_SOUND_ADD("ay1", AY8910, SOUND_CLOCK)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
@@ -606,10 +612,10 @@ static MACHINE_CONFIG_DERIVED( wanted, marineb )
 	MCFG_SCREEN_UPDATE_DRIVER(marineb_state, screen_update_springer)
 
 	// sound hardware (PSG type verified only for bcruzm12)
-	MCFG_SOUND_REPLACE("ay1", AY8912, 1500000)
+	MCFG_SOUND_REPLACE("ay1", AY8912, SOUND_CLOCK)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_ADD("ay2", AY8912, 1500000)
+	MCFG_SOUND_ADD("ay2", AY8912, SOUND_CLOCK)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
@@ -868,13 +874,13 @@ ROM_END
 
 
 /*    year  name      parent   machine   inputs */
-GAME( 1982, marineb,  0,       marineb,  marineb, driver_device, 0, ROT0,   "Orca", "Marine Boy", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, changes,  0,       changes,  changes, driver_device, 0, ROT0,   "Orca", "Changes", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, changesa, changes, changes,  changes, driver_device, 0, ROT0,   "Orca (Eastern Micro Electronics, Inc. license)", "Changes (EME license)", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, looper,   changes, changes,  changes, driver_device, 0, ROT0,   "Orca", "Looper", MACHINE_SUPPORTS_SAVE )
-GAME( 1982, springer, 0,       springer, marineb, driver_device, 0, ROT270, "Orca", "Springer", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hoccer,   0,       hoccer,   hoccer, driver_device,  0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hoccer2,  hoccer,  hoccer,   hoccer, driver_device,  0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 2)" , MACHINE_SUPPORTS_SAVE )  /* earlier */
-GAME( 1983, bcruzm12, 0,       bcruzm12, bcruzm12, driver_device,0, ROT90,  "Sigma Enterprises Inc.", "Battle Cruiser M-12", MACHINE_SUPPORTS_SAVE )
-GAME( 1983, hopprobo, 0,       hopprobo, marineb, driver_device, 0, ROT90,  "Sega", "Hopper Robo", MACHINE_SUPPORTS_SAVE )
-GAME( 1984, wanted,   0,       wanted,   wanted, driver_device,  0, ROT90,  "Sigma Enterprises Inc.", "Wanted", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, marineb,  0,       marineb,  marineb,  marineb_state, 0, ROT0,   "Orca", "Marine Boy", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, changes,  0,       changes,  changes,  marineb_state, 0, ROT0,   "Orca", "Changes", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, changesa, changes, changes,  changes,  marineb_state, 0, ROT0,   "Orca (Eastern Micro Electronics, Inc. license)", "Changes (EME license)", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, looper,   changes, changes,  changes,  marineb_state, 0, ROT0,   "Orca", "Looper", MACHINE_SUPPORTS_SAVE )
+GAME( 1982, springer, 0,       springer, marineb,  marineb_state, 0, ROT270, "Orca", "Springer", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hoccer,   0,       hoccer,   hoccer,   marineb_state, 0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hoccer2,  hoccer,  hoccer,   hoccer,   marineb_state, 0, ROT90,  "Eastern Micro Electronics, Inc.", "Hoccer (set 2)" , MACHINE_SUPPORTS_SAVE )  /* earlier */
+GAME( 1983, bcruzm12, 0,       bcruzm12, bcruzm12, marineb_state, 0, ROT90,  "Sigma Enterprises Inc.", "Battle Cruiser M-12", MACHINE_SUPPORTS_SAVE )
+GAME( 1983, hopprobo, 0,       hopprobo, marineb,  marineb_state, 0, ROT90,  "Sega", "Hopper Robo", MACHINE_SUPPORTS_SAVE )
+GAME( 1984, wanted,   0,       wanted,   wanted,   marineb_state, 0, ROT90,  "Sigma Enterprises Inc.", "Wanted", MACHINE_SUPPORTS_SAVE )

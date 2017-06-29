@@ -104,13 +104,16 @@
 
 
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "machine/z80ctc.h"
-#include "audio/midway.h"
-#include "audio/csd.h"
-#include "machine/nvram.h"
 #include "includes/mcr.h"
 #include "includes/mcr3.h"
+#include "audio/midway.h"
+#include "audio/csd.h"
+
+#include "cpu/z80/z80.h"
+#include "machine/nvram.h"
+#include "machine/z80ctc.h"
+
+#include "speaker.h"
 
 #include "spyhunt.lh"
 #include "turbotag.lh"
@@ -1081,7 +1084,7 @@ GFXDECODE_END
  *************************************/
 
 /* Core MCR monoboard system with no sound */
-static MACHINE_CONFIG_START( mcrmono, mcr3_state )
+static MACHINE_CONFIG_START( mcrmono )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK/4)

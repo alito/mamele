@@ -89,9 +89,9 @@ constexpr u16 M68HC05_INT_MASK          = M68HC05_INT_IRQ | M68HC05_INT_TIMER;
  * Global variables
  ****************************************************************************/
 
-device_type const M68HC05C4     = &device_creator<m68hc05c4_device>;
-device_type const M68HC05C8     = &device_creator<m68hc05c8_device>;
-device_type const M68HC705C8A   = &device_creator<m68hc705c8a_device>;
+DEFINE_DEVICE_TYPE(M68HC05C4,   m68hc05c4_device,   "m68hc05c4",   "MC68HC05C4")
+DEFINE_DEVICE_TYPE(M68HC05C8,   m68hc05c8_device,   "m68hc05c8",   "MC68HC05C8")
+DEFINE_DEVICE_TYPE(M68HC705C8A, m68hc705c8a_device, "m68hc705c8a", "MC68HC705C8A")
 
 
 
@@ -105,21 +105,15 @@ m68hc05_device::m68hc05_device(
 		device_t *owner,
 		u32 clock,
 		device_type type,
-		char const *name,
-		address_map_delegate internal_map,
-		char const *shortname,
-		char const *source)
+		address_map_delegate internal_map)
 	: m6805_base_device(
 			mconfig,
 			tag,
 			owner,
 			clock,
 			type,
-			name,
 			{ s_hc_ops, s_hc_cycles, 13, 0x00ff, 0x00c0, M68HC05_VECTOR_SWI },
-			internal_map,
-			shortname,
-			source)
+			internal_map)
 	, m_port_cb_r{ *this, *this, *this, *this }
 	, m_port_cb_w{ *this, *this, *this, *this }
 	, m_port_bits{ 0xff, 0xff, 0xff, 0xff }
@@ -173,7 +167,7 @@ void m68hc05_device::set_port_interrupt(std::array<u8, PORT_COUNT> const &interr
 READ8_MEMBER(m68hc05_device::port_r)
 {
 	offset &= PORT_COUNT - 1;
-	if (!space.debugger_access() && !m_port_cb_r[offset].isnull())
+	if (!machine().side_effect_disabled() && !m_port_cb_r[offset].isnull())
 	{
 		u8 const newval(m_port_cb_r[offset](space, 0, ~m_port_ddr[offset] & m_port_bits[offset]) & m_port_bits[offset]);
 		u8 const diff(newval ^ m_port_input[offset]);
@@ -257,7 +251,7 @@ WRITE8_MEMBER(m68hc05_device::tcr_w)
 
 READ8_MEMBER(m68hc05_device::tsr_r)
 {
-	if (!space.debugger_access())
+	if (!machine().side_effect_disabled())
 	{
 		u8 const events(m_tsr & ~m_tsr_seen);
 		if (events)
@@ -276,7 +270,7 @@ READ8_MEMBER(m68hc05_device::icr_r)
 	// reading ICRL after reading TCR with ICF set clears ICF
 
 	u8 const low(BIT(offset, 0));
-	if (!space.debugger_access())
+	if (!machine().side_effect_disabled())
 	{
 		if (low)
 		{
@@ -304,7 +298,7 @@ READ8_MEMBER(m68hc05_device::ocr_r)
 	// reading OCRL after reading TCR with OCF set clears OCF
 
 	u8 const low(BIT(offset, 0));
-	if (!space.debugger_access() && low && BIT(m_tsr_seen, 6))
+	if (!machine().side_effect_disabled() && low && BIT(m_tsr_seen, 6))
 	{
 		LOGTIMER("read OCRL, clear OCF\n");
 		m_tsr &= 0xbf;
@@ -320,7 +314,7 @@ WRITE8_MEMBER(m68hc05_device::ocr_w)
 	// writing OCRL after reading TCR with OCF set clears OCF
 
 	u8 const low(BIT(offset, 0));
-	if (!space.debugger_access())
+	if (!machine().side_effect_disabled())
 	{
 		if (low)
 		{
@@ -354,7 +348,7 @@ READ8_MEMBER(m68hc05_device::timer_r)
 	u8 const alt(BIT(offset, 1));
 	if (low)
 	{
-		if (!space.debugger_access())
+		if (!machine().side_effect_disabled())
 		{
 			if (m_trl_latched[alt]) LOGTIMER("read %sTRL, read sequence complete\n", alt ? "A" : "");
 			m_trl_latched[alt] = false;
@@ -370,7 +364,7 @@ READ8_MEMBER(m68hc05_device::timer_r)
 	}
 	else
 	{
-		if (!space.debugger_access() && !m_trl_latched[alt])
+		if (!machine().side_effect_disabled() && !m_trl_latched[alt])
 		{
 			LOGTIMER("read %sTRH, latch %sTRL\n", alt ? "A" : "", alt ? "A" : "");
 			m_trl_latched[alt] = true;
@@ -718,11 +712,8 @@ m68hc705_device::m68hc705_device(
 		device_t *owner,
 		u32 clock,
 		device_type type,
-		char const *name,
-		address_map_delegate internal_map,
-		char const *shortname,
-		char const *source)
-	: m68hc05_device(mconfig, tag, owner, clock, type, name, internal_map, shortname, source)
+		address_map_delegate internal_map)
+	: m68hc05_device(mconfig, tag, owner, clock, type, internal_map)
 {
 }
 
@@ -770,10 +761,7 @@ m68hc05c4_device::m68hc05c4_device(machine_config const &mconfig, char const *ta
 			owner,
 			clock,
 			M68HC05C4,
-			"MC68HC05C4",
-			address_map_delegate(FUNC(m68hc05c4_device::c4_map), this),
-			"m68hc05c4",
-			__FILE__)
+			address_map_delegate(FUNC(m68hc05c4_device::c4_map), this))
 {
 	set_port_bits(std::array<u8, PORT_COUNT>{{ 0xff, 0xff, 0xff, 0xbf }});
 }
@@ -842,10 +830,7 @@ m68hc05c8_device::m68hc05c8_device(machine_config const &mconfig, char const *ta
 			owner,
 			clock,
 			M68HC05C8,
-			"MC68HC05C8",
-			address_map_delegate(FUNC(m68hc05c8_device::c8_map), this),
-			"m68hc05c8",
-			__FILE__)
+			address_map_delegate(FUNC(m68hc05c8_device::c8_map), this))
 {
 	set_port_bits(std::array<u8, PORT_COUNT>{{ 0xff, 0xff, 0xff, 0xbf }});
 }
@@ -920,10 +905,7 @@ m68hc705c8a_device::m68hc705c8a_device(machine_config const &mconfig, char const
 			owner,
 			clock,
 			M68HC705C8A,
-			"MC68HC705C8A",
-			address_map_delegate(FUNC(m68hc705c8a_device::c8a_map), this),
-			"m68hc705c8a",
-			__FILE__)
+			address_map_delegate(FUNC(m68hc705c8a_device::c8a_map), this))
 {
 	set_port_bits(std::array<u8, PORT_COUNT>{{ 0xff, 0xff, 0xff, 0xbf }});
 }

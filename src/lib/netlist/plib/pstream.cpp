@@ -62,10 +62,11 @@ pifilestream::pifilestream(const pstring &fname)
 {
 	if (m_file == nullptr)
 		throw file_open_e(fname);
-	init();
+	else
+		init();
 }
 
-pifilestream::pifilestream(void *file, const pstring name, const bool do_close)
+pifilestream::pifilestream(void *file, const pstring &name, const bool do_close)
 : pistream(0), m_file(file), m_pos(0), m_actually_close(do_close), m_filename(name)
 {
 	if (m_file == nullptr)
@@ -155,7 +156,7 @@ pofilestream::pofilestream(const pstring &fname)
 	init();
 }
 
-pofilestream::pofilestream(void *file, const pstring name, const bool do_close)
+pofilestream::pofilestream(void *file, const pstring &name, const bool do_close)
 : postream(0), m_file(file), m_pos(0), m_actually_close(do_close), m_filename(name)
 {
 	if (m_file == nullptr)
@@ -366,7 +367,7 @@ pstream::pos_type pomemstream::vtell()
 bool putf8_reader::readline(pstring &line)
 {
 	pstring::code_t c = 0;
-	m_linebuf.clear();
+	m_linebuf = "";
 	if (!this->readcode(c))
 	{
 		line = "";

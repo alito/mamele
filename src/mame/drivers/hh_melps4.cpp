@@ -8,9 +8,13 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "rendlay.h"
+
 #include "cpu/melps4/m58846.h"
-#include "sound/speaker.h"
+#include "sound/spkrdev.h"
+
+#include "rendlay.h"
+#include "screen.h"
+#include "speaker.h"
 
 //#include "hh_melps4_test.lh" // common test-layout - no svg artwork(yet), use external artwork
 
@@ -40,7 +44,7 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_button);
 
 	// display common
-	int m_display_wait;             // led/lamp off-delay in microseconds (default 33ms)
+	int m_display_wait;             // led/lamp off-delay in milliseconds (default 33ms)
 	int m_display_maxy;             // display matrix number of rows
 	int m_display_maxx;             // display matrix number of columns (max 31 for now)
 
@@ -298,7 +302,7 @@ static INPUT_PORTS_START( cfrogger )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 
 	PORT_START("IN.2") // K3
-	PORT_CONFNAME( 0x08, 0x00, "Skill Level" )
+	PORT_CONFNAME( 0x08, 0x00, DEF_STR( Difficulty ) )
 	PORT_CONFSETTING(    0x00, "1" )
 	PORT_CONFSETTING(    0x08, "2" )
 
@@ -306,7 +310,7 @@ static INPUT_PORTS_START( cfrogger )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START ) PORT_CHANGED_MEMBER(DEVICE_SELF, hh_melps4_state, reset_button, nullptr)
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( cfrogger, cfrogger_state )
+static MACHINE_CONFIG_START( cfrogger )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M58846, XTAL_600kHz)
@@ -422,7 +426,7 @@ static INPUT_PORTS_START( gjungler )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START ) PORT_CHANGED_MEMBER(DEVICE_SELF, hh_melps4_state, reset_button, nullptr)
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( gjungler, gjungler_state )
+static MACHINE_CONFIG_START( gjungler )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M58846, XTAL_600kHz)
@@ -463,7 +467,7 @@ ROM_START( cfrogger )
 	ROM_LOAD( "m58846-701p", 0x0000, 0x1000, CRC(ba52a242) SHA1(7fa53b617f4bb54be32eb209e9b88131e11cb518) )
 
 	ROM_REGION( 786255, "svg", 0)
-	ROM_LOAD( "cfrogger.svg", 0, 786255, CRC(d8d6e2b6) SHA1(bc9a0260b211ed07021dfe1cc19a993569f4c544) ) // by kevtris, ver. 19 may 2015
+	ROM_LOAD( "cfrogger.svg", 0, 786255, CRC(d8d6e2b6) SHA1(bc9a0260b211ed07021dfe1cc19a993569f4c544) )
 ROM_END
 
 
@@ -472,12 +476,12 @@ ROM_START( gjungler )
 	ROM_LOAD( "m58846-702p", 0x0000, 0x1000, CRC(94ab7060) SHA1(3389bc115d1df8d01a30611fa9e95a900d32b29b) )
 
 	ROM_REGION( 419696, "svg", 0)
-	ROM_LOAD( "gjungler.svg", 0, 419696, BAD_DUMP CRC(c5f6d1f2) SHA1(5032f35326ca689c8e329f760e380cdc9f5dff86) ) // by hap/kevtris, ver. 25 apr 2016 - BAD_DUMP: needs cleanup/redo
+	ROM_LOAD( "gjungler.svg", 0, 419696, CRC(c5f6d1f2) SHA1(5032f35326ca689c8e329f760e380cdc9f5dff86) )
 ROM_END
 
 
 
-/*    YEAR  NAME      PARENT COMPAT MACHINE  INPUT     INIT              COMPANY, FULLNAME, FLAGS */
-CONS( 1981, cfrogger, 0,        0, cfrogger, cfrogger, driver_device, 0, "Coleco", "Frogger (Coleco)", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME      PARENT CMP MACHINE   INPUT     STATE        INIT  COMPANY, FULLNAME, FLAGS
+CONS( 1981, cfrogger, 0,      0, cfrogger, cfrogger, cfrogger_state, 0, "Coleco", "Frogger (Coleco)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1982, gjungler, 0,        0, gjungler, gjungler, driver_device, 0, "Gakken / Konami", "Jungler (Gakken)", MACHINE_SUPPORTS_SAVE )
+CONS( 1982, gjungler, 0,      0, gjungler, gjungler, gjungler_state, 0, "Gakken / Konami", "Jungler (Gakken)", MACHINE_SUPPORTS_SAVE )

@@ -284,10 +284,13 @@
 
 
 #include "emu.h"
-#include "audio/midway.h"
-#include "sound/samples.h"
-#include "machine/nvram.h"
 #include "includes/mcr.h"
+
+#include "audio/midway.h"
+#include "machine/nvram.h"
+#include "sound/samples.h"
+#include "screen.h"
+#include "speaker.h"
 
 #include "dpoker.lh"
 
@@ -1753,7 +1756,7 @@ static const char *const twotiger_sample_names[] =
  *************************************/
 
 /* 90009 CPU board plus 90908/90913/91483 sound board */
-static MACHINE_CONFIG_START( mcr_90009, mcr_state )
+static MACHINE_CONFIG_START( mcr_90009 )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, MAIN_OSC_MCR_I/8)

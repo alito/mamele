@@ -8,6 +8,7 @@
 #include "nl_parser.h"
 #include "nl_factory.h"
 #include "nl_errstr.h"
+#include "nl_base.h"
 
 namespace netlist
 {
@@ -24,7 +25,7 @@ void parser_t::verror(const pstring &msg, int line_num, const pstring &line)
 }
 
 
-bool parser_t::parse(const pstring nlname)
+bool parser_t::parse(const pstring &nlname)
 {
 	set_identifier_chars("abcdefghijklmnopqrstuvwvxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_.-");
 	set_number_chars(".0123456789", "0123456789eE-."); //FIXME: processing of numbers

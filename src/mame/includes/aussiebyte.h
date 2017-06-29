@@ -1,25 +1,33 @@
 // license:BSD-3-Clause
 // copyright-holders:Robbbert
+#ifndef MAME_INCLUDES_AUSSIEBYTE_H
+#define MAME_INCLUDES_AUSSIEBYTE_H
+
+#pragma once
 
 /***********************************************************
 
     Includes
 
 ************************************************************/
+#include "bus/centronics/ctronics.h"
+#include "bus/rs232/rs232.h"
+
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
+
+#include "machine/clock.h"
+#include "machine/msm5832.h"
+#include "machine/wd_fdc.h"
 #include "machine/z80ctc.h"
-#include "machine/z80pio.h"
 #include "machine/z80dart.h"
 #include "machine/z80dma.h"
-#include "bus/centronics/ctronics.h"
-#include "sound/speaker.h"
+#include "machine/z80pio.h"
+
+#include "sound/spkrdev.h"
 #include "sound/votrax.h"
+
 #include "video/mc6845.h"
-#include "bus/rs232/rs232.h"
-#include "machine/wd_fdc.h"
-#include "machine/msm5832.h"
-#include "machine/clock.h"
 
 
 /***********************************************************
@@ -123,7 +131,7 @@ private:
 	required_device<z80sio0_device> m_sio2;
 	required_device<centronics_device> m_centronics;
 	required_device<rs232_port_device> m_rs232;
-	required_device<wd2797_t> m_fdc;
+	required_device<wd2797_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
 	optional_device<floppy_connector> m_floppy1;
 	required_device<mc6845_device> m_crtc;
@@ -131,3 +139,5 @@ private:
 	required_device<votrax_sc01_device> m_votrax;
 	required_device<msm5832_device> m_rtc;
 };
+
+#endif // MAME_INCLUDES_AUSSIEBYTE_H

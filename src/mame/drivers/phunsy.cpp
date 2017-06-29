@@ -28,11 +28,13 @@
 
 #include "emu.h"
 #include "cpu/s2650/s2650.h"
-#include "machine/keyboard.h"
-#include "sound/speaker.h"
 #include "imagedev/cassette.h"
-#include "sound/wave.h"
 #include "imagedev/snapquik.h"
+#include "machine/keyboard.h"
+#include "sound/spkrdev.h"
+#include "sound/wave.h"
+#include "screen.h"
+#include "speaker.h"
 
 
 #define LOG 1
@@ -54,8 +56,8 @@ public:
 	DECLARE_READ8_MEMBER(phunsy_data_r);
 	DECLARE_WRITE8_MEMBER(phunsy_ctrl_w);
 	DECLARE_WRITE8_MEMBER(phunsy_data_w);
-	DECLARE_WRITE8_MEMBER(kbd_put);
-	DECLARE_READ8_MEMBER(cass_r);
+	void kbd_put(u8 data);
+	DECLARE_READ_LINE_MEMBER(cass_r);
 	DECLARE_WRITE_LINE_MEMBER(cass_w);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(phunsy);
 	DECLARE_PALETTE_INIT(phunsy);
@@ -78,7 +80,7 @@ WRITE_LINE_MEMBER( phunsy_state::cass_w )
 	m_cass->output(state ? -1.0 : +1.0);
 }
 
-READ8_MEMBER( phunsy_state::cass_r )
+READ_LINE_MEMBER(phunsy_state::cass_r)
 {
 	return (m_cass->input() > 0.03) ? 0 : 1;
 }
@@ -94,9 +96,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phunsy_io, AS_IO, 8, phunsy_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( S2650_CTRL_PORT, S2650_CTRL_PORT ) AM_WRITE( phunsy_ctrl_w )
-	AM_RANGE( S2650_DATA_PORT,S2650_DATA_PORT) AM_READWRITE( phunsy_data_r, phunsy_data_w )
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cass_r)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( phunsy_data, AS_DATA, 8, phunsy_state )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(S2650_CTRL_PORT, S2650_CTRL_PORT) AM_WRITE(phunsy_ctrl_w)
+	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READWRITE(phunsy_data_r, phunsy_data_w)
 ADDRESS_MAP_END
 
 
@@ -178,7 +183,7 @@ static INPUT_PORTS_START( phunsy )
 INPUT_PORTS_END
 
 
-WRITE8_MEMBER( phunsy_state::kbd_put )
+void phunsy_state::kbd_put(u8 data)
 {
 	if (data)
 		m_keyboard_input = data;
@@ -325,12 +330,14 @@ DRIVER_INIT_MEMBER( phunsy_state, phunsy )
 	membank("bankq")->set_entry(0);
 }
 
-static MACHINE_CONFIG_START( phunsy, phunsy_state )
+static MACHINE_CONFIG_START( phunsy )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",S2650, XTAL_1MHz)
 	MCFG_CPU_PROGRAM_MAP(phunsy_mem)
 	MCFG_CPU_IO_MAP(phunsy_io)
-	MCFG_S2650_FLAG_HANDLER(WRITELINE(phunsy_state, cass_w))
+	MCFG_CPU_DATA_MAP(phunsy_data)
+	MCFG_S2650_SENSE_INPUT(READLINE(phunsy_state, cass_r))
+	MCFG_S2650_FLAG_OUTPUT(WRITELINE(phunsy_state, cass_w))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -357,7 +364,7 @@ static MACHINE_CONFIG_START( phunsy, phunsy_state )
 
 	/* Devices */
 	MCFG_DEVICE_ADD("keyboard", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(phunsy_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(phunsy_state, kbd_put))
 	MCFG_CASSETTE_ADD( "cassette" )
 
 	/* quickload */
@@ -387,5 +394,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS          INIT         COMPANY        FULLNAME       FLAGS */
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS          INIT    COMPANY            FULLNAME  FLAGS */
 COMP( 1980, phunsy, 0,      0,       phunsy,    phunsy, phunsy_state,  phunsy, "J.F.P. Philipse", "PHUNSY", MACHINE_NOT_WORKING )

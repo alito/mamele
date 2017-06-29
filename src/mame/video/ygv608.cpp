@@ -29,10 +29,208 @@
  *    Scaling
  *    Split-screen scrolling by row (by column supported) (see test mode)
  *    Everything else! :)
+ *
+ *    TODO (2017 edition):
+ *    - move ports into device_address_map (done);
+ *    - add registers into own space, improve naming and variable usage;
+ *    - remove code repetition in tilemap drawing functions;
+ *    - add crtc section (done partially);
+ *    - fix garbage tiles in Mappy Arrange/Abnormal Check;
+ *    - fix attract mode garbage for Namco Collection Vol. 2 (either transparent or page banking select registers);
+ *    - fix tilemap dirty flags, move tilemap data in own space prolly helps;
+ *    - DMA from/to ROM;
+ *    - color palette accessors presumably accesses an internal RAMDAC with controllable auto-increment, convert to that;
+ *    - fix char getting cut off from GAME SELECT msg in NCV2;
+ *    - clean-ups & documentation;
+ *
+ *
  */
 
 #include "emu.h"
 #include "video/ygv608.h"
+#include "screen.h"
+
+
+// Fundamental constants
+enum {
+	p5_rwai     = 0x80,     // increment register select on reads
+	p5_rrai     = 0x40,     // increment register select on writes
+	p5_rn       = 0x3f,     // register select
+
+//  p6_res6     = 0xe0,
+	p6_fp       = 0x10,     // position detection flag
+	p6_fv       = 0x08,     // vertical border interval flag
+	p6_fc       = 0x04,
+	p6_hb       = 0x02,     // horizontal blanking flag?
+	p6_vb       = 0x01,     // vertical blanking flag?
+
+//  p7_res7     = 0xc0,
+	p7_tr       = 0x20,
+	p7_tc       = 0x10,
+	p7_tl       = 0x08,
+	p7_ts       = 0x04,
+	p7_tn       = 0x02,
+	p7_sr       = 0x01,
+
+	r0_pnya     = 0x80,     // if set, increment name table address after reads
+	r0_b_a      = 0x40,     // if set, we're reading from the second plane of tile data
+	r0_pny      = 0x3f,     // y-coordinate of current name table address
+
+	r1_pnxa     = 0x80,     // if set, increment name table address after read
+	r1_res1     = 0x40,
+	r1_pnx      = 0x3f,     // x-coordinate of current name table address
+
+	r2_cpaw     = 0x80,     // if set, increment color palette address after writes
+	r2_cpar     = 0x40,     // if set, increment color palette address after reads
+//  r2_res2     = 0x20,
+	r2_b_a      = 0x10,
+	r2_scaw     = 0x08,     // if set, increment scroll address after writes
+	r2_scar     = 0x04,     // if set, increment scroll address after reads
+	r2_saaw     = 0x02,     // if set, increment sprite address after writes
+	r2_saar     = 0x01,     // if set, increment sprite address after reads
+
+	r7_dckm     = 0x80,
+	r7_flip     = 0x40,
+//  r7_res7     = 0x30,
+	r7_zron     = 0x08,     // if set, roz plane is active
+	r7_md       = 0x06,     // determines 1 of 4 possible video modes
+	r7_dspe     = 0x01,     // if set, display is enabled
+
+	r8_hds      = 0xc0,
+	r8_vds      = 0x30,
+	r8_rlrt     = 0x08,
+	r8_rlsc     = 0x04,
+//  r8_res8     = 0x02,
+	r8_pgs      = 0x01,
+
+	r9_pts      = 0xc0,
+	r9_slh      = 0x38,
+	r9_slv      = 0x07,
+
+	r10_spa     = 0xc0,     // misc global sprite attributes (x/y flip or sprite size)
+	r10_spas    = 0x20,     // if set, spa controls sprite flip, if clear, controls sprite size
+	r10_sprd    = 0x10,     // if set, sprites are disabled
+	r10_mcb     = 0x0c,
+	r10_mca     = 0x03,
+
+	r11_scm     = 0xc0,
+	r11_yse     = 0x20,
+	r11_cbdr    = 0x10,
+	r11_prm     = 0x0c,     // determines one of 4 priority settings
+	r11_ctpb    = 0x02,
+	r11_ctpa    = 0x01,
+
+	r12_spf     = 0xc0,
+	r12_bpf     = 0x38,
+	r12_apf     = 0x07,
+
+//  r14_res14   = 0xfc,
+	r14_iep     = 0x02,     // if set, generate IRQ on position detection (?)
+	r14_iev     = 0x01,     // if set, generate IRQ on vertical border interval draw
+
+	// these 4 are currently unimplemented by us
+	r16_fpm     = 0x80,
+	r16_il8     = 0x40,
+	r16_res16   = 0x20,
+	r16_ih      = 0x1f,
+
+	r17_ba1     = 0x70,
+	r17_ba0     = 0x07,
+	r18_ba3     = 0x70,
+	r18_ba2     = 0x07,
+	r19_ba5     = 0x70,
+	r19_ba4     = 0x07,
+	r20_ba7     = 0x70,
+	r20_ba6     = 0x07,
+	r21_bb1     = 0x70,
+	r21_bb0     = 0x07,
+	r22_bb3     = 0x70,
+	r22_bb2     = 0x07,
+	r23_bb5     = 0x70,
+	r23_bb4     = 0x07,
+	r24_bb7     = 0x70,
+	r24_bb6     = 0x07,
+
+	r39_hsw     = 0xe0,
+	r39_hbw     = 0x1f,
+
+	r40_htl89   = 0xc0,
+	r40_hdw     = 0x3f,
+
+	r43_vsw     = 0xe0,
+	r43_vbw     = 0x1f,
+
+	r44_vsls    = 0x40,
+	r44_vdw     = 0x1f,
+
+	r45_vtl8    = 0x80,
+	r45_tres    = 0x40,
+	r45_vdp     = 0x1f
+};
+
+
+// R#7(md)
+#define MD_2PLANE_8BIT      0x00
+#define MD_2PLANE_16BIT     0x02
+#define MD_1PLANE_16COLOUR  0x04
+#define MD_1PLANE_256COLOUR 0x06
+#define MD_1PLANE           (MD_1PLANE_16COLOUR & MD_1PLANE_256COLOUR)
+#define MD_SHIFT            0
+#define MD_MASK             0x06
+
+// R#8
+#define PGS_64X32         0x0
+#define PGS_32X64         0x1
+#define PGS_SHIFT         0
+#define PGS_MASK          0x01
+
+// R#9
+#define SLV_SCREEN        0x00
+#define SLV_8             0x04
+#define SLV_16            0x05
+#define SLV_32            0x06
+#define SLV_64            0x07
+#define SLH_SCREEN        0x00
+#define SLH_8             0x04
+#define SLH_16            0x05
+#define SLH_32            0x06
+#define SLH_64            0x07
+#define PTS_8X8           0x00
+#define PTS_16X16         0x40
+#define PTS_32X32         0x80
+#define PTS_64X64         0xc0
+#define PTS_SHIFT         0
+#define PTS_MASK          0xc0
+
+// R#10
+#define SPAS_SPRITESIZE    0
+#define SPAS_SPRITEREVERSE 1
+
+// R#10(spas)=1
+#define SZ_8X8            0x00
+#define SZ_16X16          0x01
+#define SZ_32X32          0x02
+#define SZ_64X64          0x03
+
+// R#10(spas)=0
+#define SZ_NOREVERSE      0x00
+#define SZ_VERTREVERSE    0x01
+#define SZ_HORIZREVERSE   0x02
+#define SZ_BOTHREVERSE    0x03
+
+// R#11(prm)
+#define PRM_SABDEX        0x00
+#define PRM_ASBDEX        0x04
+#define PRM_SEABDX        0x08
+#define PRM_ASEBDX        0x0c
+
+// R#40
+#define HDW_SHIFT         0
+#define HDW_MASK          0x3f
+
+// R#44
+#define VDW_SHIFT         0
+#define VDW_MASK          0x3f
 
 #define _ENABLE_SPRITES
 #define _ENABLE_SCROLLX
@@ -47,6 +245,14 @@
 #define GFX_8X8_8BIT    4
 #define GFX_16X16_8BIT  5
 
+
+
+//**************************************************************************
+//  GLOBAL VARIABLES
+//**************************************************************************
+
+// device type definition
+DEFINE_DEVICE_TYPE(YGV608, ygv608_device, "ygv608", "YGV608 VDP")
 
 /* text-layer characters */
 
@@ -142,54 +348,163 @@ static GFXDECODE_START( ygv608 )
 	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_16x16_4bits_layout,  0,  16 )
 	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_32x32_4bits_layout,  0,  16 )
 	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_64x64_4bits_layout,  0,  16 )
-	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_8x8_8bits_layout,    0, 256 )
-	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_16x16_8bits_layout,  0, 256 )
+	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_8x8_8bits_layout,    0,   1 )
+	GFXDECODE_DEVICE( DEVICE_SELF, 0x00000000, pts_16x16_8bits_layout,  0,   1 )
 GFXDECODE_END
 
+//**************************************************************************
+//  LIVE DEVICE
+//**************************************************************************
 
-const device_type YGV608 = &device_creator<ygv608_device>;
+/***************************************
+ *
+ * Internal I/O register structure
+ *
+ ***************************************/
+
+ // we use decimals here to match documentation
+static ADDRESS_MAP_START( regs_map, AS_IO, 8, ygv608_device )
+	AM_RANGE(14, 14) AM_READWRITE(irq_mask_r,irq_mask_w) 
+	AM_RANGE(15, 16) AM_READWRITE(irq_ctrl_r,irq_ctrl_w)
+	
+	AM_RANGE(39, 46) AM_WRITE(crtc_w)
+ADDRESS_MAP_END
+
+/***************************************
+ *
+ * Port Interface map
+ *
+ ***************************************/
+
+DEVICE_ADDRESS_MAP_START( port_map, 8, ygv608_device )
+	AM_RANGE(0x00, 0x00) AM_READWRITE(pattern_name_table_r,pattern_name_table_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(sprite_data_r,sprite_data_w)
+	AM_RANGE(0x02, 0x02) AM_READWRITE(scroll_data_r,scroll_data_w)
+	AM_RANGE(0x03, 0x03) AM_READWRITE(palette_data_r,palette_data_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(register_data_r,register_data_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(register_select_w)
+	AM_RANGE(0x06, 0x06) AM_READWRITE(status_port_r,status_port_w)
+	AM_RANGE(0x07, 0x07) AM_READWRITE(system_control_r,system_control_w)
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  ygv608_device - constructor
+//-------------------------------------------------
 
 ygv608_device::ygv608_device( const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock )
-	: device_t(mconfig, YGV608, "YGV608 VDP", tag, owner, clock, "ygv608", __FILE__),
-	device_gfx_interface(mconfig, *this, GFXDECODE_NAME(ygv608))
+	: device_t(mconfig, YGV608, tag, owner, clock), 
+	  device_gfx_interface(mconfig, *this, GFXDECODE_NAME(ygv608)),
+	  device_memory_interface(mconfig, *this),
+	  m_io_space_config("io", ENDIANNESS_BIG, 8, 6, 0, *ADDRESS_MAP_NAME(regs_map)),
+ 	  m_vblank_handler(*this),
+	  m_raster_handler(*this)
 {
 }
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+void ygv608_device::device_start()
+{
+	memset(&m_ports, 0, sizeof(m_ports));
+	memset(&m_regs, 0, sizeof(m_regs));
+	memset(&m_pattern_name_table, 0, sizeof(m_pattern_name_table));
+	memset(&m_sprite_attribute_table, 0, sizeof(m_sprite_attribute_table));
+
+	memset(&m_scroll_data_table, 0, sizeof(m_scroll_data_table));
+	memset(&m_colour_palette, 0, sizeof(m_colour_palette));
+
+	m_bits16 = 0;
+	m_page_x = 0;
+	m_page_y = 0;
+	m_pny_shift = 0;
+	m_na8_mask = 0;
+	m_col_shift = 0;
+
+	m_ax = 0; m_dx = 0; m_dxy = 0; m_ay = 0; m_dy = 0; m_dyx = 0;
+
+	memset(&m_base_addr, 0, sizeof(m_base_addr));
+	m_base_y_shift = 0;
+
+	// flag rebuild of the tilemaps
+	m_screen_resize = 1;
+	m_tilemap_resize = 1;
+	m_namcond1_gfxbank = 0;
+	save_item(NAME(m_namcond1_gfxbank));
+
+	/* create tilemaps of all sizes and combinations */
+	m_tilemap_A_cache_8[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,32);
+	m_tilemap_A_cache_8[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 64,32);
+	m_tilemap_A_cache_8[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,64);
+
+	m_tilemap_A_cache_16[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,32);
+	m_tilemap_A_cache_16[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 64,32);
+	m_tilemap_A_cache_16[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,64);
+
+	m_tilemap_B_cache_8[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,32);
+	m_tilemap_B_cache_8[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 64,32);
+	m_tilemap_B_cache_8[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,64);
+
+	m_tilemap_B_cache_16[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,32);
+	m_tilemap_B_cache_16[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 64,32);
+	m_tilemap_B_cache_16[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,64);
+
+	m_tilemap_A = nullptr;
+	m_tilemap_B = nullptr;
+
+	m_iospace = &space(AS_IO);
+	
+	// TODO: tagging configuration
+	m_screen = downcast<screen_device *>(machine().device("screen"));
+	m_vblank_handler.resolve();
+	m_raster_handler.resolve();
+	m_vblank_timer = timer_alloc(VBLANK_TIMER);
+	m_raster_timer = timer_alloc(RASTER_TIMER);
+	
+	register_state_save();
+}
+
+//-------------------------------------------------
+//  memory_space_config - return a description of
+//  any address spaces owned by this device
+//-------------------------------------------------
+
+const address_space_config *ygv608_device::memory_space_config(address_spacenum spacenum) const
+{
+	return (spacenum == AS_IO) ? &m_io_space_config : nullptr;
+}
+
+void ygv608_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch(id)
+	{
+		case VBLANK_TIMER:
+		{
+			m_screen_status |= 8; // FV
+			if(m_vblank_irq_mask == true)
+				m_vblank_handler(ASSERT_LINE);
+			break;
+		}
+		case RASTER_TIMER:
+		{
+			m_screen_status |= 0x10; // FP
+			if(m_raster_irq_mask == true)
+				m_raster_handler(ASSERT_LINE);
+			
+			// adjust for next one shot
+			m_raster_timer->reset();
+			m_raster_timer->adjust(raster_sync_offset(), 0);
+		}
+	}
+}
+
 
 void ygv608_device::set_gfxbank(uint8_t gfxbank)
 {
 	m_namcond1_gfxbank = gfxbank;
 }
 
-/* interrupt generated every 1ms second */
-INTERRUPT_GEN_MEMBER(ygv608_device::timed_interrupt )
-{
-/*
-    this is not quite generic, because we trigger a 68k interrupt
-    - if this chip is ever used by another driver, we should make
-      this more generic - or move it into the machine driver
-*/
-
-	static int timer = 0;
-
-	if( ++timer == 1000 )
-		timer = 0;
-
-	/* once every 60Hz, set the vertical border interval start flag */
-	if( ( timer % (1000/60) ) == 0 )
-	{
-		m_ports.s.p6 |= p6_fv;
-		if (m_regs.s.r14 & r14_iev)
-			device.execute().set_input_line(2, HOLD_LINE);
-	}
-
-	/* once every 60Hz, set the position detection flag (somewhere) */
-	else if( ( timer % (1000/60) ) == 7 )
-	{
-		m_ports.s.p6 |= p6_fp;
-		if (m_regs.s.r14 & r14_iep)
-			device.execute().set_input_line(2, HOLD_LINE);
-	}
-}
 
 
 TILEMAP_MAPPER_MEMBER( ygv608_device::get_tile_offset )
@@ -403,7 +718,7 @@ TILE_GET_INFO_MEMBER( ygv608_device::get_tile_info_A_16 )
 	uint8_t   attr = 0;
 	int             pattern_name_base = 0;
 	int             set = ((m_regs.s.r7 & r7_md) == MD_1PLANE_256COLOUR
-						? GFX_16X16_8BIT : GFX_16X16_4BIT );
+						? GFX_16X16_8BIT : GFX_16X16_4BIT );	
 	int             base = row >> m_base_y_shift;
 
 	if( col >= m_page_x ) {
@@ -592,60 +907,13 @@ void ygv608_device::register_state_save()
 	save_item(NAME(m_sprite_attribute_table.b));
 	save_item(NAME(m_scroll_data_table));
 	save_item(NAME(m_colour_palette));
+//	save_item(NAME(register_state_save));
+	save_item(NAME(m_color_state_r));
+	save_item(NAME(m_color_state_w));
 
 	machine().save().register_postload(save_prepost_delegate(FUNC(ygv608_device::postload), this));
 }
 
-void ygv608_device::device_start()
-{
-	memset(&m_ports, 0, sizeof(m_ports));
-	memset(&m_regs, 0, sizeof(m_regs));
-	memset(&m_pattern_name_table, 0, sizeof(m_pattern_name_table));
-	memset(&m_sprite_attribute_table, 0, sizeof(m_sprite_attribute_table));
-
-	memset(&m_scroll_data_table, 0, sizeof(m_scroll_data_table));
-	memset(&m_colour_palette, 0, sizeof(m_colour_palette));
-
-	m_bits16 = 0;
-	m_page_x = 0;
-	m_page_y = 0;
-	m_pny_shift = 0;
-	m_na8_mask = 0;
-	m_col_shift = 0;
-
-	m_ax = 0; m_dx = 0; m_dxy = 0; m_ay = 0; m_dy = 0; m_dyx = 0;
-
-	memset(&m_base_addr, 0, sizeof(m_base_addr));
-	m_base_y_shift = 0;
-
-	// flag rebuild of the tilemaps
-	m_screen_resize = 1;
-	m_tilemap_resize = 1;
-	m_namcond1_gfxbank = 0;
-	save_item(NAME(m_namcond1_gfxbank));
-
-	/* create tilemaps of all sizes and combinations */
-	m_tilemap_A_cache_8[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,32);
-	m_tilemap_A_cache_8[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 64,32);
-	m_tilemap_A_cache_8[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,64);
-
-	m_tilemap_A_cache_16[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,32);
-	m_tilemap_A_cache_16[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 64,32);
-	m_tilemap_A_cache_16[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_A_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,64);
-
-	m_tilemap_B_cache_8[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,32);
-	m_tilemap_B_cache_8[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 64,32);
-	m_tilemap_B_cache_8[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_8),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  8,8, 32,64);
-
-	m_tilemap_B_cache_16[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,32);
-	m_tilemap_B_cache_16[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 64,32);
-	m_tilemap_B_cache_16[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(FUNC(ygv608_device::get_tile_info_B_16),this), tilemap_mapper_delegate(FUNC(ygv608_device::get_tile_offset),this),  16,16, 32,64);
-
-	m_tilemap_A = nullptr;
-	m_tilemap_B = nullptr;
-
-	register_state_save();
-}
 
 void ygv608_device::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
@@ -665,8 +933,8 @@ void ygv608_device::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect
 
 	/* draw sprites */
 	spriteClip &= cliprect;
-	sa = &m_sprite_attribute_table.s[YGV608_MAX_SPRITES-1];
-	for( i=0; i<YGV608_MAX_SPRITES; i++, sa-- )
+	sa = &m_sprite_attribute_table.s[MAX_SPRITES-1];
+	for( i=0; i<MAX_SPRITES; i++, sa-- )
 	{
 	int code, color, sx, sy, size, attr, g_attr, spf;
 
@@ -879,13 +1147,6 @@ uint32_t ygv608_device::update_screen(screen_device &screen, bitmap_ind16 &bitma
 
 	if( m_screen_resize )
 	{
-#ifdef _ENABLE_SCREEN_RESIZE
-		// hdw should be scaled by 16, not 8
-		// - is it something to do with double dot-clocks???
-		screen.set_visible_area(0, ((int)(m_regs.s.hdw)<<3/*4*/)-1,
-							0, ((int)(m_regs.s.vdw)<<3)-1 );
-#endif
-
 		m_work_bitmap.resize(screen.width(), screen.height());
 
 		// reset resize flag
@@ -1025,330 +1286,369 @@ uint32_t ygv608_device::update_screen(screen_device &screen, bitmap_ind16 &bitma
 	return 0;
 }
 
-READ16_MEMBER( ygv608_device::read )
+/***************************************
+ *
+ * Port Interface routines
+ *
+ ****************************************/
+
+ // P#0R - pattern name table data port
+READ8_MEMBER( ygv608_device::pattern_name_table_r )
 {
-	static int p0_state = 0;
-	static int p3_state = 0;
-	static int pattern_name_base = 0;  /* pattern name table base address */
-	int pn=0;
-	uint16_t  data = 0;
+	int pn = 0;
+	uint8_t xTile = m_regs.s.r1 & r1_pnx;
+	uint8_t yTile = m_regs.s.r0 & r0_pny;
 
-	switch (offset)
+	switch (p0_state_r)
 	{
-		case 0x00: /* P#0 - pattern name table data port */
-		{
-			uint8_t xTile = m_regs.s.r1 & r1_pnx;
-			uint8_t yTile = m_regs.s.r0 & r0_pny;
+		case 0:
+			/* Are we reading from plane B? */
+			if (!((m_regs.s.r7 & r7_md) & MD_1PLANE) && (m_regs.s.r0 & r0_b_a))
+				pattern_name_base_r = ((m_page_y << m_pny_shift) << m_bits16);
 
-			switch (p0_state)
-			{
-				case 0:
-					/* Are we reading from plane B? */
-					if (!((m_regs.s.r7 & r7_md) & MD_1PLANE) && (m_regs.s.r0 & r0_b_a))
-						pattern_name_base = ((m_page_y << m_pny_shift) << m_bits16);
-
-					/* read character from ram */
-					pn = pattern_name_base + (((yTile << m_pny_shift) + xTile) << m_bits16);
-					break;
-
-				case 1:
-					/* read character from ram */
-					pn = pattern_name_base + (((yTile << m_pny_shift) + xTile) << m_bits16) + 1;
-					break;
-			}
-
-			if (pn > 4095)
-			{
-				logerror( "attempt (%d) to read pattern name %d\n"
-					"mode = %d, pgs = %d (%dx%d)\n"
-					"pattern_name_base = %d\n"
-					"pnx = %d, pny = %d, pny_shift = %d, bits16 = %d\n",
-					p0_state,
-					pn, m_regs.s.r7 & r7_md, m_regs.s.r8 & r8_pgs,
-					m_page_x, m_page_y,
-					pattern_name_base,
-					xTile, yTile, m_pny_shift,
-					m_bits16 );
-				pn = 0;
-			}
-			data = m_pattern_name_table[pn];
-
-			p0_state++;
-			if ((m_regs.s.r7 & r7_md) == MD_2PLANE_8BIT )
-				p0_state++;
-
-			if (p0_state == 2)
-			{
-				if (m_regs.s.r0 & r0_pnya)
-				{
-					if (yTile++ == (m_page_y - 1))
-					{
-						yTile = 0;
-						if (xTile++ == (m_page_x - 1))
-						{
-							xTile = 0;
-							// we're now off this tile plane, toggle planes
-							m_regs.s.r0 ^= r0_b_a;
-						}
-					}
-					m_regs.s.r0 &= ~r0_pny;
-					m_regs.s.r0 |= yTile;
-					m_regs.s.r1 &= ~r1_pnx;
-					m_regs.s.r1 |= xTile;
-				}
-				else if (m_regs.s.r1 & r1_pnxa)
-				{
-					if (xTile++ == (m_page_x - 1))
-					{
-						xTile = 0;
-						if (yTile++ == (m_page_y - 1))
-						{
-							yTile = 0;
-							// we're now off this tile plane, toggle planes
-							m_regs.s.r0 ^= r0_b_a;
-						}
-					}
-					m_regs.s.r0 &= ~r0_pny;
-					m_regs.s.r0 |= yTile;
-					m_regs.s.r1 &= ~r1_pnx;
-					m_regs.s.r1 |= xTile;
-				}
-				p0_state = 0;
-				pattern_name_base = 0;
-			}
-			return (data << 8);
-		}
-
-		case 0x01: /* P#1 - sprite data port */
-			data = m_sprite_attribute_table.b[m_regs.s.saa];
-			if (m_regs.s.r2 & r2_saar)
-				m_regs.s.saa++;
-			return (data << 8);
-
-		case 0x02: /* P#2 - scroll data port */
-			data = m_scroll_data_table[(m_regs.s.r2 & r2_b_a) >> 4][m_regs.s.sca];
-			if (m_regs.s.r2 & r2_scar)
-			{
-				m_regs.s.sca++;
-				/* handle wrap to next plane */
-				if (m_regs.s.sca == 0)
-					m_regs.s.r2 ^= r2_b_a;
-			}
-			return( data << 8 );
-
-		case 0x03: /* P#3 - color palette data port */
-			data = m_colour_palette[m_regs.s.cc][p3_state];
-			if( ++p3_state == 3 )
-			{
-				p3_state = 0;
-				if( m_regs.s.r2 & r2_cpar)
-					m_regs.s.cc++;
-			}
-			return( data << 8 );
-
-		case 0x04: /* P#4 - register data port */
-		{
-			uint8_t regNum = (m_ports.s.p5) & p5_rn;
-			data = m_regs.b[regNum];
-			if (m_ports.s.p5 & p5_rrai)
-			{
-				regNum ++;
-				if (regNum == 50)
-				{
-					regNum = 0;
-					logerror( "warning: rn=50 after read increment\n" );
-				}
-				m_ports.s.p5 &= ~p5_rn;
-				m_ports.s.p5 |= regNum;
-			}
-			return (data << 8);
-		}
-
-		case 0x05:
+			/* read character from ram */
+			pn = pattern_name_base_r + (((yTile << m_pny_shift) + xTile) << m_bits16);
 			break;
 
-		case 0x06:
-		case 0x07:
-			return( (uint16_t)(m_ports.b[offset]) << 8 );
-
-		default :
-			logerror( "unknown ygv608 register (%d)\n", offset );
+		case 1:
+			/* read character from ram */
+			pn = pattern_name_base_r + (((yTile << m_pny_shift) + xTile) << m_bits16) + 1;
 			break;
 	}
 
-	return( 0 );
+	if (pn > 4095)
+	{
+		logerror( "attempt (%d) to read pattern name %d\n"
+			"mode = %d, pgs = %d (%dx%d)\n"
+			"pattern_name_base_r = %d\n"
+			"pnx = %d, pny = %d, pny_shift = %d, bits16 = %d\n",
+			p0_state_r,
+			pn, m_regs.s.r7 & r7_md, m_regs.s.r8 & r8_pgs,
+			m_page_x, m_page_y,
+			pattern_name_base_r,
+			xTile, yTile, m_pny_shift,
+			m_bits16 );
+		pn = 0;
+	}
+
+	p0_state_r++;
+	if ((m_regs.s.r7 & r7_md) == MD_2PLANE_8BIT )
+		p0_state_r++;
+
+	if (p0_state_r == 2)
+	{
+		if (m_regs.s.r0 & r0_pnya)
+		{
+			if (yTile++ == (m_page_y - 1))
+			{
+				yTile = 0;
+				if (xTile++ == (m_page_x - 1))
+				{
+					xTile = 0;
+					// we're now off this tile plane, toggle planes
+					m_regs.s.r0 ^= r0_b_a;
+				}
+			}
+			m_regs.s.r0 &= ~r0_pny;
+			m_regs.s.r0 |= yTile;
+			m_regs.s.r1 &= ~r1_pnx;
+			m_regs.s.r1 |= xTile;
+		}
+		else if (m_regs.s.r1 & r1_pnxa)
+		{
+			if (xTile++ == (m_page_x - 1))
+			{
+				xTile = 0;
+				if (yTile++ == (m_page_y - 1))
+				{
+					yTile = 0;
+					// we're now off this tile plane, toggle planes
+					m_regs.s.r0 ^= r0_b_a;
+				}
+			}
+			m_regs.s.r0 &= ~r0_pny;
+			m_regs.s.r0 |= yTile;
+			m_regs.s.r1 &= ~r1_pnx;
+			m_regs.s.r1 |= xTile;
+		}
+		p0_state_r = 0;
+		pattern_name_base_r = 0;
+	}
+	
+	return m_pattern_name_table[pn];
 }
 
-WRITE16_MEMBER( ygv608_device::write )
+// P#1R - sprite data port
+READ8_MEMBER( ygv608_device::sprite_data_r )
 {
-	static int p0_state = 0;
-	static int p3_state = 0;
-	static int pattern_name_base = 0;  /* pattern name table base address */
-	int pn=0;
+	uint8_t res = m_sprite_attribute_table.b[m_regs.s.saa];
+	
+	if (m_regs.s.r2 & r2_saar)
+		m_regs.s.saa++;
+	
+	return res;
+}
 
-	data = ( data >> 8 ) & 0xff;
+// P#2R - scroll data port 
+READ8_MEMBER( ygv608_device::scroll_data_r )
+{
+	uint8_t res = m_scroll_data_table[(m_regs.s.r2 & r2_b_a) >> 4][m_regs.s.sca];
 
-	switch (offset)
+	if (m_regs.s.r2 & r2_scar)
 	{
-		case 0x00: /* P#0 - pattern name table data port */
+		m_regs.s.sca++;
+		/* handle wrap to next plane */
+		if (m_regs.s.sca == 0)
+			m_regs.s.r2 ^= r2_b_a;
+	}
+
+	return res;
+}
+
+// P#3 - color palette data port
+READ8_MEMBER( ygv608_device::palette_data_r )
+{
+	uint8_t res = m_colour_palette[m_regs.s.cc][m_color_state_r];
+
+	if( ++m_color_state_r == 3 )
+	{
+		m_color_state_r = 0;
+
+		if( m_regs.s.r2 & r2_cpar)
+			m_regs.s.cc++;
+	}
+
+	return res;
+}
+
+// P#4R - register data port
+READ8_MEMBER(ygv608_device::register_data_r)
+{
+	int regNum = m_register_address & 0x3f;
+	uint8_t res = m_regs.b[regNum];
+
+	//m_iospace->read_byte(regNum);
+
+	
+	if (m_register_autoinc_r == true)
+	{
+		m_register_address ++;
+		m_register_address &= 0x3f;
+		#if 0
+		// we'll catch this in the logerror anyway
+		if (regNum == 50)
 		{
-			uint8_t xTile = m_regs.s.r1 & r1_pnx;
-			uint8_t yTile = m_regs.s.r0 & r0_pny;
-
-			switch (p0_state)
-			{
-				case 0:
-					/* Are we reading from plane B? */
-					if (!((m_regs.s.r7 & r7_md) & MD_1PLANE) && (m_regs.s.r0 & r0_b_a))
-						pattern_name_base = ((m_page_y << m_pny_shift) << m_bits16);
-
-					/* read character from ram */
-					pn = pattern_name_base + (((yTile << m_pny_shift) + xTile) << m_bits16);
-					break;
-
-				case 1:
-					/* read character from ram */
-					pn = pattern_name_base + (((yTile << m_pny_shift) + xTile) << m_bits16) + 1;
-					break;
-			}
-
-			if (pn > 4095)
-			{
-				logerror( "attempt (%d) to read pattern name %d\n"
-					"mode = %d, pgs = %d (%dx%d)\n"
-					"pattern_name_base = %d\n"
-					"pnx = %d, pny = %d, pny_shift = %d, bits16 = %d\n",
-					p0_state,
-					pn, m_regs.s.r7 & r7_md, m_regs.s.r8 & r8_pgs,
-					m_page_x, m_page_y,
-					pattern_name_base,
-					xTile, yTile, m_pny_shift,
-					m_bits16 );
-				pn = 0;
-			}
-			m_pattern_name_table[pn] = data;
-
-			p0_state++;
-			if ((m_regs.s.r7 & r7_md) == MD_2PLANE_8BIT )
-				p0_state++;
-
-			if (p0_state == 2)
-			{
-				if (m_regs.s.r0 & r0_pnya)
-				{
-					if (yTile++ == (m_page_y - 1))
-					{
-						yTile = 0;
-						if (xTile++ == (m_page_x - 1))
-						{
-							xTile = 0;
-							m_regs.s.r0 ^= r0_b_a;
-						}
-					}
-					m_regs.s.r0 &= ~r0_pny;
-					m_regs.s.r0 |= yTile;
-					m_regs.s.r1 &= ~r1_pnx;
-					m_regs.s.r1 |= xTile;
-				}
-				else if (m_regs.s.r1 & r1_pnxa)
-				{
-					if (xTile++ == (m_page_x - 1))
-					{
-						xTile = 0;
-						if (yTile++ == (m_page_y - 1))
-						{
-							yTile = 0;
-							m_regs.s.r0 ^= r0_b_a;
-						}
-					}
-					m_regs.s.r0 &= ~r0_pny;
-					m_regs.s.r0 |= yTile;
-					m_regs.s.r1 &= ~r1_pnx;
-					m_regs.s.r1 |= xTile;
-				}
-				p0_state = 0;
-				pattern_name_base = 0;
-			}
+			regNum = 0;
+			logerror( "warning: rn=50 after read increment\n" );
 		}
-		break;
+		#endif
+	}
+	
+	return res;
+}
 
-		case 0x01: /* P#1 - sprite data port */
-			m_sprite_attribute_table.b[m_regs.s.saa] = data;
-			if( m_regs.s.r2 & r2_saaw)
-				m_regs.s.saa++;
+// P#6R - status port
+/***
+ * ---x ---- FP Specified display position flag (R#15 & 16), reset by writing '1'
+ * ---- x--- FV Vertical border interval start, reset by writing '1'
+ * ---- -x-- FC Sprite collision flag, reset by writing '1'
+ * ---- --x- HB 1 when horizontal border or retrace is in progress (read only)
+ * ---- ---x VB 1 when vertical border or retrace is in progress (read only)
+ ***/
+READ8_MEMBER( ygv608_device::status_port_r )
+{
+	return m_screen_status;
+}
+
+// P#7R - system control port
+READ8_MEMBER( ygv608_device::system_control_r )
+{
+	return (uint8_t)(m_ports.b[7]);
+}
+
+// P#0W - pattern name table data write
+WRITE8_MEMBER(ygv608_device::pattern_name_table_w)
+{
+	int pn = 0;
+	uint8_t xTile = m_regs.s.r1 & r1_pnx;
+	uint8_t yTile = m_regs.s.r0 & r0_pny;
+
+	switch (p0_state_w)
+	{
+		case 0:
+			/* Are we reading from plane B? */
+			if (!((m_regs.s.r7 & r7_md) & MD_1PLANE) && (m_regs.s.r0 & r0_b_a))
+				pattern_name_base_w = ((m_page_y << m_pny_shift) << m_bits16);
+
+			/* read character from ram */
+			pn = pattern_name_base_w + (((yTile << m_pny_shift) + xTile) << m_bits16);
 			break;
 
-		case 0x02: /* P#2 - scroll data port */
-			m_scroll_data_table[(m_regs.s.r2 & r2_b_a) >> 4][m_regs.s.sca] = data;
-			if (m_regs.s.r2 & r2_scaw)
-			{
-				m_regs.s.sca++;
-				/* handle wrap to next plane */
-				if (m_regs.s.sca == 0)
-					m_regs.s.r2 ^= r2_b_a;
-			}
+		case 1:
+			/* read character from ram */
+			pn = pattern_name_base_w + (((yTile << m_pny_shift) + xTile) << m_bits16) + 1;
 			break;
+	}
 
-		case 0x03: /* P#3 - colour palette data port */
-			m_colour_palette[m_regs.s.cc][p3_state] = data;
-			if (++p3_state == 3)
-			{
-				p3_state = 0;
-				palette().set_pen_color(m_regs.s.cc,
-					pal6bit(m_colour_palette[m_regs.s.cc][0]),
-					pal6bit(m_colour_palette[m_regs.s.cc][1]),
-					pal6bit(m_colour_palette[m_regs.s.cc][2]) );
-				if (m_regs.s.r2 & r2_cpaw)
-					m_regs.s.cc++;
-			}
-			break;
+	if (pn > 4095)
+	{
+		logerror( "attempt (%d) to read pattern name %d\n"
+			"mode = %d, pgs = %d (%dx%d)\n"
+			"pattern_name_base_w = %d\n"
+			"pnx = %d, pny = %d, pny_shift = %d, bits16 = %d\n",
+			p0_state_w,
+			pn, m_regs.s.r7 & r7_md, m_regs.s.r8 & r8_pgs,
+			m_page_x, m_page_y,
+			pattern_name_base_w,
+			xTile, yTile, m_pny_shift,
+			m_bits16 );
+		pn = 0;
+	}
 
-		case 0x04: /* P#4 - register data port */
+	m_pattern_name_table[pn] = data;
+
+	p0_state_w++;
+	if ((m_regs.s.r7 & r7_md) == MD_2PLANE_8BIT )
+		p0_state_w++;
+
+	if (p0_state_w == 2)
+	{
+		if (m_regs.s.r0 & r0_pnya)
 		{
-			uint8_t regNum = (m_ports.s.p5) & p5_rn;
-#if 0
-			logerror( "R#%d = $%02X\n", regNum, data );
-#endif
-			SetPreShortcuts (regNum, data);
-			m_regs.b[regNum] = data;
-			SetPostShortcuts (regNum);
-			if (m_ports.s.p5 & p5_rwai)
+			if (yTile++ == (m_page_y - 1))
 			{
-				regNum ++;
-				if (regNum == 50)
+				yTile = 0;
+				if (xTile++ == (m_page_x - 1))
 				{
-					regNum = 0;
-					logerror( "warning: rn=50 after write increment\n" );
+					xTile = 0;
+					m_regs.s.r0 ^= r0_b_a;
 				}
-				m_ports.s.p5 &= ~p5_rn;
-				m_ports.s.p5 |= regNum;
 			}
+			m_regs.s.r0 &= ~r0_pny;
+			m_regs.s.r0 |= yTile;
+			m_regs.s.r1 &= ~r1_pnx;
+			m_regs.s.r1 |= xTile;
 		}
-		break;
+		else if (m_regs.s.r1 & r1_pnxa)
+		{
+			if (xTile++ == (m_page_x - 1))
+			{
+				xTile = 0;
+				if (yTile++ == (m_page_y - 1))
+				{
+					yTile = 0;
+					m_regs.s.r0 ^= r0_b_a;
+				}
+			}
+			m_regs.s.r0 &= ~r0_pny;
+			m_regs.s.r0 |= yTile;
+			m_regs.s.r1 &= ~r1_pnx;
+			m_regs.s.r1 |= xTile;
+		}
+		p0_state_w = 0;
+		pattern_name_base_w = 0;
+	}
 
-		case 0x05: /* P#5 - register select port */
-			m_ports.b[5] = data;
-			break;
+}
 
-		case 0x06: /* P#6 - status port */
-			/* writing a '1' resets that bit */
-			m_ports.b[6] &= ~data;
-			break;
+// P#1W - sprite data port
+WRITE8_MEMBER( ygv608_device::sprite_data_w )
+{
+	m_sprite_attribute_table.b[m_regs.s.saa] = data;
 
-		case 0x07: /* P#7 - system control port */
-			m_ports.b[7] = data;
-			if (m_ports.b[7] & 0x3e)
-				HandleRomTransfers();
-			if (m_ports.b[7] & 0x01)
-				HandleYGV608Reset();
-			break;
+	if( m_regs.s.r2 & r2_saaw)
+		m_regs.s.saa++;
+}
 
-		default:
-			logerror( "unknown ygv608 register (%d)\n", offset );
-			break;
+// P#2W - scroll data port
+WRITE8_MEMBER( ygv608_device::scroll_data_w )
+{
+	m_scroll_data_table[(m_regs.s.r2 & r2_b_a) >> 4][m_regs.s.sca] = data;
+
+	if (m_regs.s.r2 & r2_scaw)
+	{
+		m_regs.s.sca++;
+		/* handle wrap to next plane */
+		if (m_regs.s.sca == 0)
+			m_regs.s.r2 ^= r2_b_a;
 	}
 }
 
+// P#3W - colour palette data port
+WRITE8_MEMBER( ygv608_device::palette_data_w )
+{
+	m_colour_palette[m_regs.s.cc][m_color_state_w] = data;
+	if (++m_color_state_w == 3)
+	{
+		m_color_state_w = 0;
+		palette().set_pen_color(m_regs.s.cc,
+			pal6bit( m_colour_palette[m_regs.s.cc][0] ),
+			pal6bit( m_colour_palette[m_regs.s.cc][1] ),
+			pal6bit( m_colour_palette[m_regs.s.cc][2] ));
+
+		if (m_regs.s.r2 & r2_cpaw)
+			m_regs.s.cc++;
+	}
+}
+
+// P#4W - register data port
+WRITE8_MEMBER( ygv608_device::register_data_w )
+{
+	uint8_t regNum = m_register_address & 0x3f;
+	//logerror( "R#%d = $%02X\n", regNum, data );
+	
+	SetPreShortcuts (regNum, data);
+	m_regs.b[regNum] = data;
+	SetPostShortcuts (regNum);
+	m_iospace->write_byte(regNum, data);
+	
+	if (m_register_autoinc_w == true)
+	{
+		m_register_address ++;
+		m_register_address &= 0x3f;
+		
+		#if 0
+		// we'll catch this in the logerror anyway
+		if (regNum == 50)
+		{
+			regNum = 0;
+			logerror( "warning: rn=50 after write increment\n" );
+		}
+		#endif
+	}
+}
+
+// P#5W - register select port
+WRITE8_MEMBER( ygv608_device::register_select_w )
+{
+	m_register_address = data & 0x3f;
+	m_register_autoinc_r = BIT(data,6);
+	m_register_autoinc_w = BIT(data,7);
+}
+
+// P#6W - status port
+WRITE8_MEMBER( ygv608_device::status_port_w )
+{
+	/* writing a '1' resets that bit */
+	m_screen_status &= ~data;
+	if(data & 8)
+		m_vblank_handler(0);
+	if(data & 0x10)
+		m_raster_handler(0);
+}
+
+// P#7W - system control port
+WRITE8_MEMBER( ygv608_device::system_control_w )
+{
+	m_ports.b[7] = data;
+	if (m_ports.b[7] & 0x3e)
+		HandleRomTransfers(data & 0x3e);
+	if (m_ports.b[7] & 0x01)
+		HandleYGV608Reset();
+}
+
+
+// TODO: actual timing of this
 void ygv608_device::HandleYGV608Reset()
 {
 	int i;
@@ -1363,7 +1663,7 @@ void ygv608_device::HandleYGV608Reset()
 	/* Clear internal ram */
 	memset( m_pattern_name_table, 0, 4096 );
 	memset( m_sprite_attribute_table.b, 0,
-			YGV608_SPRITE_ATTR_TABLE_SIZE );
+			SPRITE_ATTR_TABLE_SIZE );
 	memset( m_scroll_data_table, 0, 2*256 );
 	memset( m_colour_palette, 0, 256*3 );
 
@@ -1381,8 +1681,10 @@ void ygv608_device::HandleYGV608Reset()
     - So leave it in!
  */
 
-void ygv608_device::HandleRomTransfers()
+void ygv608_device::HandleRomTransfers(uint8_t type)
 {
+	popmessage("ROM DMA used %02x",type);
+	
 #if 0
 	static uint8_t *sdt = (uint8_t *)m_scroll_data_table;
 	static uint8_t *sat = (uint8_t *)m_sprite_attribute_table.b;
@@ -1433,30 +1735,197 @@ void ygv608_device::HandleRomTransfers()
 #endif
 }
 
-#if 0
-void nvsram( offs_t offset, uint16_t data )
+/***************************************
+ *
+ * Register Interface routines
+ *
+ ****************************************/
+
+// R#14R interrupt mask control
+READ8_MEMBER( ygv608_device::irq_mask_r )
 {
-	static int i = 0;
-
-	data = ( data >> 8 ) & 0xff;
-
-	if( 1 ) {
-	static char ascii[16];
-	if( i%16 == 0 )
-		logerror( "%04X: ", offset );
-	logerror( "%02X ", data );
-	ascii[i%16] = (data > 0x20) ? data : '.';
-	if( i%16 == 15 )
-		logerror( "| %-16.16s\n", ascii );
-	}
-
-	i++;
+	return (m_raster_irq_mask << 1) | (m_vblank_irq_mask << 0);
 }
-#endif
+
+// R#14W interrupt mask control
+WRITE8_MEMBER( ygv608_device::irq_mask_w )
+{
+	m_vblank_irq_mask = BIT(data, 0);
+	m_raster_irq_mask = BIT(data, 1);
+	
+	// reset timers in case masking cuts off irqs
+	if(m_vblank_irq_mask == false)
+		m_vblank_timer->reset();
+
+	if(m_raster_irq_mask == false)
+		m_raster_timer->reset();
+}
+
+// R#15R / R#16R raster interrupt control
+READ8_MEMBER( ygv608_device::irq_ctrl_r )
+{
+	uint8_t res;
+	
+	if(offset == 0) // R#15
+		res = m_raster_irq_vpos & 0xff;
+	else // R#16
+	{
+		res = (m_raster_irq_mode << 7);
+		
+		res|= (BIT(m_raster_irq_vpos, 8) << 6);
+		
+		res|= (m_raster_irq_hpos / 32) & 0x1f;
+	}
+	
+	return res;
+}
+
+// R#15W / R#16W raster interrupt control
+WRITE8_MEMBER( ygv608_device::irq_ctrl_w )
+{
+	if(offset == 0) // R#15
+	{
+		m_raster_irq_vpos &= ~0xff;
+		m_raster_irq_vpos |= data & 0xff;
+	}
+	else // R#16
+	{
+		m_raster_irq_mode = BIT(data,7);
+		
+		m_raster_irq_vpos &= ~0x100;
+		m_raster_irq_vpos |= BIT(data,6) << 8;
+		
+		m_raster_irq_hpos = (data & 0x1f) * 32;
+	}
+	
+	// reset raster timer
+	m_raster_timer->reset();
+	m_raster_timer->adjust(raster_sync_offset(), 0);
+
+	//printf("%d %d %d %d %d\n",m_raster_irq_hpos,m_raster_irq_vpos,m_raster_irq_mode,m_crtc.htotal,m_crtc.vtotal);
+}
+
+attotime ygv608_device::raster_sync_offset()
+{
+	
+	// don't care if h/v pos is higher than CRTC params (NCV2 POST)
+	if(m_raster_irq_hpos >  m_crtc.htotal || m_raster_irq_vpos > m_crtc.vtotal )
+		return attotime::never;
+
+	// bail out and throw an error if this happens to be used someday
+	if(m_raster_irq_mode == true)
+	{
+		popmessage("Raster IRQ used with mode = true");
+		return attotime::never;
+	}
+	
+	return m_screen->time_until_pos(m_raster_irq_vpos,m_raster_irq_hpos);
+}
+
+
+// R#39W - R#46W display scan control write
+WRITE8_MEMBER( ygv608_device::crtc_w )
+{
+	//printf("[%d] <- %02x\n",offset+39,data);
+
+	switch(offset+39)
+	{
+		case 39:
+		{
+			m_crtc.display_hsync = ((data >> 5) & 7) * 16;
+			m_crtc.border_width = (data & 0x1f) * 16;
+			break;
+		}
+		
+		case 40:
+		{
+			m_crtc.htotal &= ~0x600;
+			m_crtc.htotal |= (data & 0xc0) << 3;
+
+			m_crtc.display_width = (data & 0x3f) * 16;
+			break;
+		}
+		
+		case 41:
+		{
+			m_crtc.display_hstart &= ~0x1fe;
+			m_crtc.display_hstart |= (data & 0xff) << 1;
+			break;
+		}
+		
+		case 42:
+		{
+			m_crtc.htotal &= ~0x1fe;
+			m_crtc.htotal |= (data & 0xff) << 1;
+			
+			//printf("H %d %d %d %d %d\n",m_crtc.htotal,m_crtc.display_hstart,m_crtc.display_width,m_crtc.display_hsync,m_crtc.border_width);
+			break;
+		}
+		
+		case 43:
+		{
+			m_crtc.display_vsync = (data >> 5) & 7;
+			m_crtc.border_height = (data & 0x1f) * 8;
+			break;
+		}
+		
+		case 44:
+		{
+			// TODO: VSLS, bit 6
+
+			m_crtc.display_height = (data & 0x3f) * 8;
+			break;
+		}
+		
+		case 45:
+		{
+			m_crtc.vtotal &= ~0x100;
+			m_crtc.vtotal |= BIT(data,7) << 8;
+			
+			// TODO: TRES, bit 6
+			
+			m_crtc.display_vstart = data & 0x3f;			
+			break;
+		}
+		
+		case 46:
+		{
+			m_crtc.vtotal &= ~0xff;
+			m_crtc.vtotal |= data & 0xff;
+			
+			// TODO: call it for all mods in the CRTC
+			screen_configure();
+
+			//printf("V %d %d %d %d %d\n",m_crtc.vtotal,m_crtc.display_vstart,m_crtc.display_height,m_crtc.display_vsync,m_crtc.border_height);
+			break;
+		}
+	}
+}
+
+// TODO: all horizontal values needs to be divided by 2, presumably some other register?
+// TODO: h/vstart not taken into account (needs video mods)
+void ygv608_device::screen_configure()
+{
+//	int display_hend = (m_crtc.display_hstart + (m_crtc.display_width / 2)) - 1;
+	int display_hend = (m_crtc.display_width / 2) - 1;
+//	int display_vend = (m_crtc.display_vstart + m_crtc.display_height) - 1;
+	int display_vend = (m_crtc.display_height) - 1;
+
+	//rectangle visarea(m_crtc.display_hstart, display_hend, m_crtc.display_vstart, display_vend);
+	rectangle visarea(0, display_hend, 0, display_vend);
+
+	attoseconds_t period = HZ_TO_ATTOSECONDS(m_screen->clock()) * m_crtc.vtotal * (m_crtc.htotal / 2);
+
+	m_screen->configure(m_crtc.htotal / 2, m_crtc.vtotal, visarea, period );
+	
+	// reset vblank timer
+	m_vblank_timer->reset();
+	//m_vblank_timer->adjust(m_screen->time_until_pos(m_crtc.display_vstart+m_crtc.display_height,0), 0, m_screen->frame_period());
+	m_vblank_timer->adjust(m_screen->time_until_pos(m_crtc.display_height,0), 0, m_screen->frame_period());
+}
 
 // Set any "short-cut" variables before we update the YGV608 registers
 // - these are used only in optimisation of the emulation
-
 void ygv608_device::SetPreShortcuts( int reg, int data )
 {
 	switch( reg ) {
@@ -1641,106 +2110,10 @@ void ygv608_device::SetPostShortcuts(int reg )
 
 }
 
-/*
- *      The rest of this stuff is for debugging only!
- */
 
 
-//#define SHOW_SOURCE_MODE
 
-#if 0
-void dump_block( char *name, uint8_t *block, int len )
-{
-	int i;
 
-	logerror( "uint8_t %s[] = {\n", name );
-	for( i=0; i<len; i++ ) {
-	if( i%8 == 0 )
-		logerror( " " );
-	logerror( "0x%02X, ", block[i] );
-	if( i%8 == 7 )
-		logerror( "\n" );
-	}
-	logerror( "};\n" );
-}
-#endif
-READ16_MEMBER( ygv608_device::debug_trigger_r )
-{
-	static int oneshot = 0;
-
-#ifndef SHOW_SOURCE_MODE
-	int i;
-#endif
-	char ascii[16];
-
-	if( oneshot )
-	return( 0 );
-	oneshot = 1;
-
-	ShowYGV608Registers();
-
-#ifdef SHOW_SOURCE_MODE
-#if 0
-	dump_block( "ygv608_regs",
-			(uint8_t *)m_regs.b,
-			64 );
-	dump_block( "ygv608_pnt",
-			(uint8_t *)m_pattern_name_table,
-			4096 );
-	dump_block( "ygv608_sat",
-			(uint8_t *)m_sprite_attribute_table.b,
-			256 );
-	dump_block( "ygv608_sdt",
-			(uint8_t *)m_scroll_data_table,
-			512 );
-	dump_block( "ygv608_cp",
-			(uint8_t *)m_colour_palette,
-			768 );
-#endif
-
-#else
-
-	/*
-	*  Dump pattern name table ram
-	*/
-#if 1
-	logerror( "Pattern Name Table\n" );
-	for( i=0; i<4096; i++ ) {
-	if( i % 16 == 0 )
-		logerror( "$%04X : ", i );
-	logerror( "%02X ", m_pattern_name_table[i] );
-	if( m_pattern_name_table[i] >= 0x20)
-		ascii[i%16] = m_pattern_name_table[i];
-	else
-		ascii[i%16] = '.';
-	if( i % 16 == 15 )
-		logerror( " | %-16.16s\n", ascii );
-	}
-	logerror( "\n" );
-#endif
-
-	/*
-	*  Dump scroll table ram
-	*/
-
-	logerror( "Scroll Table\n" );
-	for( i=0; i<256; i++ ) {
-	if( i % 16 == 0 )
-		logerror( "$%04X : ", i );
-	logerror( "%02X ", m_scroll_data_table[0][i] );
-	if( m_scroll_data_table[0][i] >= 0x20 )
-		ascii[i%16] = m_scroll_data_table[0][i];
-	else
-		ascii[i%16] = '.';
-	if( i % 16 == 15 )
-		logerror( " | %-16.16s\n", ascii );
-	}
-	logerror( "\n" );
-
-#endif
-
-	return( 0 );
-}
 
 void ygv608_device::ShowYGV608Registers()
 {

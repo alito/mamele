@@ -53,9 +53,16 @@
 #include "emu.h"
 #include "bus/rs232/keyboard.h"
 #include "cpu/s2650/s2650.h"
+#include "cpu/z80/z80daisy.h"
+#include "cpu/z80/z80.h"
 #include "imagedev/cassette.h"
-#include "sound/wave.h"
 #include "imagedev/snapquik.h"
+#include "machine/z80ctc.h"
+#include "machine/z80pio.h"
+#include "sound/wave.h"
+#include "screen.h"
+#include "speaker.h"
+
 
 class binbug_state : public driver_device
 {
@@ -72,7 +79,7 @@ public:
 	}
 
 	DECLARE_WRITE8_MEMBER(binbug_ctrl_w);
-	DECLARE_READ8_MEMBER(binbug_serial_r);
+	DECLARE_READ_LINE_MEMBER(binbug_serial_r);
 	DECLARE_WRITE_LINE_MEMBER(binbug_serial_w);
 	DECLARE_QUICKLOAD_LOAD_MEMBER( binbug );
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -92,7 +99,7 @@ WRITE8_MEMBER( binbug_state::binbug_ctrl_w )
 {
 }
 
-READ8_MEMBER( binbug_state::binbug_serial_r )
+READ_LINE_MEMBER( binbug_state::binbug_serial_r )
 {
 	return m_rs232->rxd_r() & (m_cass->input() < 0.03);
 }
@@ -110,10 +117,9 @@ static ADDRESS_MAP_START(binbug_mem, AS_PROGRAM, 8, binbug_state)
 	AM_RANGE( 0x7c00, 0x7fff) AM_RAM AM_SHARE("attribram")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(binbug_io, AS_IO, 8, binbug_state)
+static ADDRESS_MAP_START(binbug_data, AS_DATA, 8, binbug_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(S2650_CTRL_PORT, S2650_CTRL_PORT) AM_WRITE(binbug_ctrl_w)
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(binbug_serial_r)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -286,12 +292,13 @@ static DEVICE_INPUT_DEFAULTS_START( keyboard )
 	DEVICE_INPUT_DEFAULTS( "RS232_STOPBITS", 0xff, RS232_STOPBITS_1 )
 DEVICE_INPUT_DEFAULTS_END
 
-static MACHINE_CONFIG_START( binbug, binbug_state )
+static MACHINE_CONFIG_START( binbug )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",S2650, XTAL_1MHz)
 	MCFG_CPU_PROGRAM_MAP(binbug_mem)
-	MCFG_CPU_IO_MAP(binbug_io)
-	MCFG_S2650_FLAG_HANDLER(WRITELINE(binbug_state, binbug_serial_w))
+	MCFG_CPU_DATA_MAP(binbug_data)
+	MCFG_S2650_SENSE_INPUT(READLINE(binbug_state, binbug_serial_r))
+	MCFG_S2650_FLAG_OUTPUT(WRITELINE(binbug_state, binbug_serial_w))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD_MONOCHROME("screen", RASTER, rgb_t::amber())
@@ -332,8 +339,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS         INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1980, binbug, pipbug,   0,     binbug,    binbug, driver_device, 0,  "MicroByte", "BINBUG 3.6", 0 )
+//    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   CLASS         INIT  COMPANY      FULLNAME      FLAGS
+COMP( 1980, binbug, pipbug,   0,     binbug,    binbug, binbug_state, 0,    "MicroByte", "BINBUG 3.6", 0 )
 
 
 
@@ -396,12 +403,6 @@ ToDo:
 */
 
 
-#include "cpu/z80/z80.h"
-#include "machine/z80ctc.h"
-#include "machine/z80pio.h"
-#include "cpu/z80/z80daisy.h"
-
-
 class dg680_state : public binbug_state
 {
 public:
@@ -416,7 +417,7 @@ public:
 	DECLARE_WRITE8_MEMBER(portb_w);
 	DECLARE_READ8_MEMBER(port08_r);
 	DECLARE_WRITE8_MEMBER(port08_w);
-	DECLARE_WRITE8_MEMBER(kbd_put);
+	void kbd_put(u8 data);
 	TIMER_DEVICE_CALLBACK_MEMBER(time_tick);
 	TIMER_DEVICE_CALLBACK_MEMBER(uart_tick);
 
@@ -467,7 +468,7 @@ static const z80_daisy_config dg680_daisy_chain[] =
 static INPUT_PORTS_START( dg680 )
 INPUT_PORTS_END
 
-WRITE8_MEMBER( dg680_state::kbd_put )
+void dg680_state::kbd_put(u8 data)
 {
 	m_term_data = data;
 	/* strobe in keyboard data */
@@ -523,7 +524,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(dg680_state::uart_tick)
 	m_ctc->trg3(0);
 }
 
-static MACHINE_CONFIG_START( dg680, dg680_state )
+static MACHINE_CONFIG_START( dg680 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_8MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(dg680_mem)
@@ -544,7 +545,7 @@ static MACHINE_CONFIG_START( dg680, dg680_state )
 
 	/* Keyboard */
 	MCFG_DEVICE_ADD("keyb", GENERIC_KEYBOARD, 0)
-	MCFG_GENERIC_KEYBOARD_CB(WRITE8(dg680_state, kbd_put))
+	MCFG_GENERIC_KEYBOARD_CB(PUT(dg680_state, kbd_put))
 
 	/* Cassette */
 	MCFG_CASSETTE_ADD( "cassette" )
@@ -583,5 +584,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME   PARENT  COMPAT   MACHINE  INPUT    CLASS       INIT    COMPANY            FULLNAME       FLAGS */
-COMP( 1980, dg680, 0,      0,       dg680,   dg680, driver_device, 0,  "David Griffiths", "DG680 with DGOS-Z80 1.4", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+//    YEAR  NAME   PARENT  COMPAT   MACHINE  INPUT  CLASS        INIT  COMPANY            FULLNAME                   FLAGS
+COMP( 1980, dg680, 0,      0,       dg680,   dg680, dg680_state, 0,    "David Griffiths", "DG680 with DGOS-Z80 1.4", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )

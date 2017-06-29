@@ -50,6 +50,8 @@ public:
 	u16         m_adpcm_pos;
 	bool        m_adpcm_ff;
 
+	emu_timer *m_cadash_int5_timer;
+
 	optional_shared_ptr<uint8_t> m_cadash_shared_ram;
 
 	/* devices */
@@ -62,6 +64,7 @@ public:
 	required_device<tc0100scn_device> m_tc0100scn;
 	required_device<tc0110pcr_device> m_tc0110pcr;
 	optional_device<tc0220ioc_device> m_tc0220ioc;
+	DECLARE_WRITE8_MEMBER(coin_control_w);
 	DECLARE_WRITE8_MEMBER(sound_bankswitch_w);
 	DECLARE_WRITE8_MEMBER(asuka_msm5205_address_w);
 	DECLARE_READ16_MEMBER(cadash_share_r);
@@ -74,8 +77,9 @@ public:
 	virtual void machine_reset() override;
 	uint32_t screen_update_bonzeadv(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_asuka(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void screen_eof_asuka(screen_device &screen, bool state);
+	DECLARE_WRITE_LINE_MEMBER(screen_vblank_asuka);
 	INTERRUPT_GEN_MEMBER(cadash_interrupt);
+	DECLARE_DRIVER_INIT(cadash);
 
 	/*----------- defined in machine/bonzeadv.c -----------*/
 	void WriteLevelData();

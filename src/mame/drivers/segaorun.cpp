@@ -273,10 +273,12 @@ Notes:
 
 #include "emu.h"
 #include "includes/segaorun.h"
+#include "includes/segaipt.h"
+
 #include "machine/fd1089.h"
 #include "sound/ym2151.h"
 #include "sound/segapcm.h"
-#include "includes/segaipt.h"
+#include "speaker.h"
 
 #include "outrun.lh"
 
@@ -608,7 +610,7 @@ void segaorun_state::device_timer(emu_timer &timer, device_timer_id id, int para
 				case 65:
 				case 129:
 				case 193:
-					timer_set(m_screen->time_until_pos(scanline, m_screen->visible_area().max_x + 1), TID_IRQ2_GEN);
+					m_irq2_gen_timer->adjust(m_screen->time_until_pos(scanline, m_screen->visible_area().max_x + 1));
 					next_scanline = scanline + 1;
 					break;
 
@@ -1181,7 +1183,7 @@ GFXDECODE_END
 //  GENERIC MACHINE DRIVERS
 //**************************************************************************
 
-static MACHINE_CONFIG_START( outrun_base, segaorun_state )
+static MACHINE_CONFIG_START( outrun_base )
 
 	// basic machine hardware
 	MCFG_CPU_ADD("maincpu", M68000, MASTER_CLOCK/4)
@@ -2922,6 +2924,8 @@ DRIVER_INIT_MEMBER(segaorun_state,generic)
 {
 	// allocate a scanline timer
 	m_scanline_timer = timer_alloc(TID_SCANLINE);
+
+	m_irq2_gen_timer = timer_alloc(TID_IRQ2_GEN);
 
 	// configure the NVRAM to point to our workram
 	if (m_nvram != nullptr)

@@ -6,7 +6,8 @@
 
 #define DELAY_HACK
 
-const device_type NCR5390 = &device_creator<ncr5390_device>;
+DEFINE_DEVICE_TYPE(NCR5390, ncr5390_device, "ncr5390", "NCR 5390 SCSI")
+DEFINE_DEVICE_TYPE(NCR53C94, ncr53c94_device, "ncr53c94", "NCR 53C94 SCSI")
 
 DEVICE_ADDRESS_MAP_START(map, 8, ncr5390_device)
 	AM_RANGE(0x0, 0x0) AM_READWRITE(tcount_lo_r, tcount_lo_w)
@@ -21,11 +22,42 @@ DEVICE_ADDRESS_MAP_START(map, 8, ncr5390_device)
 	AM_RANGE(0x9, 0x9) AM_WRITE(clock_w)
 ADDRESS_MAP_END
 
+DEVICE_ADDRESS_MAP_START(map, 8, ncr53c94_device)
+	AM_RANGE(0x0, 0x0) AM_READWRITE(tcount_lo_r, tcount_lo_w)
+	AM_RANGE(0x1, 0x1) AM_READWRITE(tcount_hi_r, tcount_hi_w)
+	AM_RANGE(0x2, 0x2) AM_READWRITE(fifo_r, fifo_w)
+	AM_RANGE(0x3, 0x3) AM_READWRITE(command_r, command_w)
+	AM_RANGE(0x4, 0x4) AM_READWRITE(status_r, bus_id_w)
+	AM_RANGE(0x5, 0x5) AM_READWRITE(istatus_r, timeout_w)
+	AM_RANGE(0x6, 0x6) AM_READWRITE(seq_step_r, sync_period_w)
+	AM_RANGE(0x7, 0x7) AM_READWRITE(fifo_flags_r, sync_offset_w)
+	AM_RANGE(0x8, 0x8) AM_READWRITE(conf_r, conf_w)
+	AM_RANGE(0x9, 0x9) AM_WRITE(clock_w)
+	AM_RANGE(0xa, 0xa) AM_WRITE(test_w)
+	AM_RANGE(0xb, 0xb) AM_READWRITE(conf2_r, conf2_w)
+	AM_RANGE(0xc, 0xc) AM_READWRITE(conf3_r, conf3_w)
+	AM_RANGE(0xf, 0xf) AM_WRITE(fifo_align_w)
+ADDRESS_MAP_END
+
+ncr5390_device::ncr5390_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: nscsi_device(mconfig, type, tag, owner, clock)
+	, tm(nullptr), config(0), status(0), istatus(0), clock_conv(0), sync_offset(0), sync_period(0), bus_id(0)
+	, select_timeout(0), seq(0), tcount(0), mode(0), fifo_pos(0), command_pos(0), state(0), xfr_phase(0), command_length(0), dma_dir(0), irq(false), drq(false)
+	, m_irq_handler(*this)
+	, m_drq_handler(*this)
+{
+}
+
 ncr5390_device::ncr5390_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-		: nscsi_device(mconfig, NCR5390, "5390 SCSI", tag, owner, clock, "ncr5390", __FILE__), tm(nullptr), config(0), status(0), istatus(0), clock_conv(0), sync_offset(0), sync_period(0), bus_id(0),
-	select_timeout(0), seq(0), tcount(0), mode(0), fifo_pos(0), command_pos(0), state(0), xfr_phase(0), command_length(0), dma_dir(0), irq(false), drq(false),
-	m_irq_handler(*this),
-	m_drq_handler(*this)
+	: ncr5390_device(mconfig, NCR5390, tag, owner, clock)
+{
+}
+
+ncr53c94_device::ncr53c94_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: ncr5390_device(mconfig, NCR53C94, tag, owner, clock)
+	, test_mode(false)
+	, config2(0)
+	, config3(0)
 {
 }
 
@@ -545,7 +577,7 @@ void ncr5390_device::delay_cycles(int cycles)
 
 READ8_MEMBER(ncr5390_device::tcount_lo_r)
 {
-	logerror("%s: tcount_lo_r %02x (%08x)\n", tag(), tcount & 0xff, space.device().safe_pc());
+	logerror("%s: tcount_lo_r %02x (%s)\n", tag(), tcount & 0xff, machine().describe_context());
 	return tcount;
 }
 
@@ -553,12 +585,12 @@ WRITE8_MEMBER(ncr5390_device::tcount_lo_w)
 {
 	tcount = (tcount & 0xff00) | data;
 	status &= ~S_TC0;
-	logerror("%s: tcount_lo_w %02x (%08x)\n", tag(), data, space.device().safe_pc());
+	logerror("%s: tcount_lo_w %02x (%s)\n", tag(), data, machine().describe_context());
 }
 
 READ8_MEMBER(ncr5390_device::tcount_hi_r)
 {
-	logerror("%s: tcount_hi_r %02x (%08x)\n", tag(), tcount >> 8, space.device().safe_pc());
+	logerror("%s: tcount_hi_r %02x (%s)\n", tag(), tcount >> 8, machine().describe_context());
 	return tcount >> 8;
 }
 
@@ -566,7 +598,7 @@ WRITE8_MEMBER(ncr5390_device::tcount_hi_w)
 {
 	tcount = (tcount & 0x00ff) | (data << 8);
 	status &= ~S_TC0;
-	logerror("%s: tcount_hi_w %02x (%08x)\n", tag(), data, space.device().safe_pc());
+	logerror("%s: tcount_hi_w %02x (%s)\n", tag(), data, machine().describe_context());
 }
 
 uint8_t ncr5390_device::fifo_pop()
@@ -606,13 +638,13 @@ WRITE8_MEMBER(ncr5390_device::fifo_w)
 
 READ8_MEMBER(ncr5390_device::command_r)
 {
-	logerror("%s: command_r (%08x)\n", tag(), space.device().safe_pc());
+	logerror("%s: command_r (%s)\n", tag(), machine().describe_context());
 	return command[0];
 }
 
 WRITE8_MEMBER(ncr5390_device::command_w)
 {
-	logerror("%s: command_w %02x (%08x)\n", tag(), data, space.device().safe_pc());
+	logerror("%s: command_w %02x (%s)\n", tag(), data, machine().describe_context());
 	if(command_pos == 2) {
 		status |= S_GROSS_ERROR;
 		check_irq();
@@ -755,7 +787,7 @@ READ8_MEMBER(ncr5390_device::status_r)
 {
 	uint32_t ctrl = scsi_bus->ctrl_r();
 	uint8_t res = status | (ctrl & S_MSG ? 4 : 0) | (ctrl & S_CTL ? 2 : 0) | (ctrl & S_INP ? 1 : 0);
-	logerror("%s: status_r %02x (%08x)\n", tag(), res, space.device().safe_pc());
+	logerror("%s: status_r %02x (%s)\n", tag(), res, machine().describe_context());
 	if(irq)
 		status &= ~(S_GROSS_ERROR|S_PARITY|S_TCC);
 	return res;
@@ -776,7 +808,7 @@ READ8_MEMBER(ncr5390_device::istatus_r)
 	if(res)
 		command_pop_and_chain();
 
-	logerror("%s: istatus_r %02x (%08x)\n", tag(), res, space.device().safe_pc());
+	logerror("%s: istatus_r %02x (%s)\n", tag(), res, machine().describe_context());
 	return res;
 }
 
@@ -787,7 +819,7 @@ WRITE8_MEMBER(ncr5390_device::timeout_w)
 
 READ8_MEMBER(ncr5390_device::seq_step_r)
 {
-	logerror("%s: seq_step_r %d (%08x)\n", tag(), seq, space.device().safe_pc());
+	logerror("%s: seq_step_r %d (%s)\n", tag(), seq, machine().describe_context());
 	return seq;
 }
 
@@ -864,4 +896,41 @@ void ncr5390_device::drq_clear()
 		drq = false;
 		m_drq_handler(drq);
 	}
+}
+
+void ncr53c94_device::device_start()
+{
+	save_item(NAME(test_mode));
+	save_item(NAME(config2));
+	save_item(NAME(config3));
+
+	test_mode = false;
+	config2 = 0;
+	config3 = 0;
+
+	ncr5390_device::device_start();
+}
+
+void ncr53c94_device::reset_soft()
+{
+	test_mode = false;
+	config2 = 0;
+	config3 = 0;
+
+	ncr5390_device::reset_soft();
+}
+
+WRITE8_MEMBER(ncr53c94_device::conf_w)
+{
+	ncr5390_device::conf_w(space, offset, data, mem_mask);
+
+	// test mode can only be cleared by hard/soft reset
+	if (data & 0x8)
+		test_mode = true;
+}
+
+WRITE8_MEMBER(ncr53c94_device::test_w)
+{
+	if (test_mode)
+		logerror("%s: test_w %d (%s) - test mode not implemented\n", tag(), data, machine().describe_context());
 }

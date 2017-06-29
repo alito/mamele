@@ -6,8 +6,8 @@
 
 *********************************************************************/
 
-#ifndef __A2_VIDEO__
-#define __A2_VIDEO__
+#ifndef MAME_VIDEO_APPLE2_H
+#define MAME_VIDEO_APPLE2_H
 
 
 class a2_video_device :
@@ -58,6 +58,6 @@ private:
 };
 
 // device type definition
-extern const device_type APPLE2_VIDEO;
+DECLARE_DEVICE_TYPE(APPLE2_VIDEO, a2_video_device)
 
-#endif
+#endif // MAME_VIDEO_APPLE2_H

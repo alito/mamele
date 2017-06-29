@@ -22,8 +22,10 @@
  *
  */
 
-#ifndef MAGICSOUND_H_
-#define MAGICSOUND_H_
+#ifndef MAME_BUS_CPC_MAGICSOUND_H
+#define MAME_BUS_CPC_MAGICSOUND_H
+
+#pragma once
 
 #include "cpcexp.h"
 #include "sound/dmadac.h"
@@ -39,14 +41,21 @@ public:
 	// construction/destruction
 	al_magicsound_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// optional information overrides
-	virtual machine_config_constructor device_mconfig_additions() const override;
-
 	DECLARE_READ8_MEMBER(dmac_r);
 	DECLARE_WRITE8_MEMBER(dmac_w);
 	DECLARE_WRITE8_MEMBER(timer_w);
 	DECLARE_WRITE8_MEMBER(volume_w);
 	DECLARE_WRITE8_MEMBER(mapper_w);
+
+protected:
+	// device-level overrides
+	virtual void device_start() override;
+	virtual void device_reset() override;
+
+	// optional information overrides
+	virtual void device_add_mconfig(machine_config &config) override;
+
+private:
 	DECLARE_WRITE_LINE_MEMBER(da0_w);
 	DECLARE_READ8_MEMBER(dma_read_byte);
 	DECLARE_WRITE8_MEMBER(dma_write_byte);
@@ -59,12 +68,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(sam2_w);
 	DECLARE_WRITE_LINE_MEMBER(sam3_w);
 
-protected:
-	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-
-private:
 	cpc_expansion_slot_device *m_slot;
 
 	required_device<dac_byte_interface> m_dac;
@@ -84,7 +87,7 @@ private:
 };
 
 // device type definition
-extern const device_type AL_MAGICSOUND;
+DECLARE_DEVICE_TYPE(AL_MAGICSOUND, al_magicsound_device)
 
 
-#endif /* MAGICSOUND_H_ */
+#endif // MAME_BUS_CPC_MAGICSOUND_H

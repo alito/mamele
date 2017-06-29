@@ -19,6 +19,7 @@ Data presented at 5000 will appear on screen in a dumb-terminal format.
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
+#include "screen.h"
 
 
 class jonos_state : public driver_device
@@ -116,7 +117,7 @@ static GFXDECODE_START( jonos )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_START( jonos, jonos_state )
+static MACHINE_CONFIG_START( jonos )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8085A, XTAL_16MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(jonos_mem)
@@ -152,5 +153,5 @@ ROM_END
 
 /* Driver */
 
-/*   YEAR   NAME    PARENT  COMPAT   MACHINE  INPUT  CLASS            INIT       COMPANY   FULLNAME       FLAGS */
-COMP( 198?, jonos,  0,      0,       jonos,   jonos, jonos_state,    jonos,     "Jonos", "Escort", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)
+//   YEAR   NAME    PARENT  COMPAT   MACHINE  INPUT  CLASS        INIT     COMPANY  FULLNAME  FLAGS
+COMP( 198?, jonos,  0,      0,       jonos,   jonos, jonos_state, jonos,   "Jonos", "Escort", MACHINE_NOT_WORKING | MACHINE_NO_SOUND)

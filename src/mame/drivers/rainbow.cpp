@@ -340,6 +340,39 @@ WIRE CONNECTORS - SEEN ON SCHEMATICS - NOT PRESENT ON DEC-100 B (-A only?):
 W16 pulls J2 printer port pin 1 to GND when set (chassis to logical GND).
 W17 pulls J1 serial  port pin 1 to GND when set (chassis to logical GND).
 ****************************************************************************/
+#include "emu.h"
+
+#include "cpu/i86/i86.h"
+#include "cpu/z80/z80.h"
+#include "video/vtvideo.h"
+#include "video/upd7220.h"
+
+#include "machine/wd_fdc.h"
+#include "formats/rx50_dsk.h"
+#include "formats/pc_dsk.h" // PC Formats
+#include "imagedev/flopdrv.h"
+
+#include "imagedev/harddriv.h"
+#include "machine/wd2010.h"
+#include "machine/corvushd.h"
+
+#include "machine/z80dart.h"
+#include "bus/rs232/rs232.h"
+#include "imagedev/bitbngr.h"
+#include "machine/com8116.h"
+
+#include "machine/i8251.h"
+#include "machine/clock.h"
+#include "machine/dec_lk201.h"
+#include "machine/nvram.h"
+
+#include "machine/ds1315.h"
+#include "softlist.h"
+#include "screen.h"
+
+#include "rainbow.lh" // BEZEL - LAYOUT with LEDs for diag 1-7, keyboard 8-11 and floppy 20-23
+
+
 #define RD51_MAX_HEAD 8
 #define RD51_MAX_CYLINDER 1024
 #define RD51_SECTORS_PER_TRACK 17
@@ -442,36 +475,6 @@ W17 pulls J1 serial  port pin 1 to GND when set (chassis to logical GND).
 #define DUAL_MONITOR  0x03
 
 // ----------------------------------------------------------------------------------------------
-#include "emu.h"
-#include "cpu/i86/i86.h"
-#include "cpu/z80/z80.h"
-#include "video/vtvideo.h"
-#include "video/upd7220.h"
-
-#include "machine/wd_fdc.h"
-#include "formats/rx50_dsk.h"
-#include "formats/pc_dsk.h" // PC Formats
-#include "imagedev/flopdrv.h"
-
-#include "imagedev/harddriv.h"
-#include "machine/wd2010.h"
-#include "machine/corvushd.h"
-
-#include "machine/z80dart.h"
-#include "bus/rs232/rs232.h"
-#include "imagedev/bitbngr.h"
-#include "machine/com8116.h"
-
-#include "machine/i8251.h"
-#include "machine/clock.h"
-#include "machine/dec_lk201.h"
-#include "machine/nvram.h"
-
-#include "machine/ds1315.h"
-#include "softlist.h"
-
-#include "rainbow.lh" // BEZEL - LAYOUT with LEDs for diag 1-7, keyboard 8-11 and floppy 20-23
-
 #define LK201_TAG   "lk201"
 #define FD1793_TAG  "fd1793x"
 
@@ -657,10 +660,10 @@ private:
 	required_device<cpu_device> m_i8088;
 	required_device<cpu_device> m_z80;
 
-	required_device<fd1793_t> m_fdc;
+	required_device<fd1793_device> m_fdc;
 	optional_device<wd2010_device> m_hdc;
 
-	required_device<corvus_hdc_t> m_corvus_hdc;
+	required_device<corvus_hdc_device> m_corvus_hdc;
 
 	required_device<upd7201_device> m_mpsc;
 	required_device<com8116_device> m_dbrg_A;
@@ -954,7 +957,7 @@ AM_RANGE(0x11, 0x11) AM_DEVREADWRITE("kbdser", i8251_device, status_r, control_w
 // See boot rom @1EA6: 0x27 (<- RESET EXTENDED COMM OPTION  )
 
 // Corvus B/H harddisk controller (incompatible with EXT.COMM OPTION):
-AM_RANGE(0x20, 0x20) AM_DEVREADWRITE("corvus", corvus_hdc_t, read, write)
+AM_RANGE(0x20, 0x20) AM_DEVREADWRITE("corvus", corvus_hdc_device, read, write)
 AM_RANGE(0x21, 0x21) AM_READ(corvus_status_r)
 
 // ===========================================================
@@ -1029,14 +1032,14 @@ AM_RANGE(0x00, 0x00) AM_READWRITE(z80_latch_r, z80_latch_w)
 AM_RANGE(0x20, 0x20) AM_READWRITE(z80_generalstat_r, z80_diskdiag_read_w) // read to port 0x20 used by MS-DOS 2.x diskette loader.
 AM_RANGE(0x21, 0x21) AM_READWRITE(z80_generalstat_r, z80_diskdiag_write_w)
 AM_RANGE(0x40, 0x40) AM_READWRITE(z80_diskstatus_r, z80_diskcontrol_w)
-AM_RANGE(0x60, 0x63) AM_DEVREADWRITE(FD1793_TAG, fd1793_t, read, write)
+AM_RANGE(0x60, 0x63) AM_DEVREADWRITE(FD1793_TAG, fd1793_device, read, write)
 
 // Z80 I/O shadow area > $80
 AM_RANGE(0x80, 0x80) AM_READWRITE(z80_latch_r, z80_latch_w)
 AM_RANGE(0xA0, 0xA0) AM_READWRITE(z80_generalstat_r, z80_diskdiag_read_w) // read to port 0x20 used by MS-DOS 2.x diskette loader.
 AM_RANGE(0xA1, 0xA1) AM_READWRITE(z80_generalstat_r, z80_diskdiag_write_w)
 AM_RANGE(0xC0, 0xC0) AM_READWRITE(z80_diskstatus_r, z80_diskcontrol_w)
-AM_RANGE(0xE0, 0xE3) AM_DEVREADWRITE(FD1793_TAG, fd1793_t, read, write)
+AM_RANGE(0xE0, 0xE3) AM_DEVREADWRITE(FD1793_TAG, fd1793_device, read, write)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -2856,7 +2859,7 @@ WRITE_LINE_MEMBER(rainbow_state::irq_hi_w)
 
 READ16_MEMBER(rainbow_state::vram_r)
 {
-	if((!(m_GDC_MODE_REGISTER & GDC_MODE_VECTOR)) || space.debugger_access())  // (NOT VECTOR MODE)
+	if((!(m_GDC_MODE_REGISTER & GDC_MODE_VECTOR)) || machine().side_effect_disabled())  // (NOT VECTOR MODE)
 	{
 		// SCROLL_MAP IN BITMAP MODE ONLY...?
 		if(m_GDC_MODE_REGISTER & GDC_MODE_HIGHRES)
@@ -3207,7 +3210,7 @@ static ADDRESS_MAP_START( upd7220_map, AS_0, 16, rainbow_state)
 	AM_RANGE(0x00000, 0x3ffff) AM_READWRITE(vram_r, vram_w) AM_SHARE("vram")
 ADDRESS_MAP_END
 
-static MACHINE_CONFIG_START(rainbow, rainbow_state)
+static MACHINE_CONFIG_START(rainbow)
 MCFG_DEFAULT_LAYOUT(layout_rainbow)
 
 /* basic machine hardware */
@@ -3455,7 +3458,7 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME          PARENT   COMPAT   MACHINE       INPUT      STATE          INIT COMPANY                         FULLNAME       FLAGS */
-COMP(1982, rainbow100a, rainbow, 0, rainbow, rainbow100b_in, driver_device, 0, "Digital Equipment Corporation", "Rainbow 100-A", MACHINE_IS_SKELETON)
-COMP(1983, rainbow, 0, 0, rainbow, rainbow100b_in, driver_device, 0, "Digital Equipment Corporation", "Rainbow 100-B", MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS)
-COMP(1985, rainbow190, rainbow, 0, rainbow, rainbow100b_in, driver_device, 0, "Digital Equipment Corporation", "Rainbow 190-B", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_COLORS)
+/*   YEAR  NAME         PARENT   COMPAT  MACHINE  INPUT           STATE          INIT  COMPANY                          FULLNAME         FLAGS */
+COMP(1982, rainbow100a, rainbow, 0,      rainbow, rainbow100b_in, rainbow_state, 0,    "Digital Equipment Corporation", "Rainbow 100-A", MACHINE_IS_SKELETON)
+COMP(1983, rainbow,     0,       0,      rainbow, rainbow100b_in, rainbow_state, 0,    "Digital Equipment Corporation", "Rainbow 100-B", MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS)
+COMP(1985, rainbow190,  rainbow, 0,      rainbow, rainbow100b_in, rainbow_state, 0,    "Digital Equipment Corporation", "Rainbow 190-B", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_COLORS)

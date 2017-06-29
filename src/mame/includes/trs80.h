@@ -6,19 +6,22 @@
  *
  ****************************************************************************/
 
-#ifndef TRS80_H_
-#define TRS80_H_
+#ifndef MAME_INCLUDES_TRS80_H
+#define MAME_INCLUDES_TRS80_H
 
-#include "cpu/z80/z80.h"
-#include "sound/speaker.h"
-#include "sound/wave.h"
-#include "machine/ay31015.h"
-#include "machine/buffer.h"
+#pragma once
+
 #include "bus/centronics/ctronics.h"
-#include "machine/wd_fdc.h"
+#include "cpu/z80/z80.h"
 #include "imagedev/cassette.h"
 #include "imagedev/flopdrv.h"
 #include "imagedev/snapquik.h"
+#include "machine/ay31015.h"
+#include "machine/buffer.h"
+#include "machine/wd_fdc.h"
+#include "sound/spkrdev.h"
+#include "sound/wave.h"
+
 #include "formats/trs_cas.h"
 
 
@@ -159,7 +162,7 @@ private:
 	optional_device<output_latch_device> m_cent_data_out;
 	optional_device<input_buffer_device> m_cent_status_in;
 	optional_device<ay31015_device> m_ay31015;
-	optional_device<fd1793_t> m_fdc;
+	optional_device<fd1793_device> m_fdc;
 	optional_device<floppy_connector> m_floppy0;
 	optional_device<floppy_connector> m_floppy1;
 	optional_device<floppy_connector> m_floppy2;
@@ -188,4 +191,4 @@ private:
 	memory_bank *m_bank19;
 };
 
-#endif  /* TRS80_H_ */
+#endif // MAME_INCLUDES_TRS80_H

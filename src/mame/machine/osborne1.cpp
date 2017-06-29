@@ -12,6 +12,8 @@ There are three IRQ sources:
 #include "emu.h"
 #include "includes/osborne1.h"
 
+#include "screen.h"
+
 
 WRITE8_MEMBER( osborne1_state::bank_0xxx_w )
 {
@@ -40,14 +42,14 @@ READ8_MEMBER( osborne1_state::bank_2xxx_3xxx_r )
 		data &= m_pia0->read(space, offset & 0x03);
 	if ((offset & 0xA00) == 0x200) // Keyboard
 	{
-		if (offset & 0x01) data &= m_keyb_row0->read();
-		if (offset & 0x02) data &= m_keyb_row1->read();
-		if (offset & 0x04) data &= m_keyb_row3->read();
-		if (offset & 0x08) data &= m_keyb_row4->read();
-		if (offset & 0x10) data &= m_keyb_row5->read();
-		if (offset & 0x20) data &= m_keyb_row2->read();
-		if (offset & 0x40) data &= m_keyb_row6->read();
-		if (offset & 0x80) data &= m_keyb_row7->read();
+		if (offset & 0x01) data &= m_keyb_row[0]->read();
+		if (offset & 0x02) data &= m_keyb_row[1]->read();
+		if (offset & 0x04) data &= m_keyb_row[3]->read();
+		if (offset & 0x08) data &= m_keyb_row[4]->read();
+		if (offset & 0x10) data &= m_keyb_row[5]->read();
+		if (offset & 0x20) data &= m_keyb_row[2]->read();
+		if (offset & 0x40) data &= m_keyb_row[6]->read();
+		if (offset & 0x80) data &= m_keyb_row[7]->read();
 	}
 	if ((offset & 0xA00) == 0xA00) // Serial
 	{
@@ -103,7 +105,7 @@ WRITE8_MEMBER( osborne1_state::videoram_w )
 
 READ8_MEMBER( osborne1_state::opcode_r )
 {
-	if (!space.debugger_access())
+	if (!machine().side_effect_disabled())
 	{
 		// Update the flipflops that control bank selection and NMI
 		uint8_t const new_ub6a_q = (m_btn_reset->read() & 0x80) ? 1 : 0;
@@ -117,12 +119,7 @@ READ8_MEMBER( osborne1_state::opcode_r )
 	}
 
 	// Now that's sorted out we can call the normal read handler
-	address_space &program_space(m_maincpu->space(AS_PROGRAM));
-	bool const prev_debugger_access(program_space.debugger_access());
-	program_space.set_debugger_access(space.debugger_access());
-	uint8_t const data(program_space.read_byte(offset));
-	program_space.set_debugger_access(prev_debugger_access);
-	return data;
+	return m_maincpu->space(AS_PROGRAM).read_byte(offset);
 }
 
 WRITE8_MEMBER( osborne1_state::bankswitch_w )

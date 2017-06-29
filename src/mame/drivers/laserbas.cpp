@@ -61,10 +61,12 @@ expected: 43 FB CC 9A D4 23 6C 01 3E  <- From ROM 4
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "video/mc6845.h"
 #include "machine/pit8253.h"
 #include "sound/dac.h"
 #include "sound/volt_reg.h"
+#include "video/mc6845.h"
+#include "screen.h"
+#include "speaker.h"
 
 class laserbas_state : public driver_device
 {
@@ -402,7 +404,7 @@ INPUT_PORTS_END
 #define CLOCK 16680000
 #define PIT_CLOCK (CLOCK/16) // 12 divider ?
 
-static MACHINE_CONFIG_START( laserbas, laserbas_state )
+static MACHINE_CONFIG_START( laserbas )
 
 	MCFG_CPU_ADD("maincpu", Z80, CLOCK / 4)
 	MCFG_CPU_PROGRAM_MAP(laserbas_memory)
@@ -544,6 +546,6 @@ ROM_START( futflash )
 	ROM_LOAD( "ff.8",         0xf000, 0x0800, CRC(623f558f) SHA1(be6c6565df658555f21c43a8c2459cf399794a84) )
 ROM_END
 
-GAME( 1980, futflash,        0, laserbas, laserbas, driver_device, 0, ROT270, "Hoei",                  "Future Flash",        MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
-GAME( 1981, laserbas, futflash, laserbas, laserbas, driver_device, 0, ROT270, "Hoei (Amstar license)", "Laser Base (set 1)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
-GAME( 1981, laserbasa,futflash, laserbas, laserbas, driver_device, 0, ROT270, "Hoei (Amstar license)", "Laser Base (set 2)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
+GAME( 1980, futflash,  0,        laserbas, laserbas, laserbas_state, 0, ROT270, "Hoei",                  "Future Flash",        MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
+GAME( 1981, laserbas,  futflash, laserbas, laserbas, laserbas_state, 0, ROT270, "Hoei (Amstar license)", "Laser Base (set 1)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
+GAME( 1981, laserbasa, futflash, laserbas, laserbas, laserbas_state, 0, ROT270, "Hoei (Amstar license)", "Laser Base (set 2)",  MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_COLORS | MACHINE_IMPERFECT_SOUND | MACHINE_SUPPORTS_SAVE )
