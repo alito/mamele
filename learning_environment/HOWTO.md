@@ -65,10 +65,15 @@ The format of the bitmap passed to the agent is BGRA (although this
 will probably be run-time selectable in the future).  That is, one
 unsigned byte for the blue, green, red and alpha values of each pixel
 in turn.  The alpha channel can be ignored since it will always be
-255. In the python bindings, this is passed as a string.  Look at
-randomplayer.py about how to convert it into a more usual image format
-through PIL.
+255. In the python bindings, this is passed as a memoryview.  Look at
+scorepicker.py to find out how to convert it into a more usual image format
+through PIL. Note that the memoryview is only valid through the duration 
+of the update call. If you want to keep it you should make a copy of it
 
+The format of the memory dumped is as a linked list of le_memory_t structs (see 
+learning-environment-common.h). In Python, this gets translated to a list of 
+(memory_start, memoryview) objects. Similarly to the bitmap, the memoryview 
+objects are only valid during the call to the memory consumer.
 
 
 Finding the current score

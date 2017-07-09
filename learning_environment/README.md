@@ -28,10 +28,13 @@ You can then run:
 to watch an agent get killed while sitting. Looking at [sit.c](example_agents/sit.c) is a good starting point for an agent
 that will show you all the points you can modify to make the agent actually act.
 
-You can also test out the Python bindings (Python 2.x for now only sorry. I need to learn about
-Python 3 bindings). The Python module to load is passed in the -le_options argument.
+You can also test out the Python bindings. The Python module to load is passed in the -le_options argument.
 
-`../../mame64 -use_le -le_library pythonbinding.so -le_options randomplayer galaxian`
+`../../mame64 -use_le -le_library python2binding.so -le_options randomplayer galaxian`
+or
+`../../mame64 -use_le -le_library python3binding.so -le_options randomplayer galaxian`
+
+depending on whether you are using Python 2 or 3
 
 This agent will hit random buttons so it can be a bit more fun.
 
