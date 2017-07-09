@@ -8,6 +8,37 @@ Python bindings for the agent interface of the MAME learning environment.
 #include "learning-environment-common.h"
 
 
+#if PY_MAJOR_VERSION >= 3
+
+#define PyInt_AsLong PyLong_AsLong
+#define PyString_FromString PyUnicode_DecodeFSDefault
+
+#else
+
+/* 
+Write a super-simple PyMemoryView_FromMemory for Python 2.7
+We don't need to support the buffer protocol since the memoryview is only valid during the call
+*/
+PyObject* PyMemoryView_FromMemory(char *mem, Py_ssize_t size, int flags)
+{
+	Py_buffer buffer;
+
+    assert(mem != NULL);
+    assert(flags == PyBUF_READ || flags == PyBUF_WRITE);
+
+    PyBuffer_FillInfo(&buffer, NULL, mem, size, (flags == PyBUF_WRITE) ? 0 : 1, PyBUF_SIMPLE);
+
+    /* that whole buffer business seems buggy as */
+    buffer.shape = &(buffer.len);
+
+	/* Create a reference. Py_DECREF it when used */
+	PyObject* memory_view = PyMemoryView_FromBuffer(&buffer);
+
+	return memory_view;
+}
+
+#endif
+
 static PyObject *p_start_func, *p_update_func, *p_get_actions_func, *p_shutdown_func, 
 	*p_check_reset_func, *p_consume_memory_func, *p_module;
 
@@ -15,6 +46,7 @@ static int le_video_mode = LE_VIDEO_MODE_BGRA;
 
 static int start_game(const le_game_info *game_info) {
 	PyObject *p_args, *p_value;
+
 
 	/* Convert the array of buttons used to a python list */
 	/* Based on Hrvoje Niksic found at https://mail.python.org/pipermail/capi-sig/2009-January/000205.html */
@@ -85,7 +117,7 @@ static int update_state(int current_score, int game_over, const le_frame_buffer 
 			frame_byte_length = frame_buffer->width * frame_buffer->height * 4;
 		}		
 
-		p_buffer = PyBuffer_FromMemory(frame_buffer->buffer, frame_byte_length);
+		p_buffer = PyMemoryView_FromMemory((char *) (frame_buffer->buffer), frame_byte_length, PyBUF_READ);
 		p_args = Py_BuildValue("(iOO)", current_score, (game_over ? Py_True : Py_False), p_buffer);
 
 		if (p_args == NULL) {
@@ -202,7 +234,7 @@ static void consume_memory(const le_memory_t *memory) {
 		while (memory != NULL) {
 
 
-			p_memory = PyBuffer_FromMemory(memory->content, memory->size);
+			p_memory = PyMemoryView_FromMemory((char *)(memory->content), memory->size, PyBUF_READ);
 			if (p_memory == NULL) {
 				fprintf(stderr, "Error creating buffer from memory in consume_memory\n");
 				PyErr_Print();
@@ -223,6 +255,7 @@ static void consume_memory(const le_memory_t *memory) {
 				exit(1);								
 			}
 
+			/* PyTuple_SET_ITEM steals the references */
 			PyTuple_SET_ITEM(p_ram_region, 0, p_start_address);
 			PyTuple_SET_ITEM(p_ram_region, 1, p_memory);
 
@@ -231,6 +264,7 @@ static void consume_memory(const le_memory_t *memory) {
 				PyErr_Print();			
 				exit(1);
 			}
+			Py_DECREF(p_ram_region);
 
 			memory = memory->next;
 		}
@@ -241,6 +275,7 @@ static void consume_memory(const le_memory_t *memory) {
 			PyErr_Print();
 			exit(1);
 		}
+		Py_DECREF(p_ram_regions);
 		p_value = PyObject_CallObject(p_consume_memory_func, p_args);
 		Py_DECREF(p_args);
 		if (p_value != NULL) {

@@ -2,7 +2,7 @@
 Dummy controller that presses keys randomly
 
 Call with a command line like:
-mame -use_le -le_library pythonbinding.so -le_options randomplayer <romname>
+mame -use_le -le_library python2binding.so -le_options randomplayer <romname>
 """
 
 import random
@@ -157,7 +157,7 @@ class Button(object):
         self.number_in_c = number_in_c
 
         if self.number_in_c >= 10:
-            self.frequency = 1.0 / 2500.
+            self.frequency = 1.0 / 250.
         else:
             self.frequency = 1.0 / 30.
 

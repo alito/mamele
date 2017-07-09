@@ -1,12 +1,14 @@
 """
 Helps to work out the location of the score in memory
 
-Pressing the 'w' key will write the memory contents and an image snapshot
+Pressing the 'w' key will write the memory contents and an image snapshot. You can then quit and run:
+
+python scorepicker.py -s <the_score_when_you_pressed_w> <the_memory_file_it_wrote_while_running>
 
 Enter score locations into ../score_description.txt
 
 Call with a command line like:
-mame -use_le -le_library pythonbinding.so -le_options scorepicker <romname>
+mame -use_le -le_library python2binding.so -le_options scorepicker <romname>
 """
 
 import os, sys, logging
@@ -14,6 +16,14 @@ import datetime
 
 import curses
 from PIL import Image
+
+
+if sys.version_info >= (3, 0):
+    def to_byte_array(memoryview):
+        return memoryview.tobytes()
+else:
+    def to_byte_array(memoryview):
+        return bytearray(memoryview.tobytes())
 
 
 def atatime(iterator, count):
@@ -51,7 +61,7 @@ def write_memory_to_filename(filename, memory):
     with open(filename, 'w') as memory_out:
         # print the memory in a readable format, 50 bytes at a time
         for line in atatime(memory, 50):
-            memory_out.write('%s\n' % ''.join('%02x' % ord(byte) for byte in line))
+            memory_out.write('%s\n' % ''.join('%02x' % byte for byte in line))
 
 
 def le_get_functions(args):
@@ -104,7 +114,7 @@ class ScorePicker(object):
                 write_memory_to_filename(memory_filename, memory)
 
             image_filename = os.path.join(self.directory, 'image_%s.png' % self.update_count)
-            image = Image.frombuffer("RGBA",(self.width, self.height), self.image,'raw', ("BGRA",0,1))
+            image = Image.frombytes("RGBA",(self.width, self.height), self.image,'raw', ("BGRA",0,1))
             image.putalpha(255)
             image.save(image_filename)
 
@@ -117,7 +127,7 @@ class ScorePicker(object):
         self.update_count += 1
         self.current_score = score
 
-        self.image = video_frame[:]
+        self.image = video_frame.tobytes()
 
         return 0  #number of frames you want to skip
 
@@ -136,7 +146,7 @@ class ScorePicker(object):
     
     def consume_memory(self, memory):
         self.memory_start_addresses = [region[0] for region in memory]
-        self.memory = [region[1][:] for region in memory]
+        self.memory = [to_byte_array(region[1]) for region in memory]
 
 
 def find_score(args):

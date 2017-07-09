@@ -7,21 +7,44 @@ MAME_LE_DIRECTORY=..
 CFLAGS += -Wall -fPIC -I$(MAME_LE_DIRECTORY)
 
 
-PYTHONCFLAGS := -I$(shell python -c 'import distutils.sysconfig; print distutils.sysconfig.get_python_inc()')
-PYTHONLIBS = -lpython$(shell python -c 'import distutils.sysconfig; print distutils.sysconfig.get_python_version()') -lm
+PYTHON2CFLAGS := -I$(shell python2 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
+PYTHON2LIBS := -l$(shell python2 -c 'import sysconfig; print (sysconfig.get_config_var("LDLIBRARY")[3:-3])') -lm
+
+PYTHON3CFLAGS := -I$(shell python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
+PYTHON3LIBS := -l$(shell python3 -c 'import sysconfig; print (sysconfig.get_config_var("LDLIBRARY")[3:-3])') -lm
 
 OPTFLAGS = -O2
 
 DEBUGFLAGS = -g
 
-all: pythonbinding.so sit.so
+
+# Conditionally compile python2 and python3 bindings depending on what's installed
+PYTHONBINDINGS = 
+ifneq ($(PYTHON2LIBS), "-l -lm")
+	PYTHONBINDINGS += python2binding.so
+endif
+
+ifneq ($(PYTHON3LIBS), "-l -lm")
+	PYTHONBINDINGS += python3binding.so
+endif
+
+all: sit.so $(PYTHONBINDINGS)
+
+print-%  : ; @echo $* = $($*)
+
+python2binding.o: pythonbinding.c
+	$(CC) -o python2binding.o -c $(CFLAGS) $(OPTFLAGS) $(PYTHON2CFLAGS) $<
+
+python3binding.o: pythonbinding.c
+	$(CC) -o python3binding.o -c $(CFLAGS) $(OPTFLAGS) $(PYTHON3CFLAGS) $<
 
 
-pythonbinding.o: pythonbinding.c
-	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(PYTHONCFLAGS) $<
+python2binding.so: python2binding.o
+	$(CC) -shared $(CFLAGS) $(OPTFLAGS) -o $@ $< $(PYTHON2LIBS)
 
-pythonbinding.so: pythonbinding.o
-	$(CC) -shared $(CFLAGS) $(OPTFLAGS) -o $@ $< $(PYTHONLIBS)
+python3binding.so: python3binding.o
+	$(CC) -shared $(CFLAGS) $(OPTFLAGS) -o $@ $< $(PYTHON3LIBS)	
+
 
 clean:
 	rm -f *.o *.so *~

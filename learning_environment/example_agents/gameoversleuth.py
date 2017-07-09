@@ -12,7 +12,7 @@ If you press 'w' as soon as the game is over, you should be able to extract a bi
 will work as a game over detector which you can then enter into ../gameover_description.txt
 
 Call with a command line like:
-mame -use_le -le_library pythonbinding.so -le_options gameoversleuth <romname>
+mame -use_le -le_library python2binding.so -le_options gameoversleuth <romname>
 """
 
 import os, sys, logging
@@ -24,6 +24,12 @@ from PIL import Image
 
 DefaultFrames = 200
 
+if sys.version_info >= (3, 0):
+    def to_byte_array(memoryview):
+        return memoryview.tobytes()
+else:
+    def to_byte_array(memoryview):
+        return bytearray(memoryview.tobytes())
 
 def atatime(iterator, count):
     """
@@ -62,7 +68,7 @@ def write_memory_to_filename(filename, memory, region_starts):
             # print the memory in a readable format, 50 bytes at a time
             memory_out.write("Starting at %s\n" % start)
             for line in atatime(region, 50):
-                memory_out.write('%s\n' % ''.join('%02x' % ord(byte) for byte in line))
+                memory_out.write('%s\n' % ''.join('%02x' % byte for byte in line))
 
 def write_differences_to_filename(filename, differences):
     with open(filename, 'w') as out:
@@ -157,7 +163,6 @@ class GameOverSleuth(object):
         self.ored_memory = [None] * self.frames
         self.anded_memory = [None] * self.frames
         self.game_over_snapshots = []
-        self.unpackers = None
 
         logging.basicConfig(level=logging.DEBUG)
 
@@ -191,7 +196,7 @@ class GameOverSleuth(object):
                 write_memory_to_filename(memory_filename, self.memory[frame], self.memory_start_addresses)
 
                 image_filename = os.path.join(directory, 'image_%s.png' % index)
-                image = Image.frombuffer("RGBA",(self.width, self.height), self.images[frame],'raw', ("BGRA",0,1))
+                image = Image.frombytes("RGBA",(self.width, self.height), self.images[frame],'raw', ("BGRA",0,1))
                 image.putalpha(255)
                 image.save(image_filename)
 
@@ -231,10 +236,7 @@ class GameOverSleuth(object):
             current_frame_index = (self.update_count-1) % self.frames
             current = self.memory[current_frame_index]
             if current is not None:
-                if self.unpackers is None:
-                    self.unpackers = [struct.Struct('!' + 'B' * len(region)) for region in current]
-
-                self.game_over_snapshots.append([list(unpacker.unpack(region[:])) for unpacker, region in zip(self.unpackers, current)])
+                self.game_over_snapshots.append(current[:])
                 self.stdscr.addstr(0, 0, "Snapshot taken")
             else:
                 self.stdscr.addstr(0, 0, "Not ready")
@@ -245,11 +247,9 @@ class GameOverSleuth(object):
             current_frame_index = (self.update_count-1) % self.frames
             current = self.memory[current_frame_index]
             if current is not None:
-                self.initial_memory = [region[:] for region in current]
-                if self.unpackers is None:
-                    self.unpackers = [struct.Struct('!' + 'B' * len(region)) for region in self.initial_memory]
-                self.ored_memory[current_frame_index] = [list(unpacker.unpack(region)) for unpacker, region in zip(self.unpackers, self.initial_memory)]
-                self.anded_memory[current_frame_index] = [list(unpacker.unpack(region)) for unpacker, region in zip(self.unpackers, self.initial_memory)]
+                self.initial_memory = current[:]
+                self.ored_memory[current_frame_index] = self.initial_memory[:]
+                self.anded_memory[current_frame_index] = self.initial_memory[:]
 
                 self.stdscr.addstr(0, 0, "Game started")
             else:
@@ -262,7 +262,7 @@ class GameOverSleuth(object):
         self.update_count += 1
         self.current_score = score
 
-        self.images[(self.update_count-1) % self.frames] = video_frame[:]
+        self.images[(self.update_count-1) % self.frames] = video_frame.tobytes()
 
         return 0  #number of frames you want to skip
 
@@ -284,15 +284,14 @@ class GameOverSleuth(object):
     def consume_memory(self, memory):
         self.memory_start_addresses = [region[0] for region in memory]
         current_frame_index = (self.update_count-1) % self.frames
-        self.memory[current_frame_index] = [region[1][:] for region in memory]
+        self.memory[current_frame_index] = current_memory = [to_byte_array(region[1]) for region in memory]
 
         if self.initial_memory is not None:
             previous_frame_index = (self.update_count-2) % self.frames
-            current = [unpacker.unpack(region[1]) for unpacker, region in zip(self.unpackers, memory)]
 
             # This is dog-slow code. We'll speed it up when we need to
-            self.ored_memory[current_frame_index] = [[(old_byte | new_byte) for old_byte, new_byte in zip(previous_region, current_region)] for previous_region, current_region in zip(self.ored_memory[previous_frame_index], current)]
-            self.anded_memory[current_frame_index] = [[(old_byte & new_byte) for old_byte, new_byte in zip(previous_region, current_region)] for previous_region, current_region in zip(self.anded_memory[previous_frame_index], current)]
+            self.ored_memory[current_frame_index] = [[(old_byte | new_byte) for old_byte, new_byte in zip(previous_region, current_region)] for previous_region, current_region in zip(self.ored_memory[previous_frame_index], current_memory)]
+            self.anded_memory[current_frame_index] = [[(old_byte & new_byte) for old_byte, new_byte in zip(previous_region, current_region)] for previous_region, current_region in zip(self.anded_memory[previous_frame_index], current_memory)]
 
 if __name__ == '__main__':
     print(__doc__)
