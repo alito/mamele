@@ -70,8 +70,14 @@ MACHINE_CONFIG_MEMBER( southbridge_device::device_add_mconfig )
 	MCFG_I8237_OUT_DACK_2_CB(WRITELINE(southbridge_device, pc_dack6_w))
 	MCFG_I8237_OUT_DACK_3_CB(WRITELINE(southbridge_device, pc_dack7_w))
 
-	MCFG_PIC8259_ADD( "pic8259_master", INPUTLINE(":maincpu", 0), VCC, READ8(southbridge_device, get_slave_ack) )
-	MCFG_PIC8259_ADD( "pic8259_slave", DEVWRITELINE("pic8259_master", pic8259_device, ir2_w), GND, NOOP)
+	MCFG_DEVICE_ADD("pic8259_master", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(INPUTLINE(":maincpu", 0))
+	MCFG_PIC8259_IN_SP_CB(VCC)
+	MCFG_PIC8259_CASCADE_ACK_CB(READ8(southbridge_device, get_slave_ack))
+
+	MCFG_DEVICE_ADD("pic8259_slave", PIC8259, 0)
+	MCFG_PIC8259_OUT_INT_CB(DEVWRITELINE("pic8259_master", pic8259_device, ir2_w))
+	MCFG_PIC8259_IN_SP_CB(GND)
 
 	MCFG_DEVICE_ADD("keybc", AT_KEYBOARD_CONTROLLER, XTAL_12MHz)
 	MCFG_AT_KEYBOARD_CONTROLLER_SYSTEM_RESET_CB(INPUTLINE(":maincpu", INPUT_LINE_RESET))
@@ -182,7 +188,8 @@ void southbridge_device::device_start()
 	spaceio.install_readwrite_handler(0x0000, 0x001f, read8_delegate(FUNC(am9517a_device::read),&(*m_dma8237_1)), write8_delegate(FUNC(am9517a_device::write),&(*m_dma8237_1)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0020, 0x003f, read8_delegate(FUNC(pic8259_device::read),&(*m_pic8259_master)), write8_delegate(FUNC(pic8259_device::write),&(*m_pic8259_master)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0040, 0x005f, read8_delegate(FUNC(pit8254_device::read),&(*m_pit8254)), write8_delegate(FUNC(pit8254_device::write),&(*m_pit8254)), 0xffffffff);
-	spaceio.install_readwrite_handler(0x0060, 0x0063, read8_delegate(FUNC(southbridge_device::at_keybc_r),this), write8_delegate(FUNC(southbridge_device::at_keybc_w),this), 0xffffffff);
+	spaceio.install_readwrite_handler(0x0060, 0x0063, read8_delegate(FUNC(at_keyboard_controller_device::data_r), &(*m_keybc)), write8_delegate(FUNC(at_keyboard_controller_device::data_w), &(*m_keybc)), 0x000000ff);
+	spaceio.install_readwrite_handler(0x0060, 0x0063, read8_delegate(FUNC(southbridge_device::at_portb_r), this), write8_delegate(FUNC(southbridge_device::at_portb_w), this), 0x0000ff00);
 	spaceio.install_readwrite_handler(0x0064, 0x0067, read8_delegate(FUNC(at_keyboard_controller_device::status_r),&(*m_keybc)), write8_delegate(FUNC(at_keyboard_controller_device::command_w),&(*m_keybc)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0070, 0x007f, read8_delegate(FUNC(ds12885_device::read),&(*m_ds12885)), write8_delegate(FUNC(ds12885_device::write),&(*m_ds12885)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0080, 0x009f, read8_delegate(FUNC(southbridge_device::at_page8_r),this), write8_delegate(FUNC(southbridge_device::at_page8_w),this), 0xffffffff);
@@ -457,27 +464,6 @@ WRITE8_MEMBER( southbridge_device::at_dma8237_2_w )
 {
 	m_dma8237_2->write( space, offset / 2, data);
 }
-
-READ8_MEMBER( southbridge_device::at_keybc_r )
-{
-	switch (offset)
-	{
-	case 0: return m_keybc->data_r(space, 0);
-	case 1: return at_portb_r(space, 0);
-	}
-
-	return 0xff;
-}
-
-WRITE8_MEMBER( southbridge_device::at_keybc_w )
-{
-	switch (offset)
-	{
-	case 0: m_keybc->data_w(space, 0, data); break;
-	case 1: at_portb_w(space, 0, data); break;
-	}
-}
-
 
 WRITE8_MEMBER( southbridge_device::write_rtc )
 {

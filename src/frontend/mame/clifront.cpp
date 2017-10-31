@@ -68,6 +68,9 @@
 #define CLICOMMAND_GETSOFTLIST          "getsoftlist"
 #define CLICOMMAND_VERIFYSOFTLIST       "verifysoftlist"
 
+// command options
+#define CLIOPTION_DTD                   "dtd"
+
 
 namespace {
 //**************************************************************************
@@ -107,6 +110,9 @@ const options_entry cli_option_entries[] =
 	{ CLICOMMAND_VERIFYSOFTWARE ";vsoft",   "0",       OPTION_COMMAND,    "verify known software for the system" },
 	{ CLICOMMAND_GETSOFTLIST    ";glist",   "0",       OPTION_COMMAND,    "retrieve software list by name" },
 	{ CLICOMMAND_VERIFYSOFTLIST ";vlist",   "0",       OPTION_COMMAND,    "verify software list by name" },
+
+	{ nullptr,                              nullptr,   OPTION_HEADER,     "FRONTEND COMMAND OPTIONS" },
+	{ CLIOPTION_DTD,                        "1",       OPTION_BOOLEAN,    "include DTD in XML output" },
 	{ nullptr }
 };
 
@@ -330,7 +336,7 @@ int cli_frontend::execute(std::vector<std::string> &args)
 void cli_frontend::listxml(const std::vector<std::string> &args)
 {
 	// create the XML and print it to stdout
-	info_xml_creator creator(m_options);
+	info_xml_creator creator(m_options, m_options.bool_value(CLIOPTION_DTD));
 	creator.output(stdout, args);
 }
 
@@ -347,15 +353,14 @@ void cli_frontend::listfull(const std::vector<std::string> &args)
 	// determine which drivers to output; return an error if none found
 	driver_enumerator drivlist(m_options, gamename);
 	if (drivlist.count() == 0)
-		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching games found for '%s'", gamename);
+		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching systems found for '%s'", gamename);
 
 	// print the header
 	osd_printf_info("Name:             Description:\n");
 
 	// iterate through drivers and output the info
 	while (drivlist.next())
-		if ((drivlist.driver().flags & MACHINE_NO_STANDALONE) == 0)
-			osd_printf_info("%-18s\"%s\"\n", drivlist.driver().name, drivlist.driver().type.fullname());
+		osd_printf_info("%-18s\"%s\"\n", drivlist.driver().name, drivlist.driver().type.fullname());
 }
 
 
@@ -371,7 +376,7 @@ void cli_frontend::listsource(const std::vector<std::string> &args)
 	// determine which drivers to output; return an error if none found
 	driver_enumerator drivlist(m_options, gamename);
 	if (drivlist.count() == 0)
-		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching games found for '%s'", gamename);
+		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching systems found for '%s'", gamename);
 
 	// iterate through drivers and output the info
 	while (drivlist.next())
@@ -390,14 +395,14 @@ void cli_frontend::listclones(const std::vector<std::string> &args)
 
 	// start with a filtered list of drivers
 	driver_enumerator drivlist(m_options, gamename);
-	int original_count = drivlist.count();
+	int const original_count = drivlist.count();
 
 	// iterate through the remaining ones to see if their parent matches
 	while (drivlist.next_excluded())
 	{
 		// if we have a non-bios clone and it matches, keep it
-		int clone_of = drivlist.clone();
-		if (clone_of != -1 && (drivlist.driver(clone_of).flags & MACHINE_IS_BIOS_ROOT) == 0)
+		int const clone_of = drivlist.clone();
+		if ((clone_of >= 0) && !(drivlist.driver(clone_of).flags & machine_flags::IS_BIOS_ROOT))
 			if (drivlist.matches(gamename, drivlist.driver(clone_of).name))
 				drivlist.include();
 	}
@@ -407,9 +412,9 @@ void cli_frontend::listclones(const std::vector<std::string> &args)
 	{
 		// see if we match but just weren't a clone
 		if (original_count == 0)
-			throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching games found for '%s'", gamename);
+			throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching systems found for '%s'", gamename);
 		else
-			osd_printf_info("Found %lu matches for '%s' but none were clones\n", (unsigned long)drivlist.count(), gamename);
+			osd_printf_info("Found %lu match(es) for '%s' but none were clones\n", (unsigned long)drivlist.count(), gamename); // FIXME: this never gets hit
 		return;
 	}
 
@@ -421,7 +426,7 @@ void cli_frontend::listclones(const std::vector<std::string> &args)
 	while (drivlist.next())
 	{
 		int clone_of = drivlist.clone();
-		if (clone_of != -1 && (drivlist.driver(clone_of).flags & MACHINE_IS_BIOS_ROOT) == 0)
+		if ((clone_of >= 0) && !(drivlist.driver(clone_of).flags & machine_flags::IS_BIOS_ROOT))
 			osd_printf_info("%-16s %s\n", drivlist.driver().name, drivlist.driver(clone_of).name);
 	}
 }
@@ -440,7 +445,7 @@ void cli_frontend::listbrothers(const std::vector<std::string> &args)
 	// start with a filtered list of drivers; return an error if none found
 	driver_enumerator initial_drivlist(m_options, gamename);
 	if (initial_drivlist.count() == 0)
-		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching games found for '%s'", gamename);
+		throw emu_fatalerror(EMU_ERR_NO_SUCH_GAME, "No matching systems found for '%s'", gamename);
 
 	// for the final list, start with an empty driver list
 	driver_enumerator drivlist(m_options);
@@ -493,15 +498,19 @@ void cli_frontend::listcrc(const std::vector<std::string> &args)
 	// iterate through matches, and then through ROMs
 	while (drivlist.next())
 	{
-		for (device_t &device : device_iterator(drivlist.config()->root_device()))
-			for (const rom_entry *region = rom_first_region(device); region; region = rom_next_region(region))
-				for (const rom_entry *rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+		for (device_t const &device : device_iterator(drivlist.config()->root_device()))
+		{
+			for (tiny_rom_entry const *rom = device.rom_region(); rom && !ROMENTRY_ISEND(rom); ++rom)
+			{
+				if (ROMENTRY_ISFILE(rom))
 				{
 					// if we have a CRC, display it
 					uint32_t crc;
-					if (util::hash_collection(ROM_GETHASHDATA(rom)).crc(crc))
-						osd_printf_info("%08x %-32s\t%-16s\t%s\n", crc, ROM_GETNAME(rom), device.shortname(), device.name());
+					if (util::hash_collection(rom->hashdata).crc(crc))
+						osd_printf_info("%08x %-32s\t%-16s\t%s\n", crc, rom->name, device.shortname(), device.name());
 				}
+			}
+		}
 	}
 }
 
@@ -544,7 +553,7 @@ void cli_frontend::listroms(const std::vector<std::string> &args)
 
 		// iterate through roms
 		bool hasroms = false;
-		for (device_t &device : device_iterator(root))
+		for (device_t const &device : device_iterator(root))
 		{
 			for (const rom_entry *region = rom_first_region(device); region; region = rom_next_region(region))
 			{
@@ -1055,7 +1064,9 @@ void cli_frontend::verifysamples(const std::vector<std::string> &args)
 		osd_printf_info("%u samplesets found, %u were OK.\n", correct, correct);
 	}
 }
-#define SOFTLIST_XML_BEGIN "<?xml version=\"1.0\"?>\n" \
+
+const char cli_frontend::s_softlist_xml_dtd[] =
+				"<?xml version=\"1.0\"?>\n" \
 				"<!DOCTYPE softwarelists [\n" \
 				"<!ELEMENT softwarelists (softwarelist*)>\n" \
 				"\t<!ELEMENT softwarelist (software+)>\n" \
@@ -1110,8 +1121,7 @@ void cli_frontend::verifysamples(const std::vector<std::string> &args)
 				"\t\t\t\t\t\t<!ATTLIST dipvalue name CDATA #REQUIRED>\n" \
 				"\t\t\t\t\t\t<!ATTLIST dipvalue value CDATA #REQUIRED>\n" \
 				"\t\t\t\t\t\t<!ATTLIST dipvalue default (yes|no) \"no\">\n" \
-				"]>\n\n" \
-				"<softwarelists>\n"
+				"]>\n\n";
 
 void cli_frontend::output_single_softlist(FILE *out, software_list_device &swlistdev)
 {
@@ -1256,7 +1266,13 @@ void cli_frontend::listsoftware(const std::vector<std::string> &args)
 			if (list_map.insert(swlistdev.list_name()).second)
 				if (!swlistdev.get_info().empty())
 				{
-					if (isfirst) { fprintf(out, SOFTLIST_XML_BEGIN); isfirst = false; }
+					if (isfirst)
+					{
+						if (m_options.bool_value(CLIOPTION_DTD))
+							fprintf(out, s_softlist_xml_dtd);
+						fprintf(out, "<softwarelists>\n");
+						isfirst = false;
+					}
 					output_single_softlist(out, swlistdev);
 				}
 	}
@@ -1363,7 +1379,13 @@ void cli_frontend::getsoftlist(const std::vector<std::string> &args)
 			if (core_strwildcmp(gamename, swlistdev.list_name().c_str()) == 0 && list_map.insert(swlistdev.list_name()).second)
 				if (!swlistdev.get_info().empty())
 				{
-					if (isfirst) { fprintf( out, SOFTLIST_XML_BEGIN); isfirst = false; }
+					if (isfirst)
+					{
+						if (m_options.bool_value(CLIOPTION_DTD))
+							fprintf(out, s_softlist_xml_dtd);
+						fprintf(out, "<softwarelists>\n");
+						isfirst = false;
+					}
 					output_single_softlist(out, swlistdev);
 				}
 	}

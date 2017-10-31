@@ -439,7 +439,7 @@ emu_options::emu_options(option_support support)
 	set_value_changed_handler(OPTION_COIN_IMPULSE,              [this](const char *value) { m_coin_impulse = int_value(OPTION_COIN_IMPULSE); });
 	set_value_changed_handler(OPTION_JOYSTICK_CONTRADICTORY,    [this](const char *value) { m_joystick_contradictory = bool_value(OPTION_JOYSTICK_CONTRADICTORY); });
 	set_value_changed_handler(OPTION_SLEEP,                     [this](const char *value) { m_sleep = bool_value(OPTION_SLEEP); });
-	set_value_changed_handler(OPTION_REFRESHSPEED,              [this](const char *value) { m_sleep = bool_value(OPTION_REFRESHSPEED); });
+	set_value_changed_handler(OPTION_REFRESHSPEED,              [this](const char *value) { m_refresh_speed = bool_value(OPTION_REFRESHSPEED); });
 	set_value_changed_handler(OPTION_UI, [this](const std::string &value)
 	{
 		if (value == "simple")
@@ -1056,7 +1056,7 @@ image_option &emu_options::image_option(const std::string &device_name)
 void emu_options::command_argument_processed()
 {
 	// some command line arguments require that the system name be set, so we can get slot options
-	if (command_arguments().size() == 1 &&
+	if (command_arguments().size() == 1 && !core_iswildstr(command_arguments()[0].c_str()) &&
 		(command() == "listdevices" || (command() == "listslots") || (command() == "listmedia")))
 	{
 		set_system_name(command_arguments()[0]);

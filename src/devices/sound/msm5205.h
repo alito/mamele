@@ -22,9 +22,6 @@
 #define MCFG_MSM6585_VCK_CALLBACK(cb) \
 	devcb = &msm6585_device::set_vck_callback(*device, (DEVCB_##cb));
 
-#define MCFG_MSM6585_VCLK_CB(cb) \
-	devcb = &msm6585_device::set_vck_legacy_callback(*device, (DEVCB_##cb));
-
 
 class msm5205_device : public device_t, public device_sound_interface
 {
@@ -65,7 +62,8 @@ public:
 protected:
 	enum
 	{
-		TIMER_VCK
+		TIMER_VCK,
+		TIMER_ADPCM_CAPTURE
 	};
 
 	msm5205_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
@@ -85,8 +83,9 @@ protected:
 	virtual int get_prescaler() const;
 
 	// internal state
-	sound_stream * m_stream;    // number of stream system
-	emu_timer *m_timer;         // VCK callback timer
+	sound_stream *m_stream;     // number of stream system
+	emu_timer *m_vck_timer;     // VCK callback timer
+	emu_timer *m_capture_timer; // delay after VCK active edge for ADPCM input capture
 	u8 m_data;                  // next adpcm data
 	bool m_vck;                 // VCK signal
 	bool m_reset;               // reset pin signal

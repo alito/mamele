@@ -46,6 +46,7 @@ amerihok.cpp
 ampoker2.cpp
 amspdwy.cpp
 amusco.cpp
+anes.cpp
 angelkds.cpp
 appoooh.cpp
 aquarium.cpp
@@ -128,12 +129,12 @@ bingo.cpp
 bingoc.cpp
 bingoman.cpp
 bingor.cpp
+bingowav.cpp
 bionicc.cpp
 bishi.cpp
 bking.cpp
 blackt96.cpp
 bladestl.cpp
-blitz.cpp
 blitz68k.cpp
 blktiger.cpp
 blmbycar.cpp
@@ -447,6 +448,7 @@ gng.cpp
 go2000.cpp
 goal92.cpp
 goindol.cpp
+gokidetor.cpp
 goldngam.cpp
 goldnpkr.cpp
 goldstar.cpp
@@ -661,6 +663,7 @@ magicard.cpp
 magicfly.cpp
 magictg.cpp
 magmax.cpp
+magreel.cpp
 magtouch.cpp
 mainevt.cpp
 mainsnk.cpp
@@ -825,6 +828,7 @@ niyanpai.cpp
 nmg5.cpp
 nmk16.cpp
 norautp.cpp
+notechan.cpp
 nova2001.cpp
 nsm.cpp
 nsmpoker.cpp
@@ -1003,6 +1007,7 @@ scramble.cpp
 scregg.cpp
 scyclone.cpp
 sderby.cpp
+sderby2.cpp
 seabattl.cpp
 sealy.cpp
 seattle.cpp
@@ -1025,6 +1030,7 @@ segasp.cpp
 segaufo.cpp
 segaxbd.cpp
 segaybd.cpp
+seibucats.cpp
 seibuspi.cpp
 seicross.cpp
 seicupbl.cpp
@@ -1251,7 +1257,6 @@ ttchamp.cpp
 tubep.cpp
 tugboat.cpp
 tumbleb.cpp
-tumblep.cpp
 tunhunt.cpp
 turbo.cpp
 turrett.cpp
@@ -1270,6 +1275,7 @@ umipoker.cpp
 undrfire.cpp
 unianapc.cpp
 unico.cpp
+unkfr.cpp
 unkhorse.cpp
 upscope.cpp
 usbilliards.cpp

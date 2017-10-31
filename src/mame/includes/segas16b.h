@@ -111,11 +111,11 @@ public:
 	DECLARE_DRIVER_INIT(hwchamp_5521);
 	DECLARE_DRIVER_INIT(altbeas5_5521);
 	DECLARE_DRIVER_INIT(sdi_5358_small);
+	DECLARE_DRIVER_INIT(fpointbla);
 	DECLARE_DRIVER_INIT(altbeasj_5521);
 	DECLARE_DRIVER_INIT(ddux_5704);
 	DECLARE_DRIVER_INIT(snapper);
 	DECLARE_DRIVER_INIT(shinobi4_5521);
-	DECLARE_DRIVER_INIT(goldnaxe_5704);
 	DECLARE_DRIVER_INIT(defense_5358_small);
 	DECLARE_DRIVER_INIT(sjryuko_5358_small);
 	DECLARE_DRIVER_INIT(exctleag_5358);
@@ -175,7 +175,6 @@ protected:
 	void altbeasj_i8751_sim();
 	void altbeas5_i8751_sim();
 	void ddux_i8751_sim();
-	void goldnaxe_i8751_sim();
 	void tturf_i8751_sim();
 	void wb3_i8751_sim();
 

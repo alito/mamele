@@ -45,77 +45,141 @@ void (*arm7_coproc_dt_r_callback)(arm_state *arm, uint32_t insn, uint32_t *prn, 
 void (*arm7_coproc_dt_w_callback)(arm_state *arm, uint32_t insn, uint32_t *prn, void (*write32)(arm_state *arm, uint32_t addr, uint32_t data));
 
 
-DEFINE_DEVICE_TYPE(ARM7,    arm7_cpu_device,    "arm7_le", "ARM7 (little)")
-DEFINE_DEVICE_TYPE(ARM7_BE, arm7_be_cpu_device, "arm7_be", "ARM7 (big)")
-DEFINE_DEVICE_TYPE(ARM7500, arm7500_cpu_device, "arm7500", "ARM7500")
-DEFINE_DEVICE_TYPE(ARM9,    arm9_cpu_device,    "arm9",    "ARM9")
-DEFINE_DEVICE_TYPE(ARM920T, arm920t_cpu_device, "arm920t", "ARM920T")
-DEFINE_DEVICE_TYPE(PXA255,  pxa255_cpu_device,  "pxa255",  "Intel XScale PXA255")
-DEFINE_DEVICE_TYPE(SA1110,  sa1110_cpu_device,  "sa1110",  "Intel StrongARM SA-1110")
-
+DEFINE_DEVICE_TYPE(ARM7,     arm7_cpu_device,     "arm7_le",  "ARM7 (little)")
+DEFINE_DEVICE_TYPE(ARM7_BE,  arm7_be_cpu_device,  "arm7_be",  "ARM7 (big)")
+DEFINE_DEVICE_TYPE(ARM7500,  arm7500_cpu_device,  "arm7500",  "ARM7500")
+DEFINE_DEVICE_TYPE(ARM9,     arm9_cpu_device,     "arm9",     "ARM9")
+DEFINE_DEVICE_TYPE(ARM920T,  arm920t_cpu_device,  "arm920t",  "ARM920T")
+DEFINE_DEVICE_TYPE(ARM946ES, arm946es_cpu_device, "arm946es", "ARM946ES")
+DEFINE_DEVICE_TYPE(PXA255,   pxa255_cpu_device,   "pxa255",   "Intel XScale PXA255")
+DEFINE_DEVICE_TYPE(SA1110,   sa1110_cpu_device,   "sa1110",   "Intel StrongARM SA-1110")
 
 arm7_cpu_device::arm7_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, ARM7, tag, owner, clock, 4, eARM_ARCHFLAGS_T, ENDIANNESS_LITTLE)
+	: arm7_cpu_device(mconfig, ARM7, tag, owner, clock, 4, ARCHFLAG_T, ENDIANNESS_LITTLE)
 {
 }
-
 
 arm7_cpu_device::arm7_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint8_t archRev, uint8_t archFlags, endianness_t endianness)
 	: cpu_device(mconfig, type, tag, owner, clock)
 	, m_program_config("program", endianness, 32, 32, 0)
+	, m_prefetch_word0_shift(endianness == ENDIANNESS_LITTLE ? 0 : 16)
+	, m_prefetch_word1_shift(endianness == ENDIANNESS_LITTLE ? 16 : 0)
 	, m_endian(endianness)
 	, m_archRev(archRev)
 	, m_archFlags(archFlags)
-	, m_copro_id(0x41 | (1 << 23) | (7 << 12))  // <-- where did this come from?
 	, m_pc(0)
 {
 	memset(m_r, 0x00, sizeof(m_r));
+	uint32_t arch = ARM9_COPRO_ID_ARCH_V4;
+	if (m_archFlags & ARCHFLAG_T)
+		arch = ARM9_COPRO_ID_ARCH_V4T;
+
+	m_copro_id = ARM9_COPRO_ID_MFR_ARM | arch | ARM9_COPRO_ID_PART_GENERICARM7;
+
+	// TODO[RH]: Default to 3-instruction prefetch for unknown ARM variants. Derived cores should set the appropriate value in their constructors.
+	m_insn_prefetch_depth = 3;
+
+	memset(m_insn_prefetch_buffer, 0, sizeof(uint32_t) * 3);
+	memset(m_insn_prefetch_address, 0, sizeof(uint32_t) * 3);
+	m_insn_prefetch_count = 0;
+	m_insn_prefetch_index = 0;
 }
 
 
 arm7_be_cpu_device::arm7_be_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, ARM7_BE, tag, owner, clock, 4, eARM_ARCHFLAGS_T, ENDIANNESS_BIG)
+	: arm7_cpu_device(mconfig, ARM7_BE, tag, owner, clock, 4, ARCHFLAG_T, ENDIANNESS_BIG)
 {
 }
 
 
 arm7500_cpu_device::arm7500_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, ARM7500, tag, owner, clock, 3, eARM_ARCHFLAGS_MODE26, ENDIANNESS_LITTLE)
+	: arm7_cpu_device(mconfig, ARM7500, tag, owner, clock, 4, ARCHFLAG_MODE26, ENDIANNESS_LITTLE)
 {
-	m_copro_id = (0x41 << 24) | (0 << 20) | (1 << 16) | (0x710 << 4) | (0 << 0);
+	m_copro_id = ARM9_COPRO_ID_MFR_ARM
+			   | ARM9_COPRO_ID_ARCH_V4
+			   | ARM9_COPRO_ID_PART_ARM710;
 }
 
 
 arm9_cpu_device::arm9_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, ARM9, tag, owner, clock, 5, eARM_ARCHFLAGS_T | eARM_ARCHFLAGS_E, ENDIANNESS_LITTLE)
-	// ARMv5
-	// has TE extensions
+	: arm9_cpu_device(mconfig, ARM9, tag, owner, clock, 5, ARCHFLAG_T | ARCHFLAG_E, ENDIANNESS_LITTLE)
 {
+}
+
+
+arm9_cpu_device::arm9_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint8_t archRev, uint8_t archFlags, endianness_t endianness)
+	: arm7_cpu_device(mconfig, type, tag, owner, clock, archRev, archFlags, endianness)
+{
+	uint32_t arch = ARM9_COPRO_ID_ARCH_V4;
+	switch (archRev)
+	{
+		case 4:
+			if (archFlags & ARCHFLAG_T)
+				arch = ARM9_COPRO_ID_ARCH_V4T;
+			break;
+		case 5:
+			arch = ARM9_COPRO_ID_ARCH_V5;
+			if (archFlags & ARCHFLAG_T)
+			{
+				arch = ARM9_COPRO_ID_ARCH_V5T;
+				if (archFlags & ARCHFLAG_E)
+				{
+					arch = ARM9_COPRO_ID_ARCH_V5TE;
+				}
+			}
+			break;
+		default: break;
+	}
+
+	m_copro_id = ARM9_COPRO_ID_MFR_ARM | arch | (0x900 << 4);
 }
 
 
 arm920t_cpu_device::arm920t_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, ARM920T, tag, owner, clock, 4, eARM_ARCHFLAGS_T, ENDIANNESS_LITTLE)
-	// ARMv4
-	// has T extension
+	: arm9_cpu_device(mconfig, ARM920T, tag, owner, clock, 4, ARCHFLAG_T, ENDIANNESS_LITTLE)
 {
-	m_copro_id = (0x41 << 24) | (1 << 20) | (2 << 16) | (0x920 << 4) | (0 << 0);
+	m_copro_id = ARM9_COPRO_ID_MFR_ARM
+			   | ARM9_COPRO_ID_SPEC_REV1
+			   | ARM9_COPRO_ID_ARCH_V4T
+			   | ARM9_COPRO_ID_PART_ARM920
+			   | 0; // Stepping
 }
 
+
+arm946es_cpu_device::arm946es_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: arm9_cpu_device(mconfig, ARM946ES, tag, owner, clock, 5, ARCHFLAG_T | ARCHFLAG_E, ENDIANNESS_LITTLE)
+{
+	m_copro_id = ARM9_COPRO_ID_MFR_ARM
+			   | ARM9_COPRO_ID_ARCH_V5TE
+			   | ARM9_COPRO_ID_PART_ARM946
+			   | ARM9_COPRO_ID_STEP_ARM946_A0;
+}
 
 pxa255_cpu_device::pxa255_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, PXA255, tag, owner, clock, 5, eARM_ARCHFLAGS_T | eARM_ARCHFLAGS_E | eARM_ARCHFLAGS_XSCALE, ENDIANNESS_LITTLE)
-	// ARMv5
-	// has TE and XScale extensions
+	: arm7_cpu_device(mconfig, PXA255, tag, owner, clock, 5, ARCHFLAG_T | ARCHFLAG_E | ARCHFLAG_XSCALE, ENDIANNESS_LITTLE)
 {
+	m_copro_id = ARM9_COPRO_ID_MFR_INTEL
+			   | ARM9_COPRO_ID_ARCH_V5TE
+			   | ARM9_COPRO_ID_PXA255_CORE_GEN_XSCALE
+			   | (3 << ARM9_COPRO_ID_PXA255_CORE_REV_SHIFT)
+			   | ARM9_COPRO_ID_STEP_PXA255_A0;
 }
 
-
 sa1110_cpu_device::sa1110_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: arm7_cpu_device(mconfig, SA1110, tag, owner, clock, 4, eARM_ARCHFLAGS_SA, ENDIANNESS_LITTLE)
-	// ARMv4
+	: arm7_cpu_device(mconfig, SA1110, tag, owner, clock, 4, ARCHFLAG_SA, ENDIANNESS_LITTLE)
 	// has StrongARM, no Thumb, no Enhanced DSP
 {
+	m_copro_id = ARM9_COPRO_ID_MFR_INTEL
+			   | ARM9_COPRO_ID_ARCH_V4
+			   | ARM9_COPRO_ID_PART_SA1110
+			   | ARM9_COPRO_ID_STEP_SA1110_A0;
+}
+
+device_memory_interface::space_config_vector arm7_cpu_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config)
+	};
 }
 
 void arm7_cpu_device::update_reg_ptr()
@@ -126,7 +190,7 @@ void arm7_cpu_device::update_reg_ptr()
 void arm7_cpu_device::set_cpsr(uint32_t val)
 {
 	uint8_t old_mode = GET_CPSR & MODE_FLAG;
-	if (m_archFlags & eARM_ARCHFLAGS_MODE26)
+	if (m_archFlags & ARCHFLAG_MODE26)
 	{
 		if ((val & 0x10) != (m_r[eCPSR] & 0x10))
 		{
@@ -280,7 +344,7 @@ int arm7_cpu_device::detect_fault(int desc_lvl1, int ap, int flags)
 }
 
 
-bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
+bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags, bool no_exception)
 {
 	if (addr < 0x2000000)
 	{
@@ -312,6 +376,9 @@ bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
 		}
 		else
 		{
+			if (no_exception)
+				return false;
+
 			if (flags & ARM7_TLB_ABORT_D)
 			{
 				uint8_t domain = (desc_lvl1 >> 5) & 0xF;
@@ -335,6 +402,9 @@ bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
 	}
 	else if (tlb_type == COPRO_TLB_UNMAPPED)
 	{
+		if (no_exception)
+			return false;
+
 		// Unmapped, generate a translation fault
 		if (flags & ARM7_TLB_ABORT_D)
 		{
@@ -366,6 +436,9 @@ bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
 		switch( desc_lvl2 & 3 )
 		{
 			case COPRO_TLB_UNMAPPED:
+				if (no_exception)
+					return false;
+
 				// Unmapped, generate a translation fault
 				if (flags & ARM7_TLB_ABORT_D)
 				{
@@ -395,6 +468,10 @@ bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
 					if (fault == FAULT_NONE)
 					{
 						addr = ( desc_lvl2 & COPRO_TLB_SMALL_PAGE_MASK ) | ( addr & ~COPRO_TLB_SMALL_PAGE_MASK );
+					}
+					else if (no_exception)
+					{
+						return false;
 					}
 					else
 					{
@@ -436,7 +513,7 @@ bool arm7_cpu_device::arm7_tlb_translate(offs_t &addr, int flags)
 }
 
 
-bool arm7_cpu_device::memory_translate(address_spacenum spacenum, int intention, offs_t &address)
+bool arm7_cpu_device::memory_translate(int spacenum, int intention, offs_t &address)
 {
 	/* only applies to the program address space and only does something if the MMU's enabled */
 	if( spacenum == AS_PROGRAM && ( m_control & COPRO_CTRL_MMU_EN ) )
@@ -587,6 +664,73 @@ void arm7_cpu_device::device_reset()
 	m_r[eR15] += 4; \
 	m_icount +=2; /* Any unexecuted instruction only takes 1 cycle (page 193) */
 
+void arm7_cpu_device::update_insn_prefetch(uint32_t curr_pc)
+{
+	curr_pc &= ~3;
+	if (m_insn_prefetch_address[m_insn_prefetch_index] != curr_pc)
+	{
+		m_insn_prefetch_count = 0;
+		m_insn_prefetch_index = 0;
+	}
+
+	if (m_insn_prefetch_count == m_insn_prefetch_depth)
+		return;
+
+	const uint32_t to_fetch = m_insn_prefetch_depth - m_insn_prefetch_count;
+	const uint32_t start_index = (m_insn_prefetch_depth + (m_insn_prefetch_index - to_fetch)) % m_insn_prefetch_depth;
+	//printf("need to prefetch %d instructions starting at index %d\n", to_fetch, start_index);
+
+	uint32_t pc = curr_pc + m_insn_prefetch_count * 4;
+	for (uint32_t i = 0; i < to_fetch; i++)
+	{
+		uint32_t index = (i + start_index) % m_insn_prefetch_depth;
+		if ((m_control & COPRO_CTRL_MMU_EN) && !arm7_tlb_translate(pc, ARM7_TLB_ABORT_P | ARM7_TLB_READ, true))
+		{
+			break;
+		}
+		uint32_t op = m_direct->read_dword(pc);
+		//printf("ipb[%d] <- %08x(%08x)\n", index, op, pc);
+		m_insn_prefetch_buffer[index] = op;
+		m_insn_prefetch_address[index] = pc;
+		m_insn_prefetch_count++;
+		pc += 4;
+	}
+}
+
+uint16_t arm7_cpu_device::insn_fetch_thumb(uint32_t pc)
+{
+	if (pc & 2)
+	{
+		uint16_t insn = (uint16_t)(m_insn_prefetch_buffer[m_insn_prefetch_index] >> m_prefetch_word1_shift);
+		m_insn_prefetch_index = (m_insn_prefetch_index + 1) % m_insn_prefetch_count;
+		m_insn_prefetch_count--;
+		return insn;
+	}
+	return (uint16_t)(m_insn_prefetch_buffer[m_insn_prefetch_index] >> m_prefetch_word0_shift);
+}
+
+uint32_t arm7_cpu_device::insn_fetch_arm(uint32_t pc)
+{
+	//printf("ipb[%d] = %08x\n", m_insn_prefetch_index, m_insn_prefetch_buffer[m_insn_prefetch_index]);
+	uint32_t insn = m_insn_prefetch_buffer[m_insn_prefetch_index];
+	m_insn_prefetch_index = (m_insn_prefetch_index + 1) % m_insn_prefetch_count;
+	m_insn_prefetch_count--;
+	return insn;
+}
+
+int arm7_cpu_device::get_insn_prefetch_index(uint32_t address)
+{
+	address &= ~3;
+	for (uint32_t i = 0; i < m_insn_prefetch_depth; i++)
+	{
+		if (m_insn_prefetch_address[i] == address)
+		{
+			return (int)i;
+		}
+	}
+	return -1;
+}
+
 void arm7_cpu_device::execute_run()
 {
 	uint32_t insn;
@@ -594,6 +738,8 @@ void arm7_cpu_device::execute_run()
 	do
 	{
 		uint32_t pc = GET_PC;
+
+		update_insn_prefetch(pc);
 
 		debugger_instruction_hook(this, pc);
 
@@ -615,7 +761,7 @@ void arm7_cpu_device::execute_run()
 				}
 			}
 
-			insn = m_direct->read_word(raddr);
+			insn = insn_fetch_thumb(raddr);
 			(this->*thumb_handler[(insn & 0xffc0) >> 6])(pc, insn);
 
 		}
@@ -646,7 +792,7 @@ void arm7_cpu_device::execute_run()
 			}
 #endif
 
-			insn = m_direct->read_dword(raddr);
+			insn = insn_fetch_arm(raddr);
 
 			int op_offset = 0;
 			/* process condition codes for this instruction */
@@ -769,20 +915,76 @@ offs_t arm7_cpu_device::disasm_disassemble(std::ostream &stream, offs_t pc, cons
 	extern CPU_DISASSEMBLE( arm7arm_be );
 	extern CPU_DISASSEMBLE( arm7thumb_be );
 
-	if (T_IS_SET(m_r[eCPSR]))
+	uint8_t fetched_op[4];
+	uint32_t op = 0;
+	int prefetch_index = get_insn_prefetch_index(pc);
+	if (prefetch_index < 0)
 	{
-		if ( m_endian == ENDIANNESS_BIG )
-			return CPU_DISASSEMBLE_NAME(arm7thumb_be)(this, stream, pc, oprom, opram, options);
+		memcpy(fetched_op, oprom, 4);
+		if (T_IS_SET(m_r[eCPSR]))
+		{
+			if ( m_endian == ENDIANNESS_BIG )
+			{
+				return CPU_DISASSEMBLE_NAME(arm7thumb_be)(this, stream, pc, fetched_op, opram, options);
+			}
+			else
+			{
+				return CPU_DISASSEMBLE_NAME(arm7thumb)(this, stream, pc, fetched_op, opram, options);
+			}
+		}
 		else
-			return CPU_DISASSEMBLE_NAME(arm7thumb)(this, stream, pc, oprom, opram, options);
+		{
+			if ( m_endian == ENDIANNESS_BIG )
+			{
+				return CPU_DISASSEMBLE_NAME(arm7arm_be)(this, stream, pc, fetched_op, opram, options);
+			}
+			else
+			{
+				return CPU_DISASSEMBLE_NAME(arm7arm)(this, stream, pc, fetched_op, opram, options);
+			}
+		}
 	}
 	else
 	{
-		if ( m_endian == ENDIANNESS_BIG )
-			return CPU_DISASSEMBLE_NAME(arm7arm_be)(this, stream, pc, oprom, opram, options);
+		op = m_insn_prefetch_buffer[prefetch_index];
+		if (T_IS_SET(m_r[eCPSR]))
+		{
+			if (m_endian == ENDIANNESS_BIG)
+			{
+				op >>= ((pc & 2) ? 0 : 16);
+				fetched_op[1] = op & 0xff;
+				fetched_op[0] = (op >> 8) & 0xff;
+				return CPU_DISASSEMBLE_NAME(arm7thumb_be)(this, stream, pc, fetched_op, opram, options);
+			}
+			else
+			{
+				op >>= ((pc & 2) ? 16 : 0);
+				fetched_op[0] = op & 0xff;
+				fetched_op[1] = (op >> 8) & 0xff;
+				return CPU_DISASSEMBLE_NAME(arm7thumb)(this, stream, pc, fetched_op, opram, options);
+			}
+		}
 		else
-			return CPU_DISASSEMBLE_NAME(arm7arm)(this, stream, pc, oprom, opram, options);
+		{
+			if (m_endian == ENDIANNESS_BIG)
+			{
+				fetched_op[3] = op & 0xff;
+				fetched_op[2] = (op >> 8) & 0xff;
+				fetched_op[1] = (op >> 16) & 0xff;
+				fetched_op[0] = (op >> 24) & 0xff;
+				return CPU_DISASSEMBLE_NAME(arm7arm_be)(this, stream, pc, fetched_op, opram, options);
+			}
+			else
+			{
+				fetched_op[0] = op & 0xff;
+				fetched_op[1] = (op >> 8) & 0xff;
+				fetched_op[2] = (op >> 16) & 0xff;
+				fetched_op[3] = (op >> 24) & 0xff;
+				return CPU_DISASSEMBLE_NAME(arm7arm)(this, stream, pc, fetched_op, opram, options);
+			}
+		}
 	}
+	return 0;
 }
 
 
@@ -808,35 +1010,35 @@ READ32_MEMBER( arm7_cpu_device::arm7_rt_r_callback )
 	// we only handle system copro here
 	if (cpnum != 15)
 	{
-		if (m_archFlags & eARM_ARCHFLAGS_XSCALE)
-	{
-		// handle XScale specific CP14
-		if (cpnum == 14)
+		if (m_archFlags & ARCHFLAG_XSCALE)
 		{
-			switch( cReg )
+			// handle XScale specific CP14
+			if (cpnum == 14)
 			{
-				case 1: // clock counter
-					data = (uint32_t)total_cycles();
-					break;
+				switch( cReg )
+				{
+					case 1: // clock counter
+						data = (uint32_t)total_cycles();
+						break;
 
-				default:
-					break;
+					default:
+						break;
+				}
 			}
+			else
+			{
+				fatalerror("XScale: Unhandled coprocessor %d (archFlags %x)\n", cpnum, m_archFlags);
+			}
+
+			return data;
 		}
 		else
 		{
-			fatalerror("XScale: Unhandled coprocessor %d (archFlags %x)\n", cpnum, m_archFlags);
+			LOG( ("ARM7: Unhandled coprocessor %d (archFlags %x)\n", cpnum, m_archFlags) );
+			m_pendingUnd = true;
+			update_irq_state();
+			return 0;
 		}
-
-		return data;
-	}
-	else
-	{
-		LOG( ("ARM7: Unhandled coprocessor %d (archFlags %x)\n", cpnum, m_archFlags) );
-		m_pendingUnd = true;
-		update_irq_state();
-		return 0;
-	}
 	}
 
 	switch( cReg )
@@ -852,73 +1054,25 @@ READ32_MEMBER( arm7_cpu_device::arm7_rt_r_callback )
 			LOG( ( "arm7_rt_r_callback CR%d, RESERVED\n", cReg ) );
 			break;
 		case 0:             // ID
-		switch(op2)
-		{
-			case 0:
-			switch (m_archRev)
+			switch(op2)
 			{
-				case 3: // ARM6 32-bit
-				data = 0x41;
+			case 0:
+				data = m_copro_id;
 				break;
-
-				case 4: // ARM7/SA11xx
-					if (m_archFlags & eARM_ARCHFLAGS_SA)
-					{
-						// ARM Architecture Version 4
-						// Part Number 0xB11 (SA1110)
-						// Stepping B5
-							data = 0x69 | ( 0x01 << 16 ) | ( 0xB11 << 4 ) | 0x9;
-					}
-					else
-					{
-						data = m_copro_id;
-					}
-					break;
-
-				case 5: // ARM9/10/XScale
-					data = 0x41 | (9 << 12);
-					if (m_archFlags & eARM_ARCHFLAGS_T)
-					{
-						if (m_archFlags & eARM_ARCHFLAGS_E)
-						{
-							if (m_archFlags & eARM_ARCHFLAGS_J)
-							{
-								data |= (6<<16);    // v5TEJ
-							}
-							else
-							{
-								data |= (5<<16);    // v5TE
-							}
-						}
-						else
-						{
-							data |= (4<<16);    // v5T
-						}
-					}
-
-					/* ID from PXA-250 manual */
-					//data = 0x69052100;
-					break;
-
-				case 6: // ARM11
-					data = 0x41 | (10<< 12) | (7<<16);  // v6
-					break;
+			case 1: // cache type
+				data = 0x0f0d2112;  // HACK: value expected by ARMWrestler (probably Nintendo DS ARM9's value)
+				//data = (6 << 25) | (1 << 24) | (0x172 << 12) | (0x172 << 0); // ARM920T (S3C24xx)
+				break;
+			case 2: // TCM type
+				data = 0;
+				break;
+			case 3: // TLB type
+				data = 0;
+				break;
+			case 4: // MPU type
+				data = 0;
+				break;
 			}
-			break;
-		case 1: // cache type
-			data = 0x0f0d2112;  // HACK: value expected by ARMWrestler (probably Nintendo DS ARM9's value)
-			//data = (6 << 25) | (1 << 24) | (0x172 << 12) | (0x172 << 0); // ARM920T (S3C24xx)
-			break;
-		case 2: // TCM type
-			data = 0;
-			break;
-		case 3: // TLB type
-			data = 0;
-			break;
-		case 4: // MPU type
-			data = 0;
-			break;
-		}
 			LOG( ( "arm7_rt_r_callback, ID %02x (%02x) -> %08x (PC=%08x)\n",op2,m_archRev,data,GET_PC ) );
 			break;
 		case 1:             // Control
@@ -1072,7 +1226,7 @@ WRITE32_MEMBER( arm7_cpu_device::arm7_rt_w_callback )
 void arm7_cpu_device::arm7_dt_r_callback(uint32_t insn, uint32_t *prn)
 {
 	uint8_t cpn = (insn >> 8) & 0xF;
-	if ((m_archFlags & eARM_ARCHFLAGS_XSCALE) && (cpn == 0))
+	if ((m_archFlags & ARCHFLAG_XSCALE) && (cpn == 0))
 	{
 		LOG( ( "arm7_dt_r_callback: DSP Coprocessor 0 (CP0) not yet emulated (PC %08x)\n", GET_PC ) );
 	}
@@ -1087,7 +1241,7 @@ void arm7_cpu_device::arm7_dt_r_callback(uint32_t insn, uint32_t *prn)
 void arm7_cpu_device::arm7_dt_w_callback(uint32_t insn, uint32_t *prn)
 {
 	uint8_t cpn = (insn >> 8) & 0xF;
-	if ((m_archFlags & eARM_ARCHFLAGS_XSCALE) && (cpn == 0))
+	if ((m_archFlags & ARCHFLAG_XSCALE) && (cpn == 0))
 	{
 		LOG( ( "arm7_dt_w_callback: DSP Coprocessor 0 (CP0) not yet emulated (PC %08x)\n", GET_PC ) );
 	}

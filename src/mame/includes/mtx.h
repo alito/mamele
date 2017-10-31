@@ -12,10 +12,11 @@
 #include "imagedev/snapquik.h"
 #include "imagedev/cassette.h"
 #include "bus/centronics/ctronics.h"
-#include "machine/z80dart.h"
+#include "machine/z80sio.h"
 #include "machine/z80ctc.h"
 #include "sound/sn76496.h"
 #include "machine/ram.h"
+#include "machine/timer.h"
 
 #define Z80_TAG         "z80"
 #define Z80CTC_TAG      "z80ctc"
@@ -44,7 +45,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<sn76489a_device> m_sn;
 	required_device<z80ctc_device> m_z80ctc;
-	optional_device<z80dart_device> m_z80dart;
+	optional_device<z80sio_device> m_z80dart;
 	required_device<cassette_image_device> m_cassette;
 	required_device<centronics_device> m_centronics;
 	required_device<ram_device> m_ram;

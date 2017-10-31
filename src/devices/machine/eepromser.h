@@ -119,7 +119,7 @@ protected:
 	// read interfaces differ between implementations
 
 	// commands
-	enum eeprom_command
+	enum eeprom_command : u8
 	{
 		COMMAND_INVALID,
 		COMMAND_READ,
@@ -134,7 +134,7 @@ protected:
 	};
 
 	// states
-	enum eeprom_state
+	enum eeprom_state : u8
 	{
 		STATE_IN_RESET,
 		STATE_WAIT_FOR_START_BIT,
@@ -145,7 +145,7 @@ protected:
 	};
 
 	// events
-	enum eeprom_event
+	enum eeprom_event : u8
 	{
 		EVENT_CS_RISING_EDGE = 1 << 0,
 		EVENT_CS_FALLING_EDGE = 1 << 1,
@@ -314,7 +314,7 @@ DECLARE_SERIAL_EEPROM_DEVICE(93cxx, s29190, S29190, 16)
 DECLARE_SERIAL_EEPROM_DEVICE(93cxx, s29290, S29290, 16)
 DECLARE_SERIAL_EEPROM_DEVICE(93cxx, s29390, S29390, 16)
 
-// X24c44 8 bit 32byte ram/eeprom combo
+// X24c44 16 bit 32byte ram/eeprom combo
 DECLARE_SERIAL_EEPROM_DEVICE(x24c44, x24c44, X24C44, 16)
 
 #endif // MAME_MACHINE_EEPROMSER_H

@@ -335,7 +335,7 @@ bool address_map_entry::unitmask_is_appropriate(u8 width, u64 unitmask, const ch
 //  address_map - constructor
 //-------------------------------------------------
 
-address_map::address_map(device_t &device, address_spacenum spacenum)
+address_map::address_map(device_t &device, int spacenum)
 	: m_spacenum(spacenum),
 		m_device(&device),
 		m_databits(0xff),
@@ -425,7 +425,7 @@ address_map::~address_map()
 //  values
 //-------------------------------------------------
 
-void address_map::configure(address_spacenum, u8 databits)
+void address_map::configure(int, u8 databits)
 {
 	if (m_databits == 0xff)
 		m_databits = databits;
@@ -605,7 +605,7 @@ void address_map::uplift_submaps(running_machine &machine, device_t &owner, endi
 //  one of the device's address maps
 //-------------------------------------------------
 
-void address_map::map_validity_check(validity_checker &valid, address_spacenum spacenum) const
+void address_map::map_validity_check(validity_checker &valid, int spacenum) const
 {
 	// it's safe to assume here that the device has a memory interface and a config for this space
 	const address_space_config &spaceconfig = *m_device->memory().space_config(spacenum);
@@ -708,17 +708,19 @@ void address_map::map_validity_check(validity_checker &valid, address_spacenum s
 
 			// look for the region
 			for (device_t &dev : device_iterator(m_device->mconfig().root_device()))
-				for (const rom_entry *romp = rom_first_region(dev); romp != nullptr && !found; romp = rom_next_region(romp))
+			{
+				for (romload::region const &region : romload::entries(dev.rom_region()).get_regions())
 				{
-					if (rom_region_name(dev, romp) == entry_region)
+					if (dev.subtag(region.get_tag()) == entry_region)
 					{
 						// verify the address range is within the region's bounds
-						offs_t length = ROMREGION_GETLENGTH(romp);
+						offs_t const length = region.get_length();
 						if (entry.m_rgnoffs + (byteend - bytestart + 1) > length)
 							osd_printf_error("%s space memory map entry %X-%X extends beyond region '%s' size (%X)\n", spaceconfig.m_name, entry.m_addrstart, entry.m_addrend, entry.m_region, length);
 						found = true;
 					}
 				}
+			}
 
 			// error if not found
 			if (!found)

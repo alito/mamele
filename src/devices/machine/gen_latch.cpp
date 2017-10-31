@@ -42,6 +42,18 @@ void generic_latch_base_device::device_start()
 {
 	m_data_pending_cb.resolve_safe();
 	save_item(NAME(m_latch_written));
+
+	// synchronization is needed since other devices may not be initialized yet
+	machine().scheduler().synchronize(timer_expired_delegate(FUNC(generic_latch_base_device::init_callback), this));
+}
+
+//-------------------------------------------------
+//  init_callback - set initial state
+//-------------------------------------------------
+
+void generic_latch_base_device::init_callback(void *ptr, s32 param)
+{
+	m_data_pending_cb(m_latch_written ? 1 : 0);
 }
 
 //-------------------------------------------------
@@ -89,7 +101,7 @@ generic_latch_8_device::generic_latch_8_device(const machine_config &mconfig, co
 
 READ8_MEMBER( generic_latch_8_device::read )
 {
-	if (!has_separate_acknowledge())
+	if (!has_separate_acknowledge() && !machine().side_effect_disabled())
 		set_latch_written(false);
 	return m_latched_value;
 }
@@ -121,7 +133,8 @@ WRITE_LINE_MEMBER( generic_latch_8_device::clear_w )
 
 READ8_MEMBER( generic_latch_8_device::acknowledge_r )
 {
-	set_latch_written(false);
+	if (!machine().side_effect_disabled())
+		set_latch_written(false);
 	return space.unmap();
 }
 
@@ -171,7 +184,7 @@ generic_latch_16_device::generic_latch_16_device(const machine_config &mconfig, 
 
 READ16_MEMBER( generic_latch_16_device::read )
 {
-	if (!has_separate_acknowledge())
+	if (!has_separate_acknowledge() && !machine().side_effect_disabled())
 		set_latch_written(false);
 	return m_latched_value;
 }

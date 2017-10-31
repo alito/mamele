@@ -38,7 +38,6 @@ z8002_device::z8002_device(const machine_config &mconfig, const char *tag, devic
 
 z8002_device::z8002_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int addrbits, int iobits, int vecmult)
 	: cpu_device(mconfig, type, tag, owner, clock)
-	, z80_daisy_chain_interface(mconfig, *this)
 	, m_program_config("program", ENDIANNESS_BIG, 16, addrbits, 0)
 	, m_io_config("io", ENDIANNESS_BIG, iobits, 16, 0)
 	, m_mo_out(*this)
@@ -61,6 +60,22 @@ offs_t z8002_device::disasm_disassemble(std::ostream &stream, offs_t pc, const u
 	return CPU_DISASSEMBLE_NAME(z8000)(this, stream, pc, oprom, opram, options);
 }
 
+device_memory_interface::space_config_vector z8002_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_IO,      &m_io_config)
+	};
+}
+
+device_memory_interface::space_config_vector z8001_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_DATA,    &m_data_config),
+		std::make_pair(AS_IO,      &m_io_config)
+	};
+}
 
 /* opcode execution table */
 std::unique_ptr<z8002_device::Z8000_exec const []> z8002_device::z8000_exec;
@@ -194,7 +209,7 @@ uint32_t z8001_device::adjust_addr_for_nonseg_mode(uint32_t addr)
 	}
 }
 
-uint8_t z8002_device::RDMEM_B(address_spacenum spacenum, uint32_t addr)
+uint8_t z8002_device::RDMEM_B(int spacenum, uint32_t addr)
 {
 	addr = adjust_addr_for_nonseg_mode(addr);
 	if (spacenum == AS_PROGRAM)
@@ -203,7 +218,7 @@ uint8_t z8002_device::RDMEM_B(address_spacenum spacenum, uint32_t addr)
 		return m_data->read_byte(addr);
 }
 
-uint16_t z8002_device::RDMEM_W(address_spacenum spacenum, uint32_t addr)
+uint16_t z8002_device::RDMEM_W(int spacenum, uint32_t addr)
 {
 	addr = adjust_addr_for_nonseg_mode(addr);
 	addr &= ~1;
@@ -218,7 +233,7 @@ uint16_t z8002_device::RDMEM_W(address_spacenum spacenum, uint32_t addr)
 		return m_data->read_word(addr);
 }
 
-uint32_t z8002_device::RDMEM_L(address_spacenum spacenum, uint32_t addr)
+uint32_t z8002_device::RDMEM_L(int spacenum, uint32_t addr)
 {
 	uint32_t result;
 	addr = adjust_addr_for_nonseg_mode(addr);
@@ -235,7 +250,7 @@ uint32_t z8002_device::RDMEM_L(address_spacenum spacenum, uint32_t addr)
 	}
 }
 
-void z8002_device::WRMEM_B(address_spacenum spacenum, uint32_t addr, uint8_t value)
+void z8002_device::WRMEM_B(int spacenum, uint32_t addr, uint8_t value)
 {
 	addr = adjust_addr_for_nonseg_mode(addr);
 	if (spacenum == AS_PROGRAM)
@@ -244,7 +259,7 @@ void z8002_device::WRMEM_B(address_spacenum spacenum, uint32_t addr, uint8_t val
 		m_data->write_byte(addr, value);
 }
 
-void z8002_device::WRMEM_W(address_spacenum spacenum, uint32_t addr, uint16_t value)
+void z8002_device::WRMEM_W(int spacenum, uint32_t addr, uint16_t value)
 {
 	addr = adjust_addr_for_nonseg_mode(addr);
 	addr &= ~1;
@@ -254,7 +269,7 @@ void z8002_device::WRMEM_W(address_spacenum spacenum, uint32_t addr, uint16_t va
 		m_data->write_word(addr, value);
 }
 
-void z8002_device::WRMEM_L(address_spacenum spacenum, uint32_t addr, uint32_t value)
+void z8002_device::WRMEM_L(int spacenum, uint32_t addr, uint32_t value)
 {
 	addr = adjust_addr_for_nonseg_mode(addr);
 	addr &= ~1;

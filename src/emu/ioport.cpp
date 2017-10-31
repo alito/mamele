@@ -488,17 +488,12 @@ void digital_joystick::frame_update()
 		//  to a diagonal, or from one diagonal directly to an extreme diagonal.
 		//
 		//  The chances of this happening with a keyboard are slim, but we still need to
-		//  constrain this case.
-		//
-		//  For now, just resolve randomly.
+		//  constrain this case. Let's pick the horizontal axis.
 		//
 		if ((m_current4way & (UP_BIT | DOWN_BIT)) &&
 			(m_current4way & (LEFT_BIT | RIGHT_BIT)))
 		{
-			if (machine->rand() & 1)
-				m_current4way &= ~(LEFT_BIT | RIGHT_BIT);
-			else
-				m_current4way &= ~(UP_BIT | DOWN_BIT);
+			m_current4way &= ~(UP_BIT | DOWN_BIT);
 		}
 	}
 }
@@ -621,7 +616,9 @@ ioport_field::ioport_field(ioport_port &port, ioport_type type, ioport_value def
 	// reset sequences and chars
 	for (input_seq_type seqtype = SEQ_TYPE_STANDARD; seqtype < SEQ_TYPE_TOTAL; ++seqtype)
 		m_seq[seqtype].set_default();
-	m_chars[0] = m_chars[1] = m_chars[2] = m_chars[3] = char32_t(0);
+
+	for (int i = 0; i < ARRAY_LENGTH(m_chars); i++)
+		std::fill(std::begin(m_chars[i]), std::end(m_chars[i]), char32_t(0));
 
 	// for DIP switches and configs, look for a default value from the owner
 	if (type == IPT_DIPSWITCH || type == IPT_CONFIG)
@@ -760,23 +757,20 @@ ioport_type_class ioport_field::type_class() const
 
 
 //-------------------------------------------------
-//  keyboard_code - accesses a particular keyboard
-//  code
+//  keyboard_codes - accesses a particular keyboard
+//  code list
 //-------------------------------------------------
 
-char32_t ioport_field::keyboard_code(int which) const
+std::vector<char32_t> ioport_field::keyboard_codes(int which) const
 {
-	char32_t ch;
-
 	if (which >= ARRAY_LENGTH(m_chars))
 		throw emu_fatalerror("Tried to access keyboard_code with out-of-range index %d\n", which);
 
-	ch = m_chars[which];
+	std::vector<char32_t> result;
+	for (int i = 0; i < ARRAY_LENGTH(m_chars[which]) && m_chars[which] != 0; i++)
+		result.push_back(m_chars[which][i]);
 
-	// special hack to allow for PORT_CODE('\xA3')
-	if (ch >= 0xffffff80 && ch <= 0xffffffff)
-		ch &= 0xff;
-	return ch;
+	return result;
 }
 
 
@@ -786,56 +780,57 @@ char32_t ioport_field::keyboard_code(int which) const
 
 std::string ioport_field::key_name(int which) const
 {
-	char32_t ch = keyboard_code(which);
+	std::vector<char32_t> codes = keyboard_codes(which);
+	char32_t ch = codes.empty() ? 0 : codes[0];
 
 	// attempt to get the string from the character info table
 	switch (ch)
 	{
-		case 8: return "Backspace";
-		case 9: return "Tab";
-		case 12: return "Clear";
-		case 13: return "Enter";
-		case 27: return "Esc";
-		case 32: return "Space";
-		case UCHAR_SHIFT_1: return "Shift";
-		case UCHAR_SHIFT_2: return "Ctrl";
-		case UCHAR_MAMEKEY(ESC): return "Esc";
-		case UCHAR_MAMEKEY(INSERT): return "Insert";
-		case UCHAR_MAMEKEY(DEL): return "Delete";
-		case UCHAR_MAMEKEY(HOME): return "Home";
-		case UCHAR_MAMEKEY(END): return "End";
-		case UCHAR_MAMEKEY(PGUP): return "Page Up";
-		case UCHAR_MAMEKEY(PGDN): return "Page Down";
-		case UCHAR_MAMEKEY(LEFT): return "Cursor Left";
-		case UCHAR_MAMEKEY(RIGHT): return "Cursor Right";
-		case UCHAR_MAMEKEY(UP): return "Cursor Up";
-		case UCHAR_MAMEKEY(DOWN): return "Cursor Down";
-		case UCHAR_MAMEKEY(SLASH_PAD): return "Keypad /";
-		case UCHAR_MAMEKEY(ASTERISK): return "Keypad *";
-		case UCHAR_MAMEKEY(MINUS_PAD): return "Keypad -";
-		case UCHAR_MAMEKEY(PLUS_PAD): return "Keypad +";
-		case UCHAR_MAMEKEY(DEL_PAD): return "Keypad .";
-		case UCHAR_MAMEKEY(ENTER_PAD): return "Keypad Enter";
-		case UCHAR_MAMEKEY(BS_PAD): return "Keypad Backspace";
-		case UCHAR_MAMEKEY(TAB_PAD): return "Keypad Tab";
-		case UCHAR_MAMEKEY(00_PAD): return "Keypad 00";
-		case UCHAR_MAMEKEY(000_PAD): return "Keypad 000";
-		case UCHAR_MAMEKEY(PRTSCR): return "Print Screen";
-		case UCHAR_MAMEKEY(PAUSE): return "Pause";
-		case UCHAR_MAMEKEY(LSHIFT): return "Left Shift";
-		case UCHAR_MAMEKEY(RSHIFT): return "Right Shift";
-		case UCHAR_MAMEKEY(LCONTROL): return "Left Ctrl";
-		case UCHAR_MAMEKEY(RCONTROL): return "Right Ctrl";
-		case UCHAR_MAMEKEY(LALT): return "Left Alt";
-		case UCHAR_MAMEKEY(RALT): return "Right Alt";
-		case UCHAR_MAMEKEY(SCRLOCK): return "Scroll Lock";
-		case UCHAR_MAMEKEY(NUMLOCK): return "Num Lock";
-		case UCHAR_MAMEKEY(CAPSLOCK): return "Caps Lock";
-		case UCHAR_MAMEKEY(LWIN): return "Left Win";
-		case UCHAR_MAMEKEY(RWIN): return "Right Win";
-		case UCHAR_MAMEKEY(MENU): return "Menu";
-		case UCHAR_MAMEKEY(CANCEL): return "Break";
-		default: break;
+	case 8: return "Backspace";
+	case 9: return "Tab";
+	case 12: return "Clear";
+	case 13: return "Enter";
+	case 27: return "Esc";
+	case 32: return "Space";
+	case UCHAR_SHIFT_1: return "Shift";
+	case UCHAR_SHIFT_2: return "Ctrl";
+	case UCHAR_MAMEKEY(ESC): return "Esc";
+	case UCHAR_MAMEKEY(INSERT): return "Insert";
+	case UCHAR_MAMEKEY(DEL): return "Delete";
+	case UCHAR_MAMEKEY(HOME): return "Home";
+	case UCHAR_MAMEKEY(END): return "End";
+	case UCHAR_MAMEKEY(PGUP): return "Page Up";
+	case UCHAR_MAMEKEY(PGDN): return "Page Down";
+	case UCHAR_MAMEKEY(LEFT): return "Cursor Left";
+	case UCHAR_MAMEKEY(RIGHT): return "Cursor Right";
+	case UCHAR_MAMEKEY(UP): return "Cursor Up";
+	case UCHAR_MAMEKEY(DOWN): return "Cursor Down";
+	case UCHAR_MAMEKEY(SLASH_PAD): return "Keypad /";
+	case UCHAR_MAMEKEY(ASTERISK): return "Keypad *";
+	case UCHAR_MAMEKEY(MINUS_PAD): return "Keypad -";
+	case UCHAR_MAMEKEY(PLUS_PAD): return "Keypad +";
+	case UCHAR_MAMEKEY(DEL_PAD): return "Keypad .";
+	case UCHAR_MAMEKEY(ENTER_PAD): return "Keypad Enter";
+	case UCHAR_MAMEKEY(BS_PAD): return "Keypad Backspace";
+	case UCHAR_MAMEKEY(TAB_PAD): return "Keypad Tab";
+	case UCHAR_MAMEKEY(00_PAD): return "Keypad 00";
+	case UCHAR_MAMEKEY(000_PAD): return "Keypad 000";
+	case UCHAR_MAMEKEY(PRTSCR): return "Print Screen";
+	case UCHAR_MAMEKEY(PAUSE): return "Pause";
+	case UCHAR_MAMEKEY(LSHIFT): return "Left Shift";
+	case UCHAR_MAMEKEY(RSHIFT): return "Right Shift";
+	case UCHAR_MAMEKEY(LCONTROL): return "Left Ctrl";
+	case UCHAR_MAMEKEY(RCONTROL): return "Right Ctrl";
+	case UCHAR_MAMEKEY(LALT): return "Left Alt";
+	case UCHAR_MAMEKEY(RALT): return "Right Alt";
+	case UCHAR_MAMEKEY(SCRLOCK): return "Scroll Lock";
+	case UCHAR_MAMEKEY(NUMLOCK): return "Num Lock";
+	case UCHAR_MAMEKEY(CAPSLOCK): return "Caps Lock";
+	case UCHAR_MAMEKEY(LWIN): return "Left Win";
+	case UCHAR_MAMEKEY(RWIN): return "Right Win";
+	case UCHAR_MAMEKEY(MENU): return "Menu";
+	case UCHAR_MAMEKEY(CANCEL): return "Break";
+	default: break;
 	}
 
 	// handle function keys
@@ -848,12 +843,7 @@ std::string ioport_field::key_name(int which) const
 
 	// if that doesn't work, convert to UTF-8
 	if (ch > 0x7F || isprint(ch))
-	{
-		char buf[10];
-		int count = utf8_from_uchar(buf, ARRAY_LENGTH(buf), ch);
-		buf[count] = 0;
-		return std::string(buf);
-	}
+		return utf8_from_uchar(ch);
 
 	// otherwise, opt for question marks
 	return "???";
@@ -1390,8 +1380,8 @@ ioport_field_live::ioport_field_live(ioport_field &field, analog_field *analog)
 		// loop through each character on the field
 		for (int which = 0; which < 4; which++)
 		{
-			char32_t const ch = field.keyboard_code(which);
-			if (ch == 0)
+			std::vector<char32_t> const codes = field.keyboard_codes(which);
+			if (codes.empty())
 				break;
 			name.append(string_format("%-*s ", std::max(SPACE_COUNT - 1, 0), field.key_name(which)));
 		}
@@ -2543,7 +2533,14 @@ time_t ioport_manager::playback_init()
 
 	// open the playback file
 	osd_file::error filerr = m_playback_file.open(filename);
-	assert_always(filerr == osd_file::error::NONE, "Failed to open file for playback");
+
+	// return an explicit error if file isn't found in given path
+	if(filerr == osd_file::error::NOT_FOUND)
+		fatalerror("Input file %s not found\n",filename);
+
+	// TODO: bail out any other error laconically for now
+	if(filerr != osd_file::error::NONE)
+		fatalerror("Failed to open file %s for playback (code error=%d)\n",filename,int(filerr));
 
 	// read the header and verify that it is a modern version; if not, print an error
 	inp_header header;
@@ -3069,16 +3066,27 @@ ioport_configurer& ioport_configurer::field_alloc(ioport_type type, ioport_value
 //  field_add_char - add a character to a field
 //-------------------------------------------------
 
-ioport_configurer& ioport_configurer::field_add_char(char32_t ch)
+ioport_configurer& ioport_configurer::field_add_char(std::initializer_list<char32_t> charlist)
 {
 	for (int index = 0; index < ARRAY_LENGTH(m_curfield->m_chars); index++)
-		if (m_curfield->m_chars[index] == 0)
+		if (m_curfield->m_chars[index][0] == 0)
 		{
-			m_curfield->m_chars[index] = ch;
+			const size_t char_count = ARRAY_LENGTH(m_curfield->m_chars[index]);
+			assert(charlist.size() > 0 && charlist.size() <= char_count);
+
+			for (size_t i = 0; i < char_count; i++)
+				m_curfield->m_chars[index][i] = i < charlist.size() ? *(charlist.begin() + i) : 0;
 			return *this;
 		}
 
-	throw emu_fatalerror("PORT_CHAR(%d) could not be added - maximum amount exceeded\n", ch);
+	std::ostringstream s;
+	bool is_first = true;
+	for (char32_t ch : charlist)
+	{
+		util::stream_format(s, "%s%d", is_first ? "" : ",", (int)ch);
+		is_first = false;
+	}
+	throw emu_fatalerror("PORT_CHAR(%s) could not be added - maximum amount exceeded\n", s.str().c_str());
 }
 
 
@@ -3380,7 +3388,13 @@ analog_field::analog_field(ioport_field &field)
 
 			// relative controls reverse from 1 past their max range
 			if (m_wraps)
-				m_reverse_val -= INPUT_RELATIVE_PER_PIXEL;
+			{
+				// FIXME: positional needs -1, using INPUT_RELATIVE_PER_PIXEL skips a position (and reads outside the table array)
+				if(field.type() == IPT_POSITIONAL || field.type() == IPT_POSITIONAL_V)
+					m_reverse_val --;
+				else
+					m_reverse_val -= INPUT_RELATIVE_PER_PIXEL;
+			}
 		}
 	}
 

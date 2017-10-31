@@ -131,6 +131,13 @@ pentium4_device::pentium4_device(const machine_config &mconfig, const char *tag,
 	set_vtlb_dynamic_entries(196);
 }
 
+device_memory_interface::space_config_vector i386_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_IO,      &m_io_config)
+	};
+}
 
 int i386_parity_table[256];
 MODRM_TABLE i386_MODRM_table[256];
@@ -2192,10 +2199,10 @@ void i386_device::i386_protected_mode_retf(uint8_t count, uint8_t operand32)
 				FAULT(FAULT_SS,0)
 			}
 		}
-		if(operand32 == 0)
-			REG16(SP) += (4+count);
+		if(STACK_32BIT)
+			REG32(ESP) += (operand32 ? 8 : 4) + count;
 		else
-			REG32(ESP) += (8+count);
+			REG16(SP) +=  (operand32 ? 8 : 4) + count;
 	}
 	else if(RPL > CPL)
 	{
@@ -4005,7 +4012,7 @@ void i386_device::execute_run()
 
 /*************************************************************************/
 
-bool i386_device::memory_translate(address_spacenum spacenum, int intention, offs_t &address)
+bool i386_device::memory_translate(int spacenum, int intention, offs_t &address)
 {
 	bool ret = true;
 	if(spacenum == AS_PROGRAM)

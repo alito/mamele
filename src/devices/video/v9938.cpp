@@ -33,6 +33,7 @@ todo:
 - vdp engine -- make run at correct speed
 - vr/hr/fh flags: double-check all of that
 - make vdp engine work in exp. ram
+- fix save state support
 */
 
 #include "emu.h"
@@ -130,6 +131,13 @@ v9938_device::v9938_device(const machine_config &mconfig, const char *tag, devic
 v9958_device::v9958_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 : v99x8_device(mconfig, V9958, tag, owner, clock, MODEL_V9958)
 {
+}
+
+device_memory_interface::space_config_vector v99x8_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_DATA, &m_space_config)
+	};
 }
 
 
@@ -461,9 +469,9 @@ uint8_t v99x8_device::status_r()
 	case 1:
 		ret = m_stat_reg[1];
 		m_stat_reg[1] &= 0xfe;
+		// mouse mode: add button state
 		if ((m_cont_reg[8] & 0xc0) == 0x80)
-			// mouse mode: add button state
-		ret |= m_button_state & 0xc0;
+			ret |= m_button_state & 0xc0;
 		break;
 	case 2:
 		/*update_command ();*/

@@ -897,6 +897,14 @@ void scudsp_cpu_device::execute_run()
 	} while( m_icount > 0 );
 }
 
+device_memory_interface::space_config_vector scudsp_cpu_device::memory_space_config() const
+{
+	return space_config_vector {
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_DATA,    &m_data_config)
+	};
+}
+
 void scudsp_cpu_device::device_start()
 {
 	m_pc = 0;
@@ -961,14 +969,14 @@ void scudsp_cpu_device::device_start()
 	state_add( SCUDSP_DELAY, "DELAY", m_delay ).formatstr("%02X").noshow();
 	state_add( SCUDSP_TOP, "TOP", m_top).formatstr("%02X");
 	state_add( SCUDSP_LOP, "LOP", m_lop).formatstr("%03X");
-	state_add( SCUDSP_RX, "RX", m_rx).formatstr("%08X");
+	state_add( SCUDSP_RX, "RX", m_rx.ui).formatstr("%08X");
 	state_add( SCUDSP_MUL, "MUL", m_mul).formatstr("%012X");
-	state_add( SCUDSP_RY, "RY", m_ry).formatstr("%08X");
+	state_add( SCUDSP_RY, "RY", m_ry.ui).formatstr("%08X");
 	state_add( SCUDSP_ALU, "ALU", m_alu).formatstr("%012X");
-	state_add( SCUDSP_PH, "PH", m_ph).formatstr("%04X");
-	state_add( SCUDSP_PL, "PL", m_pl).formatstr("%08X");
-	state_add( SCUDSP_ACH, "ACH", m_ach).formatstr("%04X");
-	state_add( SCUDSP_ACL, "ACL", m_acl).formatstr("%08X");
+	state_add( SCUDSP_PH, "PH", m_ph.ui).formatstr("%04X");
+	state_add( SCUDSP_PL, "PL", m_pl.ui).formatstr("%08X");
+	state_add( SCUDSP_ACH, "ACH", m_ach.ui).formatstr("%04X");
+	state_add( SCUDSP_ACL, "ACL", m_acl.ui).formatstr("%08X");
 	state_add( SCUDSP_RA0, "RA0", m_ra0).formatstr("%08X");
 	state_add( SCUDSP_WA0, "WA0", m_wa0).formatstr("%08X");
 	state_add( SCUDSP_RA, "RA", m_ra ).formatstr("%02X");
@@ -1001,13 +1009,21 @@ void scudsp_cpu_device::execute_set_input(int irqline, int state)
 	}
 }
 
+static ADDRESS_MAP_START( program_map, AS_PROGRAM, 32, scudsp_cpu_device )
+	AM_RANGE(0x00, 0xff) AM_RAM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( data_map, AS_DATA, 32, scudsp_cpu_device )
+	AM_RANGE(0x00, 0xff) AM_RAM
+ADDRESS_MAP_END
+
 scudsp_cpu_device::scudsp_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: cpu_device(mconfig, SCUDSP, tag, owner, clock)
 	, m_out_irq_cb(*this)
 	, m_in_dma_cb(*this)
 	, m_out_dma_cb(*this)
-	, m_program_config("program", ENDIANNESS_BIG, 32, 8, -2)
-	, m_data_config("data", ENDIANNESS_BIG, 32, 8, -2)
+	, m_program_config("program", ENDIANNESS_BIG, 32, 8, -2, ADDRESS_MAP_NAME(program_map))
+	, m_data_config("data", ENDIANNESS_BIG, 32, 8, -2, ADDRESS_MAP_NAME(data_map))
 {
 }
 

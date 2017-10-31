@@ -1301,8 +1301,8 @@ ROM_START( dspirit2 )
 	ROM_LOAD_512( "ds1_p3.bin",     0x180000, CRC(c6e5954b) SHA1(586fc108f264e91a4bbbb05153dd1aa19be81b5b) )
 	ROM_LOAD_512( "ds1_p4.bin",     0x200000, CRC(f3307870) SHA1(a85d28c5dc55cbfa6c384d71e724db44c547d976) )
 	ROM_LOAD_512( "ds1_p5.bin",     0x280000, CRC(9a3a1028) SHA1(505808834677c433e0a4cfbf387b2874e2d0fc47) )
-	ROM_LOAD_512( "ds2-pr6d.s11",   0x300000, CRC(5382447d) SHA1(3034d3a57b493c86673ee0aa7172bae778edd76a) ) // aka 8722-1107.bin for Atari's part number
-	ROM_LOAD_512( "ds2-pr7d.t11",   0x380000, CRC(80ff492a) SHA1(716ff7444edc0dfcce0fda2d213feb183435471f) ) // aka 8722-1108.bin for Atari's part number
+	ROM_LOAD_512( "ds2-pr6d.s11",   0x300000, CRC(5382447d) SHA1(3034d3a57b493c86673ee0aa7172bae778edd76a) ) // aka 8722-136055-1107.bin for Atari's part number
+	ROM_LOAD_512( "ds2-pr7d.t11",   0x380000, CRC(80ff492a) SHA1(716ff7444edc0dfcce0fda2d213feb183435471f) ) // aka 8722-136055-1108.bin for Atari's part number
 
 	ROM_REGION( 0x1000, "mcu", 0 )  /* MCU internal ROM */
 	ROM_LOAD( "cus64-64a1.mcu",     0x0000, 0x1000, CRC(ffb5c0bd) SHA1(7a38c0cc2553c627f4ec507fb6e807cf7d537c02) ) /* internal 63701 MCU code */
@@ -1908,6 +1908,9 @@ ROM_START( mmaze )
 	ROM_LOAD( "mm_obj-1.bin",       0x20000, 0x20000, CRC(1ce49e04) SHA1(fc30a03e443bece11bd86771ebd1fcb40d15b0b9) )
 	ROM_LOAD( "mm_obj-2.bin",       0x40000, 0x20000, CRC(3d3d5de3) SHA1(aa8032f1d99af1d92b0afaa11933548e0d39f03b) )
 	ROM_LOAD( "mm_obj-3.bin",       0x60000, 0x20000, CRC(dac57358) SHA1(5175b66d3622cb56ed7be3568b247195d1485579) )
+
+	ROM_REGION( 0x0800, "nvram", 0 ) // default NVRAM, avoids TEST PROGRAM INITIALIZE ERROR on boot
+	ROM_LOAD( "mmaze.nv",  0, 0x800,  CRC(73e62b56) SHA1(dd228490cbe5fd57cf7a7fe867e074c75c84ee90) )
 ROM_END
 
 ROM_START( mmaze2 )
@@ -1948,6 +1951,9 @@ ROM_START( mmaze2 )
 	ROM_LOAD( "mm_obj-1.bin",       0x20000, 0x20000, CRC(1ce49e04) SHA1(fc30a03e443bece11bd86771ebd1fcb40d15b0b9) )
 	ROM_LOAD( "mm_obj-2.bin",       0x40000, 0x20000, CRC(3d3d5de3) SHA1(aa8032f1d99af1d92b0afaa11933548e0d39f03b) )
 	ROM_LOAD( "mm_obj-3.bin",       0x60000, 0x20000, CRC(dac57358) SHA1(5175b66d3622cb56ed7be3568b247195d1485579) )
+
+	ROM_REGION( 0x0800, "nvram", 0 ) // default NVRAM, avoids TEST PROGRAM INITIALIZE ERROR on boot
+	ROM_LOAD( "mmaze.nv",  0, 0x800,  CRC(73e62b56) SHA1(dd228490cbe5fd57cf7a7fe867e074c75c84ee90) )
 ROM_END
 
 /* Bakutotsu Kijuutei */

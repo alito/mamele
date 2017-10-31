@@ -1,5 +1,10 @@
 // license:BSD-3-Clause
 // copyright-holders:Carl
+/****************************************************************************
+
+    Olivetti M24 emulation
+
+****************************************************************************/
 
 #include "emu.h"
 
@@ -185,11 +190,6 @@ static ADDRESS_MAP_START(kbc_map, AS_PROGRAM, 8, m24_state)
 	AM_RANGE(0xf800, 0xffff) AM_ROM AM_REGION("kbc", 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(kbc_io, AS_IO, 8, m24_state)
-	AM_RANGE(TMS7000_PORTA, TMS7000_PORTA) AM_READ(pa_r)
-	AM_RANGE(TMS7000_PORTB, TMS7000_PORTB) AM_WRITE(pb_w)
-ADDRESS_MAP_END
-
 static INPUT_PORTS_START( m24 )
 	PORT_START("DSW0")
 	PORT_DIPNAME( 0x8f, 0x89, "RAM banks")
@@ -272,7 +272,8 @@ static MACHINE_CONFIG_START( olivetti )
 
 	MCFG_CPU_ADD("kbc", TMS7000, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(kbc_map)
-	MCFG_CPU_IO_MAP(kbc_io)
+	MCFG_TMS7000_IN_PORTA_CB(READ8(m24_state, pa_r))
+	MCFG_TMS7000_OUT_PORTB_CB(WRITE8(m24_state, pb_w))
 
 	MCFG_DEVICE_ADD("keyboard", M24_KEYBOARD, 0)
 	MCFG_M24_KEYBOARD_OUT_DATA_HANDLER(WRITELINE(m24_state, kbcin_w))
@@ -298,7 +299,7 @@ ROM_START( m24 )
 	ROMX_LOAD("olivetti_m24_version_1.43_low.bin", 0x4000, 0x2000, CRC(ff7e0f10) SHA1(13423011a9bae3f3193e8c199f98a496cab48c0f), ROM_SKIP(1))
 
 	ROM_REGION(0x800, "kbc", 0)
-	ROM_LOAD("pdbd.tms2516.keyboardmcureplacementdaughterboard_10u", 0x000, 0x800, CRC(b8c4c18a) SHA1(25b4c24e19ff91924c53557c66513ab242d926c6))
+	ROM_LOAD("pdbd.tms2516.kbdmcu_replacement_board.10u", 0x000, 0x800, CRC(b8c4c18a) SHA1(25b4c24e19ff91924c53557c66513ab242d926c6))
 ROM_END
 
 ROM_START( m240 )
@@ -308,7 +309,7 @@ ROM_START( m240 )
 
 	// is this one the same?
 	ROM_REGION(0x800, "kbc", 0)
-	ROM_LOAD("pdbd.tms2516.keyboardmcureplacementdaughterboard_10u", 0x000, 0x800, BAD_DUMP CRC(b8c4c18a) SHA1(25b4c24e19ff91924c53557c66513ab242d926c6))
+	ROM_LOAD("pdbd.tms2516.kbdmcu_replacement_board.10u", 0x000, 0x800, BAD_DUMP CRC(b8c4c18a) SHA1(25b4c24e19ff91924c53557c66513ab242d926c6))
 ROM_END
 
 COMP( 1983, m24,        ibm5150,    0,          olivetti,   m24, m24_state,      0,      "Olivetti", "M24",  MACHINE_NOT_WORKING )

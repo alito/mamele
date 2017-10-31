@@ -14,6 +14,10 @@
 
 class clipper_device : public cpu_device
 {
+public:
+	DECLARE_READ32_MEMBER(get_ssw) const { return m_ssw; }
+	DECLARE_WRITE8_MEMBER(set_ivec) { m_ivec = data; }
+
 protected:
 	enum registers
 	{
@@ -177,10 +181,12 @@ protected:
 		MTS_WRITE_PROTECT_FAULT           = 7 << 28,
 	};
 
-public:
-	DECLARE_READ32_MEMBER(ssw) { return m_ssw; }
+	enum ivec_mask
+	{
+		IVEC_NUMBER = 0x0f,
+		IVEC_LEVEL  = 0xf0
+	};
 
-protected:
 	clipper_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, const u32 cpuid);
 
 	// device-level overrides
@@ -195,7 +201,7 @@ protected:
 	virtual void execute_set_input(int inputnum, int state) override;
 
 	// device_memory_interface overrides
-	virtual const address_space_config *memory_space_config(address_spacenum spacenum) const override;
+	virtual space_config_vector memory_space_config() const override;
 
 	// device_state_interface overrides
 #if 0
@@ -224,17 +230,18 @@ protected:
 	// floating registers
 	double m_f[16];
 
-private:
 	address_space_config m_insn_config;
 	address_space_config m_data_config;
 
 	address_space *m_insn;
 	address_space *m_data;
 
+private:
 	int m_icount;
 
 	int m_irq;
 	int m_nmi;
+	u8 m_ivec;
 
 	// decoded instruction information
 	struct
@@ -254,9 +261,10 @@ private:
 
 	void decode_instruction(u16 insn);
 	int execute_instruction();
-	bool evaluate_branch();
+	bool evaluate_branch() const;
 
-	uint32_t intrap(u32 vector, u32 pc, u32 cts = CTS_NO_CPU_TRAP, u32 mts = MTS_NO_MEMORY_TRAP);
+protected:
+	virtual uint32_t intrap(u32 vector, u32 pc, u32 cts = CTS_NO_CPU_TRAP, u32 mts = MTS_NO_MEMORY_TRAP);
 };
 
 class clipper_c100_device : public clipper_device
@@ -275,6 +283,9 @@ class clipper_c400_device : public clipper_device
 {
 public:
 	clipper_c400_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
+
+protected:
+	virtual uint32_t intrap(u32 vector, u32 pc, u32 cts = CTS_NO_CPU_TRAP, u32 mts = MTS_NO_MEMORY_TRAP) override;
 };
 
 DECLARE_DEVICE_TYPE(CLIPPER_C100, clipper_c100_device)

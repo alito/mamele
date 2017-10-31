@@ -355,6 +355,7 @@ some other components. It will be documented at a later date.
 #include "machine/idehd.h"
 #include "machine/lpci.h"
 #include "machine/timekpr.h"
+#include "machine/timer.h"
 #include "video/voodoo.h"
 #include "screen.h"
 #include "speaker.h"
@@ -1375,7 +1376,7 @@ READ64_MEMBER(viper_state::cf_card_data_r)
 
 			default:
 			{
-				fatalerror("%s:cf_card_data_r: IDE reg %02X\n", machine().describe_context(), offset & 0xf);
+				fatalerror("%s:cf_card_data_r: IDE reg %02X\n", machine().describe_context().c_str(), offset & 0xf);
 			}
 		}
 	}
@@ -1396,7 +1397,7 @@ WRITE64_MEMBER(viper_state::cf_card_data_w)
 
 			default:
 			{
-				fatalerror("%s:cf_card_data_w: IDE reg %02X, %04X\n", machine().describe_context(), offset & 0xf, (uint16_t)(data >> 16));
+				fatalerror("%s:cf_card_data_w: IDE reg %02X, %04X\n", machine().describe_context().c_str(), offset & 0xf, (uint16_t)(data >> 16));
 			}
 		}
 	}
@@ -1442,7 +1443,7 @@ READ64_MEMBER(viper_state::cf_card_r)
 
 				default:
 				{
-					printf("%s:compact_flash_r: IDE reg %02X\n", machine().describe_context(), offset & 0xf);
+					printf("%s:compact_flash_r: IDE reg %02X\n", machine().describe_context().c_str(), offset & 0xf);
 				}
 			}
 		}
@@ -1458,7 +1459,7 @@ READ64_MEMBER(viper_state::cf_card_r)
 			}
 			else
 			{
-				fatalerror("%s:compact_flash_r: reg %02X\n", machine().describe_context(), reg);
+				fatalerror("%s:compact_flash_r: reg %02X\n", machine().describe_context().c_str(), reg);
 			}
 		}
 	}
@@ -1468,7 +1469,7 @@ READ64_MEMBER(viper_state::cf_card_r)
 WRITE64_MEMBER(viper_state::cf_card_w)
 {
 	#ifdef VIPER_DEBUG_LOG
-	//printf("%s:compact_flash_w: %08X%08X, %08X, %08X%08X\n", machine().describe_context(), (uint32_t)(data>>32), (uint32_t)(data), offset, (uint32_t)(mem_mask >> 32), (uint32_t)(mem_mask));
+	//logerror("%s:compact_flash_w: %08X%08X, %08X, %08X%08X\n", machine().describe_context(), (uint32_t)(data>>32), (uint32_t)(data), offset, (uint32_t)(mem_mask >> 32), (uint32_t)(mem_mask));
 	#endif
 
 	if (ACCESSING_BITS_16_31)
@@ -1507,7 +1508,7 @@ WRITE64_MEMBER(viper_state::cf_card_w)
 
 				default:
 				{
-					fatalerror("%s:compact_flash_w: IDE reg %02X, data %04X\n", machine().describe_context(), offset & 0xf, (uint16_t)((data >> 16) & 0xffff));
+					fatalerror("%s:compact_flash_w: IDE reg %02X, data %04X\n", machine().describe_context().c_str(), offset & 0xf, (uint16_t)((data >> 16) & 0xffff));
 				}
 			}
 		}
@@ -1527,7 +1528,7 @@ WRITE64_MEMBER(viper_state::cf_card_w)
 				}
 				default:
 				{
-					fatalerror("%s:compact_flash_w: reg %02X, data %04X\n", machine().describe_context(), offset, (uint16_t)((data >> 16) & 0xffff));
+					fatalerror("%s:compact_flash_w: reg %02X, data %04X\n", machine().describe_context().c_str(), offset, (uint16_t)((data >> 16) & 0xffff));
 				}
 			}
 		}

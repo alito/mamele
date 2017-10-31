@@ -270,6 +270,18 @@ end
 
 --------------------------------------------------
 --
+--@src/devices/video/nt7534.h,VIDEOS["NT7534"] = true
+--------------------------------------------------
+
+if (VIDEOS["NT7534"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/video/nt7534.cpp",
+		MAME_DIR .. "src/devices/video/nt7534.h",
+	}
+end
+
+--------------------------------------------------
+--
 --@src/devices/video/hd44102.h,VIDEOS["HD44102"] = true
 --------------------------------------------------
 
@@ -708,6 +720,17 @@ end
 
 --------------------------------------------------
 --
+--@src/devices/video/sda5708.h,VIDEOS["SDA5708"] = true
+--------------------------------------------------
+if (VIDEOS["SDA5708"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/video/sda5708.cpp",
+		MAME_DIR .. "src/devices/video/sda5708.h",
+	}
+end
+
+--------------------------------------------------
+--
 --@src/devices/video/snes_ppu.h,VIDEOS["SNES_PPU"] = true
 --------------------------------------------------
 if (VIDEOS["SNES_PPU"]~=null) then
@@ -987,3 +1010,14 @@ if (VIDEOS["PPU2C0X"]~=null) then
 	}
 end
 
+--------------------------------------------------
+--
+--@src/devices/video/bt459.h,VIDEOS["BT459"] = true
+--------------------------------------------------
+
+if (VIDEOS["BT459"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/video/bt459.cpp",
+		MAME_DIR .. "src/devices/video/bt459.h",
+	}
+end

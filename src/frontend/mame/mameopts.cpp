@@ -49,14 +49,23 @@ void mame_options::parse_standard_inis(emu_options &options, std::ostream &error
 	else
 		parse_one_ini(options, "horizont", OPTION_PRIORITY_ORIENTATION_INI, &error_stream);
 
-	if (cursystem->flags & MACHINE_TYPE_ARCADE)
+	switch (cursystem->flags & machine_flags::MASK_TYPE)
+	{
+	case machine_flags::TYPE_ARCADE:
 		parse_one_ini(options, "arcade", OPTION_PRIORITY_SYSTYPE_INI, &error_stream);
-	else if (cursystem->flags & MACHINE_TYPE_CONSOLE)
+		break;
+	case machine_flags::TYPE_CONSOLE:
 		parse_one_ini(options ,"console", OPTION_PRIORITY_SYSTYPE_INI, &error_stream);
-	else if (cursystem->flags & MACHINE_TYPE_COMPUTER)
+		break;
+	case machine_flags::TYPE_COMPUTER:
 		parse_one_ini(options, "computer", OPTION_PRIORITY_SYSTYPE_INI, &error_stream);
-	else if (cursystem->flags & MACHINE_TYPE_OTHER)
+		break;
+	case machine_flags::TYPE_OTHER:
 		parse_one_ini(options, "othersys", OPTION_PRIORITY_SYSTYPE_INI, &error_stream);
+		break;
+	default:
+		break;
+	}
 
 	machine_config config(*cursystem, options);
 	for (const screen_device &device : screen_device_iterator(config.root_device()))
@@ -160,6 +169,10 @@ void mame_options::populate_hashpath_from_args_and_inis(emu_options &options, co
 
 	// parse the command line
 	emu_options temp_options(emu_options::option_support::GENERAL_AND_SYSTEM);
+
+	// pick up whatever changes the osd did to the default inipath
+	temp_options.set_default_value(OPTION_INIPATH, options.ini_path());
+
 	try
 	{
 		temp_options.parse_command_line(args, OPTION_PRIORITY_CMDLINE, true);
