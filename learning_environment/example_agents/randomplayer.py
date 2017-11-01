@@ -86,7 +86,7 @@ class DummyController(object):
         
         The frame can be converted to a nice PIL image with something like
 
-        frame = PIL.Image.frombuffer("RGBA",(self.width, self.height),video_frame,'raw', ("BGRA",0,1))
+        frame = Image.frombytes("RGBA",(self.width, self.height), video_frame.tobytes(),'raw', ("BGRA",0,1))
         frame.putalpha(255) # since the alpha channel is sometimes set to 0 for no reason
 
         Return the number of frames you want skipped before being called again.  Due to conversions, it's much faster

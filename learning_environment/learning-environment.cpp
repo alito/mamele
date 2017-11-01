@@ -72,43 +72,19 @@ using std::endl;
 Copy number of bytes from address space address_space_name attached to cpu cpu starting at offset 
 address into destination 
 */
-static inline void copy_from_memory (running_machine &machine, const char* cpu, const char* address_space_name,
+static inline void copy_from_memory (running_machine &machine, const char* cpu, 
 									int address, int number_of_bytes, u8 *destination)
 {
 	cpu_device* p_cpu = machine.device<cpu_device>(cpu);
 
-	// Taken from luaengine.cpp
-	device_memory_interface *memdev = dynamic_cast<device_memory_interface *>(p_cpu);
-	if(!memdev) {
-		cerr << "no memory device" << endl;
-		return;
-	}
+	// We restrict ourselves to looking in the AS_PROGRAM memory space
+	address_space &space = p_cpu->space(AS_PROGRAM);
 
-	// Look for the address space we are after
-	// Maybe we should cache this, but it only runs once per frame
-	bool found = false;
-	for (address_spacenum sp = AS_0; sp < ADDRESS_SPACES; ++sp)
+	// Copy			
+	for (int i=0; i<number_of_bytes; i++)
 	{
-		if(memdev->has_space(sp)) {
-			if (strcmp(memdev->space(sp).name(), address_space_name) == 0) {
-				// This is the one we want
-				found = true;
-				address_space &space = p_cpu->space(sp);
-	
-				// Copy			
-				for (int i=0; i<number_of_bytes; i++)
-				{
-					destination[i] = space.read_byte(address+i);
-				}
-				break;
-			}
-		}
-	}
-
-	if (!found) {
-		cerr << "Couldn't find address space " << address_space_name << endl;
-	}
-	
+		destination[i] = space.read_byte(address+i);
+	}	
 }
 
 
@@ -122,7 +98,7 @@ static int get_current_score(running_machine &machine) {
 	if (score_buffer == nullptr) {
 		score_buffer = (u8 *) malloc (score_memory_description.number_of_bytes);
 	}
-	copy_from_memory (machine, score_memory_description.cpu, score_memory_description.address_space_name, 
+	copy_from_memory (machine, score_memory_description.cpu, 
 					score_memory_description.address, 
 					score_memory_description.number_of_bytes, score_buffer);
 
@@ -159,7 +135,7 @@ static bool is_game_over(running_machine &machine) {
 	}
 
 	u8 the_decider=0;
-	copy_from_memory(machine, game_over.cpu, game_over.address_space_name, 
+	copy_from_memory(machine, game_over.cpu, 
 					game_over.address, 1, &the_decider);
 
 	return ((the_decider & (1 << game_over.bit)) ? game_over.on : (1-game_over.on));
@@ -286,60 +262,38 @@ static void extract_main_memory(running_machine &machine) {
 	*/
 
 	cpu_device* p_cpu = machine.device<cpu_device>("maincpu");
-	device_memory_interface *memdev = dynamic_cast<device_memory_interface *>(p_cpu);
-	if(!memdev) {
-		cerr << "no memory device" << endl;
-		return;
-	}
 
-	// Look for the address space we are after
-	// Maybe we should cache this, but it only runs once per frame
-	bool found = false;
-	for (address_spacenum sp = AS_0; sp < ADDRESS_SPACES; ++sp)
-	{
-		if(memdev->has_space(sp)) {
-			if (strcmp(memdev->space(sp).name(), "program") == 0) {
-				// This is the one we want
-				found = true;
-
-				address_space &space = p_cpu->space(sp);
+	// We restrict ourselves to looking in the AS_PROGRAM memory space
+	address_space &space = p_cpu->space(AS_PROGRAM);
 				
-				if (memory == nullptr) {
-					// Initialise the structure that we use to transfer
-					le_memory_t * last_node = nullptr;
-					for (address_map_entry &entry : space.map()->m_entrylist) {
-						if ((entry.m_read.m_type == AMH_RAM) && (entry.m_write.m_type == AMH_RAM)) {
-							// Found a RAM section
-							le_memory_t * memory_node = (le_memory_t *) malloc(sizeof(le_memory_t));
-							memory_node->next = last_node;
-							memory_node->start = entry.m_bytestart;
-							memory_node->size = entry.m_byteend - entry.m_bytestart + 1;
-							memory_node->content = (uint8_t *) malloc(memory_node->size);
-							last_node = memory_node;
-						}
-					}
-					memory = last_node;
-				}
-
-				le_memory_t *memory_node = memory;
-
-				while (memory_node != nullptr) {
-					uint8_t *target = memory_node->content;
-					offs_t end_address = memory_node->start + memory_node->size - 1;
-					for (offs_t byte_address = memory_node->start; byte_address <= end_address; ++byte_address)
-					{
-						*target++ = space.read_byte(byte_address);
-					}
-					memory_node = memory_node->next;
-				}					
-				break;
+	if (memory == nullptr) {
+		// Initialise the structure that we use to transfer
+		le_memory_t * last_node = nullptr;
+		for (address_map_entry &entry : space.map()->m_entrylist) {
+			if ((entry.m_read.m_type == AMH_RAM) && (entry.m_write.m_type == AMH_RAM)) {
+				// Found a RAM section
+				le_memory_t * memory_node = (le_memory_t *) malloc(sizeof(le_memory_t));
+				memory_node->next = last_node;
+				memory_node->start = entry.m_bytestart;
+				memory_node->size = entry.m_byteend - entry.m_bytestart + 1;
+				memory_node->content = (uint8_t *) malloc(memory_node->size);
+				last_node = memory_node;
 			}
 		}
+		memory = last_node;
 	}
 
-	if (!found) {
-		fprintf(stderr, "Couldn't find 'program' memory space for 'maincpu'\n");
-	}
+	le_memory_t *memory_node = memory;
+
+	while (memory_node != nullptr) {
+		uint8_t *target = memory_node->content;
+		offs_t end_address = memory_node->start + memory_node->size - 1;
+		for (offs_t byte_address = memory_node->start; byte_address <= end_address; ++byte_address)
+		{
+			*target++ = space.read_byte(byte_address);
+		}
+		memory_node = memory_node->next;
+	}					
 }
 
 

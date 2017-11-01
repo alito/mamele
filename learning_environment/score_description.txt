@@ -10,6 +10,7 @@
 
 # The score descriptions start with an @ symbol
 # @:<cpu>:<address_space>:<address_start>:<length>:<format>
+# address_space is ignored at the moment
 
 galaxian:
 
