@@ -274,8 +274,8 @@ static void extract_main_memory(running_machine &machine) {
 				// Found a RAM section
 				le_memory_t * memory_node = (le_memory_t *) malloc(sizeof(le_memory_t));
 				memory_node->next = last_node;
-				memory_node->start = entry.m_bytestart;
-				memory_node->size = entry.m_byteend - entry.m_bytestart + 1;
+				memory_node->start = entry.m_addrstart;
+				memory_node->size = space.address_to_byte(entry.m_addrend - entry.m_addrstart + 1);
 				memory_node->content = (uint8_t *) malloc(memory_node->size);
 				last_node = memory_node;
 			}
