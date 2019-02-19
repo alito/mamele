@@ -83,8 +83,6 @@ files {
 	MAME_DIR .. "src/emu/dinetwork.h",
 	MAME_DIR .. "src/emu/dinvram.cpp",
 	MAME_DIR .. "src/emu/dinvram.h",
-	MAME_DIR .. "src/emu/dioutput.cpp",
-	MAME_DIR .. "src/emu/dioutput.h",
 	MAME_DIR .. "src/emu/dipalette.cpp",
 	MAME_DIR .. "src/emu/dipalette.h",
 	MAME_DIR .. "src/emu/dipty.cpp",
@@ -254,9 +252,6 @@ dependency {
 	{ MAME_DIR .. "src/emu/rendlay.cpp", GEN_DIR .. "emu/layout/lcd_rot.lh" },
 	{ MAME_DIR .. "src/emu/rendlay.cpp", GEN_DIR .. "emu/layout/svg.lh" },
 	{ MAME_DIR .. "src/emu/rendlay.cpp", GEN_DIR .. "emu/layout/noscreens.lh" },
-
-	{ MAME_DIR .. "src/emu/video.cpp",   GEN_DIR .. "emu/layout/snap.lh" },
-
 }
 
 custombuildtask {
@@ -277,7 +272,6 @@ custombuildtask {
 	layoutbuildtask("emu/layout", "lcd_rot"),
 	layoutbuildtask("emu/layout", "svg"),
 	layoutbuildtask("emu/layout", "noscreens"),
-	layoutbuildtask("emu/layout", "snap"),
 }
 
 project ("precompile")
