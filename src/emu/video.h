@@ -28,7 +28,6 @@
 constexpr int FRAMESKIP_LEVELS = 12;
 constexpr int MAX_FRAMESKIP = FRAMESKIP_LEVELS - 2;
 
-#define LCD_FRAMES_PER_SECOND   30
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -106,7 +105,6 @@ public:
 	void add_to_total_time(attotime time) { m_timecode_total += time; }
 	std::string &timecode_text(std::string &str);
 	std::string &timecode_total_text(std::string &str);
-
 
 private:
 	// internal helpers
