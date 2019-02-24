@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE softwarelist SYSTEM "softwarelist.dtd">
 
-<!-- BBC Micro Model B Original Disks -->
+<!-- Acorn BBC Micro Model B Original Disks -->
 
 <!-- Loading Instructions:
 
@@ -12,7 +12,7 @@
 
 <!-- All images in this list were created from original discs, most contain copy protection. -->
 
-<softwarelist name="bbcb_flop_orig" description="BBC Micro Model B Original disks">
+<softwarelist name="bbcb_flop_orig" description="Acorn BBC Micro Model B Original disks">
 
 	<!-- Games -->
 
@@ -1563,7 +1563,7 @@
 
 	<software name="discexec">
 		<description>Disc Executor</description>
-		<year>198?</year>
+		<year>1983</year>
 		<publisher>Vision Software</publisher>
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="104943">
@@ -2694,7 +2694,7 @@
 				<rom name="303 doctor who and the mines of terror.fsd" size="54004" crc="dc4254fb" sha1="20f65441000054a4b878f033cda49ec6d376a2bd" offset="0" />
 			</dataarea>
 		</part>
-		<part name="cart1" interface="bbc_cart">
+		<part name="rom" interface="bbc_rom">
 			<dataarea name="rom" size="16384">
 				<rom name="DoctorWhoAndTheMinesOfTerror.rom" size="16384" crc="9ce48a7e" sha1="9287aa2c0ef535d008f7d0e7e34a96400098816a" offset="0" />
 			</dataarea>
@@ -3362,7 +3362,7 @@
 	<software name="mailsys">
 		<description>Mailing System</description>
 		<year>1984</year>
-		<publisher>Acornsoft</publisher>
+		<publisher>Acornsoft/MI</publisher>
 		<info name="release" value="SNB09" />
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="104944">
@@ -3410,7 +3410,7 @@
 	<software name="purchsng">
 		<description>Purchasing</description>
 		<year>1984</year>
-		<publisher>Acornsoft</publisher>
+		<publisher>Acornsoft/MI</publisher>
 		<info name="release" value="SNB14" />
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="104940">
@@ -3422,7 +3422,7 @@
 	<software name="invoicng">
 		<description>Invoicing</description>
 		<year>1984</year>
-		<publisher>Acornsoft</publisher>
+		<publisher>Acornsoft/MI</publisher>
 		<info name="release" value="SNB08" />
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="104939">
@@ -3489,7 +3489,7 @@
 
 	<software name="flowercr">
 		<description>Flowers of Crystal</description>
-		<year>198?</year>
+		<year>1984</year>
 		<publisher>4mation</publisher>
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="102590">
@@ -3533,7 +3533,7 @@
 
 	<software name="wrldword">
 		<description>World Without Words</description>
-		<year>198?</year>
+		<year>1988</year>
 		<publisher>4mation</publisher>
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="104949">

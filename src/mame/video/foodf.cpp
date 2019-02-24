@@ -33,7 +33,7 @@ TILE_GET_INFO_MEMBER(foodf_state::get_playfield_tile_info)
  *
  *************************************/
 
-VIDEO_START_MEMBER(foodf_state,foodf)
+void foodf_state::video_start()
 {
 	static const int resistances[3] = { 1000, 470, 220 };
 
@@ -77,8 +77,8 @@ WRITE16_MEMBER(foodf_state::foodf_paletteram_w)
 {
 	int newword, r, g, b, bit0, bit1, bit2;
 
-	COMBINE_DATA(&m_generic_paletteram_16[offset]);
-	newword = m_generic_paletteram_16[offset];
+	COMBINE_DATA(&m_paletteram[offset]);
+	newword = m_paletteram[offset];
 
 	/* only the bottom 8 bits are used */
 	/* red component */

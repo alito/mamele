@@ -132,6 +132,15 @@ const char *const amiga_state::s_custom_reg_names[0x100] =
 	"UNK1F8",       "UNK1FA",       "FMODE",        "UNK1FE"
 };
 
+constexpr XTAL amiga_state::CLK_28M_PAL;
+constexpr XTAL amiga_state::CLK_7M_PAL;
+constexpr XTAL amiga_state::CLK_C1_PAL;
+constexpr XTAL amiga_state::CLK_E_PAL;
+
+constexpr XTAL amiga_state::CLK_28M_NTSC;
+constexpr XTAL amiga_state::CLK_7M_NTSC;
+constexpr XTAL amiga_state::CLK_C1_NTSC;
+constexpr XTAL amiga_state::CLK_E_NTSC;
 
 
 /*************************************
@@ -142,6 +151,8 @@ const char *const amiga_state::s_custom_reg_names[0x100] =
 
 void amiga_state::machine_start()
 {
+	m_power_led.resolve();
+
 	// add callback for RESET instruction
 	m_maincpu->set_reset_callback(write_line_delegate(FUNC(amiga_state::m68k_reset), this));
 
@@ -267,7 +278,7 @@ TIMER_CALLBACK_MEMBER( amiga_state::scanline_callback )
 	}
 
 	// vblank end
-	if (scanline == m_screen->visible_area().min_y)
+	if (scanline == m_screen->visible_area().top())
 	{
 		m_cia_0->tod_w(0);
 	}
@@ -454,21 +465,21 @@ uint32_t amiga_state::blit_ascending()
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0800)
 			{
 				//CUSTOM_REG(REG_BLTADAT) = m_maincpu->space(AS_PROGRAM).read_word(CUSTOM_REG_LONG(REG_BLTAPTH));
-				CUSTOM_REG(REG_BLTADAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTAPTH));
+				CUSTOM_REG(REG_BLTADAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTAPTH));
 				CUSTOM_REG_LONG(REG_BLTAPTH) += 2;
 			}
 
 			/* fetch data for B */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0400)
 			{
-				CUSTOM_REG(REG_BLTBDAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTBPTH));
+				CUSTOM_REG(REG_BLTBDAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTBPTH));
 				CUSTOM_REG_LONG(REG_BLTBPTH) += 2;
 			}
 
 			/* fetch data for C */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0200)
 			{
-				CUSTOM_REG(REG_BLTCDAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTCPTH));
+				CUSTOM_REG(REG_BLTCDAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTCPTH));
 				CUSTOM_REG_LONG(REG_BLTCPTH) += 2;
 			}
 
@@ -524,7 +535,7 @@ uint32_t amiga_state::blit_ascending()
 			/* write to the destination */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0100)
 			{
-				chip_ram_w(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
+				write_chip_ram(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
 				CUSTOM_REG_LONG(REG_BLTDPTH) += 2;
 			}
 		}
@@ -579,21 +590,21 @@ uint32_t amiga_state::blit_descending()
 			/* fetch data for A */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0800)
 			{
-				CUSTOM_REG(REG_BLTADAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTAPTH));
+				CUSTOM_REG(REG_BLTADAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTAPTH));
 				CUSTOM_REG_LONG(REG_BLTAPTH) -= 2;
 			}
 
 			/* fetch data for B */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0400)
 			{
-				CUSTOM_REG(REG_BLTBDAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTBPTH));
+				CUSTOM_REG(REG_BLTBDAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTBPTH));
 				CUSTOM_REG_LONG(REG_BLTBPTH) -= 2;
 			}
 
 			/* fetch data for C */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0200)
 			{
-				CUSTOM_REG(REG_BLTCDAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTCPTH));
+				CUSTOM_REG(REG_BLTCDAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTCPTH));
 				CUSTOM_REG_LONG(REG_BLTCPTH) -= 2;
 			}
 
@@ -666,7 +677,7 @@ uint32_t amiga_state::blit_descending()
 			/* write to the destination */
 			if (CUSTOM_REG(REG_BLTCON0) & 0x0100)
 			{
-				chip_ram_w(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
+				write_chip_ram(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
 				CUSTOM_REG_LONG(REG_BLTDPTH) -= 2;
 			}
 		}
@@ -758,7 +769,7 @@ uint32_t amiga_state::blit_line()
 
 		/* fetch data for C */
 		if (CUSTOM_REG(REG_BLTCON0) & 0x0200)
-			CUSTOM_REG(REG_BLTCDAT) = chip_ram_r(CUSTOM_REG_LONG(REG_BLTCPTH));
+			CUSTOM_REG(REG_BLTCDAT) = read_chip_ram(CUSTOM_REG_LONG(REG_BLTCPTH));
 
 		/* rotate the A data according to the shift */
 		tempa = CUSTOM_REG(REG_BLTADAT) >> (CUSTOM_REG(REG_BLTCON0) >> 12);
@@ -809,7 +820,7 @@ uint32_t amiga_state::blit_line()
 		blitsum |= tempd;
 
 		/* write to the destination */
-		chip_ram_w(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
+		write_chip_ram(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
 
 		/* always increment along the major axis */
 		if (CUSTOM_REG(REG_BLTCON1) & 0x0010)
@@ -1088,8 +1099,7 @@ WRITE8_MEMBER( amiga_state::cia_0_port_a_write )
 	m_overlay->set_bank(BIT(data, 0));
 
 	// bit 1, power led
-	output().set_led_value(0, !BIT(data, 1));
-	output().set_value("power_led", !BIT(data, 1));
+	m_power_led = BIT(~data, 1);
 }
 
 WRITE_LINE_MEMBER( amiga_state::cia_0_irq )
@@ -1158,7 +1168,7 @@ READ16_MEMBER( amiga_state::custom_chip_r )
 	uint16_t temp;
 
 	if (LOG_CUSTOM)
-		logerror("%06X:read from custom %s\n", space.device().safe_pc(), s_custom_reg_names[offset & 0xff]);
+		logerror("%06X:read from custom %s\n", m_maincpu->pc(), s_custom_reg_names[offset & 0xff]);
 
 	switch (offset & 0xff)
 	{
@@ -1272,7 +1282,7 @@ WRITE16_MEMBER( amiga_state::custom_chip_w )
 	offset &= 0xff;
 
 	if (LOG_CUSTOM)
-		logerror("%06X:write to custom %s = %04X\n", space.device().safe_pc(), s_custom_reg_names[offset & 0xff], data);
+		logerror("%06X:write to custom %s = %04X\n", m_maincpu->pc(), s_custom_reg_names[offset & 0xff], data);
 
 	// paula will handle some of those registers
 	m_paula->reg_w(space, offset, data, mem_mask);

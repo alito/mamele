@@ -54,9 +54,11 @@ ROM_END
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( a2bus_thunderclock_device::device_add_mconfig )
-	MCFG_UPD1990A_ADD(THUNDERCLOCK_UPD1990_TAG, 1021800, DEVWRITELINE(DEVICE_SELF, a2bus_thunderclock_device, upd_dataout_w), NOOP)
-MACHINE_CONFIG_END
+void a2bus_thunderclock_device::device_add_mconfig(machine_config &config)
+{
+	UPD1990A(config, m_upd1990ac, 1021800);
+	m_upd1990ac->data_callback().set(FUNC(a2bus_thunderclock_device::upd_dataout_w));
+}
 
 //-------------------------------------------------
 //  rom_region - device-specific ROM region
@@ -89,9 +91,6 @@ a2bus_thunderclock_device::a2bus_thunderclock_device(const machine_config &mconf
 
 void a2bus_thunderclock_device::device_start()
 {
-	// set_a2bus_device makes m_slot valid
-	set_a2bus_device();
-
 	m_rom = device().machine().root_device().memregion(this->subtag(THUNDERCLOCK_ROM_REGION).c_str())->base();
 
 	save_item(NAME(m_dataout));

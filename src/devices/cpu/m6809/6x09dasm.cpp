@@ -113,7 +113,10 @@ offs_t m6x09_base_disassembler::disassemble(std::ostream &stream, offs_t pc, con
 	const opcodeinfo *op = fetch_opcode(opcodes, p);
 	if (!op)
 	{
-		stream << "Illegal Opcode";
+		// illegal opcode
+		util::stream_format(stream, "%-6s$%02X", "FCB", opcodes.r8(pc));
+		for (offs_t q = pc + 1; q < p; q++)
+			util::stream_format(stream, ",$%02X", opcodes.r8(q));
 		return (p - pc) | SUPPORTED;
 	}
 
@@ -126,7 +129,10 @@ offs_t m6x09_base_disassembler::disassemble(std::ostream &stream, offs_t pc, con
 	p += numoperands;
 
 	// output the base instruction name
-	util::stream_format(stream, "%-6s", op->name());
+	if (op->mode() == INH)
+		stream << op->name();
+	else
+		util::stream_format(stream, "%-6s", op->name());
 
 	switch (op->mode())
 	{
@@ -189,12 +195,12 @@ offs_t m6x09_base_disassembler::disassemble(std::ostream &stream, offs_t pc, con
 
 	case REL:
 		offset = (int8_t)params.r8(ppc);
-		util::stream_format(stream, "$%04X", (pc + offset) & 0xffff);
+		util::stream_format(stream, "$%04X", (pc + op->length() + offset) & 0xffff);
 		break;
 
 	case LREL:
 		offset = (int16_t)params.r16(ppc);
-		util::stream_format(stream, "$%04X", (pc + offset) & 0xffff);
+		util::stream_format(stream, "$%04X", (pc + op->length() + offset) & 0xffff);
 		break;
 
 	case EXT:
@@ -564,7 +570,7 @@ const m6x09_base_disassembler::opcodeinfo m6x09_disassembler::m6x09_opcodes[] =
 	{ 0x103A, 2, "PSHUW", INH,  HD6309_EXCLUSIVE },
 	{ 0x103B, 2, "PULUW", INH,  HD6309_EXCLUSIVE },
 
-	{ 0x103F, 2, "SWI2",  INH,  HD6309_EXCLUSIVE },
+	{ 0x103F, 2, "SWI2",  INH,  M6x09_GENERAL },
 
 	{ 0x1040, 2, "NEGD",  INH,  HD6309_EXCLUSIVE },
 	{ 0x1043, 2, "COMD",  INH,  HD6309_EXCLUSIVE },

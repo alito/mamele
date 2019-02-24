@@ -14,9 +14,6 @@
     is responsible for storing the byte into the serial/parallell converter
     (that can be read through IN from port 0x04) and then trigger an interrupt.
 
-    MCFG_DEVICE_ADD("myb3k_keyboard", MYB3K_KEYBOARD, 0)
-    MCFG_MYB3K_KEYBOARD_CB(PUT(myb3k_state, kbd_set_data_and_interrupt))
-
 **********************************************************************/
 
 #ifndef MAME_MACHINE_MYB3K_KBD_H
@@ -24,14 +21,9 @@
 
 #pragma once
 
-#define MYB3K_KBD_CB_PUT(cls, fnc)          myb3k_keyboard_device::output_delegate((&cls::fnc), (#cls "::" #fnc), DEVICE_SELF, ((cls *)nullptr))
-#define MYB3K_KBD_CB_DEVPUT(tag, cls, fnc)  myb3k_keyboard_device::output_delegate((&cls::fnc), (#cls "::" #fnc), (tag), ((cls *)nullptr))
-
-#define MCFG_MYB3K_KEYBOARD_CB(cb)          myb3k_keyboard_device::set_keyboard_callback(*device, (MYB3K_KBD_CB_##cb));
-
 DECLARE_DEVICE_TYPE(MYB3K_KEYBOARD, myb3k_keyboard_device)
-
-INPUT_PORTS_EXTERN( myb3k_keyboard );
+DECLARE_DEVICE_TYPE(JB3000_KEYBOARD, jb3000_keyboard_device)
+DECLARE_DEVICE_TYPE(STEPONE_KEYBOARD, stepone_keyboard_device)
 
 class myb3k_keyboard_device : public device_t
 {
@@ -51,11 +43,18 @@ public:
 		TIMER_ID_SECOND_BYTE
 	};
 
-	template <class Object> static void set_keyboard_callback(device_t &device, Object &&cb) {
-		downcast<myb3k_keyboard_device &>(device).m_keyboard_cb = std::forward<Object>(cb);
+	template <class FunctionClass>
+	void set_keyboard_callback(void (FunctionClass::*callback)(u8 character), const char *name)
+	{
+		set_keyboard_callback(output_delegate(callback, name, nullptr, static_cast<FunctionClass *>(nullptr)));
 	}
-
-	virtual ioport_constructor device_input_ports() const override;
+	// FIXME: this should be aware of current device for resolving the tag
+	template <class FunctionClass>
+	void set_keyboard_callback(const char *devname, void (FunctionClass::*callback)(u8 character), const char *name)
+	{
+		set_keyboard_callback(output_delegate(callback, name, devname, static_cast<FunctionClass *>(nullptr)));
+	}
+	void set_keyboard_callback(output_delegate callback) { m_keyboard_cb = callback; }
 
 protected:
 	myb3k_keyboard_device(
@@ -64,6 +63,7 @@ protected:
 			char const *tag,
 			device_t *owner,
 			u32 clock);
+	virtual ioport_constructor device_input_ports() const override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
 	virtual void send_byte(u8 code);
@@ -72,16 +72,38 @@ protected:
 	void update_modifiers(int y, bool down);
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 
-private:
-
 	output_delegate             m_keyboard_cb;
-	required_ioport_array<12>	m_io_kbd_t;
+	required_ioport_array<12>   m_io_kbd_t;
 	u8                          m_io_kbd_state[12][8];
 
 	int m_x, m_y;
 	u8 m_first_byte;
 	u8 m_second_byte;
 	u8 m_modifier_keys;
+};
+
+class jb3000_keyboard_device : public myb3k_keyboard_device
+{
+public:
+	 jb3000_keyboard_device(
+		 const machine_config &mconfig,
+		 char const *tag,
+		 device_t *owner,
+		 u32 clock);
+private:
+	virtual ioport_constructor device_input_ports() const override;
+};
+
+class stepone_keyboard_device : public myb3k_keyboard_device
+{
+public:
+	 stepone_keyboard_device(
+		 const machine_config &mconfig,
+		 char const *tag,
+		 device_t *owner,
+		 u32 clock);
+private:
+	virtual ioport_constructor device_input_ports() const override;
 };
 
 #endif // MAME_MACHINE_MYB3K_KBD_H

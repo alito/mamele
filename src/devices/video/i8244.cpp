@@ -130,19 +130,35 @@ i8245_device::i8245_device(const machine_config &mconfig, const char *tag, devic
 
 
 //-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void i8244_device::device_config_complete()
+{
+	if (!has_screen())
+		return;
+
+	if (!screen().refresh_attoseconds())
+		screen().set_raw(clock(), LINE_CLOCKS, START_ACTIVE_SCAN, END_ACTIVE_SCAN, m_screen_lines, START_Y, START_Y + SCREEN_HEIGHT);
+}
+
+
+//-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
 
 void i8244_device::device_start()
 {
 	// Let the screen create our temporary bitmap with the screen's dimensions
-	m_screen->register_screen_bitmap(m_tmp_bitmap);
+	screen().register_screen_bitmap(m_tmp_bitmap);
 
 	m_line_timer = timer_alloc(TIMER_LINE);
-	m_line_timer->adjust( m_screen->time_until_pos(1, START_ACTIVE_SCAN ), 0,  m_screen->scan_period() );
+	m_line_timer->adjust( screen().time_until_pos(1, START_ACTIVE_SCAN ), 0,  screen().scan_period() );
 
 	m_hblank_timer = timer_alloc(TIMER_HBLANK);
-	m_hblank_timer->adjust( m_screen->time_until_pos(1, END_ACTIVE_SCAN + 18 ), 0, m_screen->scan_period() );
+	m_hblank_timer->adjust( screen().time_until_pos(1, END_ACTIVE_SCAN + 18 ), 0, screen().scan_period() );
 
 	m_irq_func.resolve_safe();
 	m_postprocess_func.resolve_safe();
@@ -178,38 +194,35 @@ void i8244_device::device_reset()
 }
 
 
-PALETTE_INIT_MEMBER(i8244_device, i8244)
+void i8244_device::i8244_palette(palette_device &palette) const
 {
-	static const uint8_t i8244_colors[3*16] =
+	static constexpr rgb_t i8244_colors[16] =
 	{
-		0x00, 0x00, 0x00, // i r g b
-		0x00, 0x00, 0xAA, // i r g B
-		0x00, 0xAA, 0x00, // i r G b
-		0x00, 0xAA, 0xAA, // i r G B
-		0xAA, 0x00, 0x00, // i R g b
-		0xAA, 0x00, 0xAA, // i R g B
-		0xAA, 0xAA, 0x00, // i R G b
-		0xAA, 0xAA, 0xAA, // i R G B
-		0x55, 0x55, 0x55, // I r g b
-		0x55, 0x55, 0xFF, // I r g B
-		0x55, 0xFF, 0x55, // I r G b
-		0x55, 0xFF, 0xFF, // I r G B
-		0xFF, 0x55, 0x55, // I R g b
-		0xFF, 0x55, 0xFF, // I R g B
-		0xFF, 0xFF, 0x55, // I R G b
-		0xFF, 0xFF, 0xFF, // I R G B
+		{ 0x00, 0x00, 0x00 }, // i r g b
+		{ 0x00, 0x00, 0xaa }, // i r g B
+		{ 0x00, 0xaa, 0x00 }, // i r G b
+		{ 0x00, 0xaa, 0xaa }, // i r G B
+		{ 0xaa, 0x00, 0x00 }, // i R g b
+		{ 0xaa, 0x00, 0xaa }, // i R g B
+		{ 0xaa, 0xaa, 0x00 }, // i R G b
+		{ 0xaa, 0xaa, 0xaa }, // i R G B
+		{ 0x55, 0x55, 0x55 }, // I r g b
+		{ 0x55, 0x55, 0xff }, // I r g B
+		{ 0x55, 0xff, 0x55 }, // I r G b
+		{ 0x55, 0xff, 0xff }, // I r G B
+		{ 0xff, 0x55, 0x55 }, // I R g b
+		{ 0xff, 0x55, 0xff }, // I R g B
+		{ 0xff, 0xff, 0x55 }, // I R G b
+		{ 0xff, 0xff, 0xff }  // I R G B
 	};
 
-	for ( int i = 0; i < 16; i++ )
-	{
-		palette.set_pen_color( i, i8244_colors[i*3], i8244_colors[i*3+1], i8244_colors[i*3+2] );
-	}
+	palette.set_pen_colors( 0, i8244_colors );
 }
 
 
 void i8244_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
 {
-	int vpos = m_screen->vpos();
+	int vpos = screen().vpos();
 
 	switch ( id )
 	{
@@ -236,10 +249,10 @@ void i8244_device::device_timer(emu_timer &timer, device_timer_id id, int param,
 
 int i8244_device::get_y_beam()
 {
-	int y = m_screen->vpos() - m_start_vpos;
+	int y = screen().vpos() - m_start_vpos;
 
 	// The Y register becomes 0 only when the VBlank signal is turned off!
-	if ( y < 0 || ( y == 0 && m_screen->hpos() < 366+42 ) )
+	if ( y < 0 || ( y == 0 && screen().hpos() < 366+42 ) )
 	{
 		y += m_screen_lines;
 	}
@@ -250,7 +263,7 @@ int i8244_device::get_y_beam()
 
 int i8244_device::get_x_beam()
 {
-	int x = m_screen->hpos() - START_ACTIVE_SCAN;
+	int x = screen().hpos() - START_ACTIVE_SCAN;
 
 	if ( x < 0 )
 	{
@@ -356,7 +369,7 @@ WRITE8_MEMBER(i8244_device::write)
 
 READ_LINE_MEMBER(i8244_device::vblank)
 {
-	if ( m_screen->vpos() > m_start_vpos && m_screen->vpos() < m_start_vblank )
+	if ( screen().vpos() > m_start_vpos && screen().vpos() < m_start_vblank )
 	{
 		return 0;
 	}
@@ -366,8 +379,8 @@ READ_LINE_MEMBER(i8244_device::vblank)
 
 READ_LINE_MEMBER(i8244_device::hblank)
 {
-	int hpos = m_screen->hpos();
-	int vpos = m_screen->vpos();
+	int hpos = screen().hpos();
+	int vpos = screen().vpos();
 
 	if ( hpos >= START_ACTIVE_SCAN && hpos < END_ACTIVE_SCAN )
 	{

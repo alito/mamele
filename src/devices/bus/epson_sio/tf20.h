@@ -15,6 +15,7 @@
 
 #include "epson_sio.h"
 #include "cpu/z80/z80.h"
+#include "imagedev/floppy.h"
 #include "machine/ram.h"
 #include "machine/upd765.h"
 #include "machine/z80dart.h"
@@ -30,11 +31,6 @@ class epson_tf20_device : public device_t,
 public:
 	// construction/destruction
 	epson_tf20_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	// not really public
-	DECLARE_READ8_MEMBER( rom_disable_r );
-	DECLARE_READ8_MEMBER( upd765_tc_r );
-	DECLARE_WRITE8_MEMBER( fdc_control_w );
 
 protected:
 	// device-level overrides
@@ -60,14 +56,19 @@ private:
 	DECLARE_WRITE_LINE_MEMBER( rxc_w );
 	DECLARE_WRITE_LINE_MEMBER( pinc_w );
 
+	DECLARE_READ8_MEMBER( rom_disable_r );
+	DECLARE_READ8_MEMBER( upd765_tc_r );
+	DECLARE_WRITE8_MEMBER( fdc_control_w );
+
+	void cpu_io(address_map &map);
+	void cpu_mem(address_map &map);
+
 	required_device<cpu_device> m_cpu;
 	required_device<ram_device> m_ram;
 	required_device<upd765a_device> m_fdc;
 	required_device<upd7201_device> m_mpsc;
 	required_device<epson_sio_device> m_sio_output;
-
-	floppy_image_device *m_fd0;
-	floppy_image_device *m_fd1;
+	required_device_array<floppy_connector, 2> m_fd;
 
 	emu_timer *m_timer_serial;
 	emu_timer *m_timer_tc;
@@ -79,8 +80,8 @@ private:
 
 	epson_sio_device *m_sio_input;
 
-	static const int XTAL_CR1 = XTAL_8MHz;
-	static const int XTAL_CR2 = XTAL_4_9152MHz;
+	static constexpr XTAL XTAL_CR1 = XTAL(8'000'000);
+	static constexpr XTAL XTAL_CR2 = XTAL(4'915'200);
 };
 
 

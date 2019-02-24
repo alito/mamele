@@ -10,7 +10,7 @@
 #include "screen.h"
 
 
-#define STARFIRE_MASTER_CLOCK   (XTAL_20MHz)
+#define STARFIRE_MASTER_CLOCK   (XTAL(20'000'000))
 #define STARFIRE_CPU_CLOCK      (STARFIRE_MASTER_CLOCK / 8)
 #define STARFIRE_PIXEL_CLOCK    (STARFIRE_MASTER_CLOCK / 4)
 #define STARFIRE_HTOTAL         (0x13f)  /* could be 0x140, but I think this is right */
@@ -34,6 +34,13 @@ public:
 		m_maincpu(*this, "maincpu"),
 		m_screen(*this, "screen") { }
 
+	void fireone(machine_config &config);
+	void starfire(machine_config &config);
+
+	void init_starfire();
+	void init_fireone();
+
+private:
 	required_shared_ptr<uint8_t> m_starfire_colorram;
 	required_shared_ptr<uint8_t> m_starfire_videoram;
 	optional_device<samples_device> m_samples;
@@ -62,8 +69,6 @@ public:
 	DECLARE_READ8_MEMBER(starfire_colorram_r);
 	DECLARE_WRITE8_MEMBER(starfire_videoram_w);
 	DECLARE_READ8_MEMBER(starfire_videoram_r);
-	DECLARE_DRIVER_INIT(starfire);
-	DECLARE_DRIVER_INIT(fireone);
 	virtual void video_start() override;
 	uint32_t screen_update_starfire(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	TIMER_CALLBACK_MEMBER(starfire_scanline_callback);
@@ -71,4 +76,6 @@ public:
 	void get_pens(pen_t *pens);
 	required_device<cpu_device> m_maincpu;
 	required_device<screen_device> m_screen;
+
+	void main_map(address_map &map);
 };

@@ -7,16 +7,6 @@
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_ICS2115_ADD(_tag, _clock) \
-	MCFG_DEVICE_ADD(_tag, ICS2115, _clock)
-
-#define MCFG_ICS2115_IRQ_CB(_devcb) \
-	devcb = &ics2115_device::set_irq_callback(*device, DEVCB_##_devcb);
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -28,7 +18,8 @@ public:
 	// construction/destruction
 	ics2115_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	template <class Object> static devcb_base &set_irq_callback(device_t &device, Object &&cb) { return downcast<ics2115_device &>(device).m_irq_cb.set_callback(std::forward<Object>(cb)); }
+	template <class Object> devcb_base &set_irq_callback(Object &&cb) { return m_irq_cb.set_callback(std::forward<Object>(cb)); }
+	auto irq() { return m_irq_cb.bind(); }
 
 	DECLARE_READ8_MEMBER(read);
 	DECLARE_WRITE8_MEMBER(write);

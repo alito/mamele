@@ -2,8 +2,8 @@
 // copyright-holders:Ryan Holtz
 #pragma once
 
-#ifndef __RENDER_BGFX__
-#define __RENDER_BGFX__
+#ifndef RENDER_BGFX
+#define RENDER_BGFX
 
 #include <bgfx/bgfx.h>
 
@@ -26,6 +26,7 @@ class bgfx_texture;
 class bgfx_effect;
 class bgfx_target;
 class bgfx_chain;
+class bgfx_view;
 class osd_options;
 class avi_write;
 
@@ -54,6 +55,9 @@ public:
 	virtual void record() override;
 	virtual void toggle_fsfx() override { }
 
+	uint32_t get_window_width(uint32_t index) const;
+	uint32_t get_window_height(uint32_t index) const;
+
 	virtual render_primitive_list *get_primitives() override
 	{
 		auto win = try_getwindow();
@@ -76,7 +80,7 @@ public:
 		return &win->target()->get_primitives();
 	}
 
-	static const char* WINDOW_PREFIX;
+	static char const *const WINDOW_PREFIX;
 
 private:
 	void vertex(ScreenVertex* vertex, float x, float y, float z, uint32_t rgba, float u, float v);
@@ -85,10 +89,7 @@ private:
 
 	bool update_dimensions();
 
-	void setup_view(uint32_t view_index, bool screen);
-	void init_ui_view();
-
-	void setup_matrices(uint32_t view_index, bool screen);
+	void setup_ortho_view();
 
 	void allocate_buffer(render_primitive *prim, uint32_t blend, bgfx::TransientVertexBuffer *buffer);
 	enum buffer_status
@@ -120,20 +121,20 @@ private:
 
 	osd_options& m_options;
 
-	bgfx_target* m_framebuffer;
-	bgfx_texture* m_texture_cache;
+	bgfx_target *m_framebuffer;
+	bgfx_texture *m_texture_cache;
 
 	// Original display_mode
 	osd_dim m_dimensions;
 
-	texture_manager* m_textures;
-	target_manager* m_targets;
-	shader_manager* m_shaders;
-	effect_manager* m_effects;
-	chain_manager* m_chains;
+	texture_manager *m_textures;
+	target_manager *m_targets;
+	shader_manager *m_shaders;
+	effect_manager *m_effects;
+	chain_manager *m_chains;
 
-	bgfx_effect* m_gui_effect[4];
-	bgfx_effect* m_screen_effect[4];
+	bgfx_effect *m_gui_effect[4];
+	bgfx_effect *m_screen_effect[4];
 	std::vector<uint32_t> m_seen_views;
 
 	std::map<uint32_t, rectangle_packer::packed_rectangle> m_hash_to_entry;
@@ -143,14 +144,15 @@ private:
 	uint32_t m_width[16];
 	uint32_t m_height[16];
 	uint32_t m_white[16*16];
-	int32_t m_ui_view;
+	bgfx_view *m_ortho_view;
 	uint32_t m_max_view;
 
-	avi_write* m_avi_writer;
-	bgfx_target* m_avi_target;
+	bgfx_view *m_avi_view;
+	avi_write *m_avi_writer;
+	bgfx_target *m_avi_target;
 	bgfx::TextureHandle m_avi_texture;
 	bitmap_rgb32 m_avi_bitmap;
-	uint8_t* m_avi_data;
+	uint8_t *m_avi_data;
 
 	static const uint16_t CACHE_SIZE;
 	static const uint32_t PACKABLE_SIZE;
@@ -160,4 +162,4 @@ private:
 	static uint32_t s_current_view;
 };
 
-#endif
+#endif // RENDER_BGFX

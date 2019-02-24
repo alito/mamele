@@ -31,12 +31,6 @@ public:
 	// construction/destruction
 	adam_digital_data_pack_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// not really public
-	DECLARE_WRITE8_MEMBER( p1_w );
-	DECLARE_READ8_MEMBER( p2_r );
-	DECLARE_WRITE8_MEMBER( p2_w );
-	DECLARE_READ8_MEMBER( p4_r );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -48,13 +42,21 @@ protected:
 	// device_adamnet_card_interface overrides
 	virtual void adamnet_reset_w(int state) override;
 
-	required_device<cpu_device> m_maincpu;
+private:
+	required_device<m6801_cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_ddp0;
 	required_device<cassette_image_device> m_ddp1;
 
 	int m_wr0;
 	int m_wr1;
 	int m_track;
+
+	DECLARE_WRITE8_MEMBER( p1_w );
+	DECLARE_READ8_MEMBER( p2_r );
+	DECLARE_WRITE8_MEMBER( p2_w );
+	DECLARE_READ8_MEMBER( p4_r );
+
+	void adam_ddp_mem(address_map &map);
 };
 
 

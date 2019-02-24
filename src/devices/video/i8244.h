@@ -13,26 +13,8 @@
 
 #pragma once
 
+#include "emupal.h"
 
-
-/***************************************************************************
-    DEVICE CONFIGURATION MACROS
-***************************************************************************/
-
-#define MCFG_I8244_ADD(_tag, _clock, _screen_tag, _irq_cb, _postprocess_cb) \
-	MCFG_DEVICE_ADD(_tag, I8244, _clock) \
-	MCFG_VIDEO_SET_SCREEN(_screen_tag) \
-	MCFG_I8244_IRQ_CB(_irq_cb) \
-	MCFG_I8244_POSTPROCESS_CB(_postprocess_cb)
-#define MCFG_I8244_IRQ_CB(_devcb) \
-	devcb = &i8244_device::set_irq_cb(*device, DEVCB_##_devcb);
-#define MCFG_I8244_POSTPROCESS_CB(_devcb) \
-	devcb = &i8244_device::set_postprocess_cb(*device, DEVCB_##_devcb);
-#define MCFG_I8245_ADD(_tag, _clock, _screen_tag, _irq_cb, _postprocess_cb) \
-	MCFG_DEVICE_ADD(_tag, I8245, _clock) \
-	MCFG_VIDEO_SET_SCREEN(_screen_tag) \
-	MCFG_I8244_IRQ_CB(_irq_cb) \
-	MCFG_I8244_POSTPROCESS_CB(_postprocess_cb )
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -49,16 +31,15 @@ public:
 	// construction/destruction
 	i8244_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration helpers
-	static void set_screen_tag(device_t &device, const char *screen_tag) { downcast<i8244_device &>(device).m_screen_tag = screen_tag; }
-	template <class Object> static devcb_base &set_irq_cb(device_t &device, Object &&cb) { return downcast<i8244_device &>(device).m_irq_func.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_postprocess_cb(device_t &device, Object &&cb) { return downcast<i8244_device &>(device).m_postprocess_func.set_callback(std::forward<Object>(cb)); }
+	// configuration helpers
+	auto irq_cb() { return m_irq_func.bind(); }
+	auto postprocess_cb() { return m_postprocess_func.bind(); }
 
 	DECLARE_READ8_MEMBER(read);
 	DECLARE_WRITE8_MEMBER(write);
 	DECLARE_READ_LINE_MEMBER(vblank);
 	DECLARE_READ_LINE_MEMBER(hblank);
-	DECLARE_PALETTE_INIT(i8244);
+	void i8244_palette(palette_device &palette) const;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -109,6 +90,7 @@ protected:
 	i8244_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int lines);
 
 	// device-level overrides
+	virtual void device_config_complete() override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;

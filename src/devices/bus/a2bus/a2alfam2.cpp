@@ -39,32 +39,34 @@ DEFINE_DEVICE_TYPE(A2BUS_AESMS,  a2bus_aesms_device,  "a2aesms",  "Applied Engin
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( a2bus_sn76489_device::device_add_mconfig )
-	MCFG_SPEAKER_STANDARD_STEREO("alf_l", "alf_r")
+MACHINE_CONFIG_START(a2bus_sn76489_device::device_add_mconfig)
+	SPEAKER(config, "alf_l").front_left();
+	SPEAKER(config, "alf_r").front_right();
 
-	MCFG_SOUND_ADD(SN1_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN1_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_l", 0.50)
-	MCFG_SOUND_ADD(SN2_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN2_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_l", 0.50)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_r", 0.50)
-	MCFG_SOUND_ADD(SN3_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN3_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_r", 0.50)
 MACHINE_CONFIG_END
 
-MACHINE_CONFIG_MEMBER( a2bus_aesms_device::device_add_mconfig )
-	MCFG_SPEAKER_STANDARD_STEREO("alf_l", "alf_r")
+MACHINE_CONFIG_START(a2bus_aesms_device::device_add_mconfig)
+	SPEAKER(config, "alf_l").front_left();
+	SPEAKER(config, "alf_r").front_right();
 
-	MCFG_SOUND_ADD(SN1_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN1_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_l", 0.50)
 
-	MCFG_SOUND_ADD(SN2_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN2_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_l", 0.50)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_r", 0.50)
 
-	MCFG_SOUND_ADD(SN3_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN3_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_r", 0.50)
 
-	MCFG_SOUND_ADD(SN4_TAG, SN76489, 1020484)
+	MCFG_DEVICE_ADD(SN4_TAG, SN76489, 1020484)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_l", 0.50)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "alf_r", 0.50)
 MACHINE_CONFIG_END
@@ -101,8 +103,6 @@ a2bus_aesms_device::a2bus_aesms_device(const machine_config &mconfig, const char
 
 void a2bus_sn76489_device::device_start()
 {
-	// set_a2bus_device makes m_slot valid
-	set_a2bus_device();
 	m_latch0 = m_latch1 = m_latch2 = m_latch3 = 0;
 
 	save_item(NAME(m_latch0));

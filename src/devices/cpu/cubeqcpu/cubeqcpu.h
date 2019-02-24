@@ -13,24 +13,6 @@
 
 
 /***************************************************************************
-    CONFIGURATION STRUCTURE
-***************************************************************************/
-
-
-#define MCFG_CQUESTSND_CONFIG(_dac_w, _sound_tag) \
-	cquestsnd_cpu_device::set_dac_w(*device, DEVCB_##_dac_w); \
-	cquestsnd_cpu_device::set_sound_region(*device, _sound_tag);
-
-
-#define MCFG_CQUESTROT_CONFIG(_linedata_w) \
-	cquestrot_cpu_device::set_linedata_w(*device, DEVCB_##_linedata_w );
-
-
-#define MCFG_CQUESTLIN_CONFIG(_linedata_r) \
-	cquestlin_cpu_device::set_linedata_r(*device, DEVCB_##_linedata_r );
-
-
-/***************************************************************************
     PUBLIC FUNCTIONS
 ***************************************************************************/
 
@@ -40,9 +22,9 @@ public:
 	// construction/destruction
 	cquestsnd_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration helpers
-	template <class Object> static devcb_base &set_dac_w(device_t &device, Object &&cb) { return downcast<cquestsnd_cpu_device &>(device).m_dac_w.set_callback(std::forward<Object>(cb)); }
-	static void set_sound_region(device_t &device, const char *tag) { downcast<cquestsnd_cpu_device &>(device).m_sound_region_tag = tag; }
+	// configuration helpers
+	auto dac_w() { return m_dac_w.bind(); }
+	void set_sound_region(const char *tag) { m_sound_region_tag = tag; }
 
 	DECLARE_WRITE16_MEMBER(sndram_w);
 	DECLARE_READ16_MEMBER(sndram_r);
@@ -87,7 +69,7 @@ protected:
 	virtual space_config_vector memory_space_config() const override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 private:
 	address_space_config m_program_config;
@@ -118,7 +100,7 @@ private:
 	uint16_t *m_sound_data;
 
 	address_space *m_program;
-	direct_read_data<-3> *m_direct;
+	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
 	int m_icount;
 
 	int do_sndjmp(int jmp);
@@ -131,8 +113,8 @@ public:
 	// construction/destruction
 	cquestrot_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration helpers
-	template <class Object> static devcb_base &set_linedata_w(device_t &device, Object &&cb) { return downcast<cquestrot_cpu_device &>(device).m_linedata_w.set_callback(std::forward<Object>(cb)); }
+	// configuration helpers
+	auto linedata_w() { return m_linedata_w.bind(); }
 
 	DECLARE_READ16_MEMBER(linedata_r);
 	DECLARE_WRITE16_MEMBER(rotram_w);
@@ -188,7 +170,7 @@ protected:
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 private:
 	address_space_config m_program_config;
@@ -227,7 +209,7 @@ private:
 	uint8_t m_clkcnt;
 
 	address_space *m_program;
-	direct_read_data<-3> *m_direct;
+	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
 	int m_icount;
 
 	// For the debugger
@@ -243,8 +225,8 @@ public:
 	// construction/destruction
 	cquestlin_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration helpers
-	template <class Object> static devcb_base &set_linedata_r(device_t &device, Object &&cb) { return downcast<cquestlin_cpu_device &>(device).m_linedata_r.set_callback(std::forward<Object>(cb)); }
+	// configuration helpers
+	auto linedata_r() { return m_linedata_r.bind(); }
 
 	DECLARE_WRITE16_MEMBER( linedata_w );
 	void cubeqcpu_swap_line_banks();
@@ -300,7 +282,7 @@ protected:
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 private:
 	address_space_config m_program_config;
@@ -344,7 +326,7 @@ private:
 	uint32_t  m_o_stack[32768];   /* Stack DRAM: 32kx20 */
 
 	address_space *m_program;
-	direct_read_data<-3> *m_direct;
+	memory_access_cache<3, -3, ENDIANNESS_BIG> *m_cache;
 	int m_icount;
 
 	// For the debugger

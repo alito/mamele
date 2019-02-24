@@ -530,8 +530,22 @@ void mc68901_device::rcv_complete()
 		m_receive_buffer = get_received_char();
 		m_rsr |= RSR_BUFFER_FULL;
 		LOG("Received Character: %02x\n", m_receive_buffer);
+
+		if (is_receive_framing_error())
+			m_rsr |= RSR_FRAME_ERROR;
+		else
+			m_rsr &= ~RSR_FRAME_ERROR;
+
+		if (is_receive_parity_error())
+			m_rsr |= RSR_PARITY_ERROR;
+		else
+			m_rsr &= ~RSR_PARITY_ERROR;
+
+		if ((m_rsr & (RSR_FRAME_ERROR | RSR_PARITY_ERROR)) && (m_ier & IR_RCV_ERROR))
+			rx_error();
+		else
+			rx_buffer_full();
 	}
-	rx_buffer_full();
 }
 
 
@@ -571,7 +585,7 @@ READ8_MEMBER( mc68901_device::read )
 	case REGISTER_RSR:
 		{
 			uint8_t rsr = m_rsr;
-			if (!machine().side_effect_disabled())
+			if (!machine().side_effects_disabled())
 				m_rsr &= ~RSR_OVERRUN_ERROR;
 			return rsr;
 		}
@@ -580,13 +594,13 @@ READ8_MEMBER( mc68901_device::read )
 		{
 			/* clear UE bit (in reality, this won't be cleared until one full clock cycle of the transmitter has passed since the bit was set) */
 			uint8_t tsr = m_tsr;
-			if (!machine().side_effect_disabled())
+			if (!machine().side_effects_disabled())
 				m_tsr &= ~TSR_UNDERRUN_ERROR;
 			return tsr;
 		}
 
 	case REGISTER_UDR:
-		if (!machine().side_effect_disabled())
+		if (!machine().side_effects_disabled())
 		{
 			m_rsr &= ~RSR_BUFFER_FULL;
 			if (m_overrun_pending)

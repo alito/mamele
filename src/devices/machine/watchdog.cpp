@@ -29,33 +29,8 @@ watchdog_timer_device::watchdog_timer_device(const machine_config &mconfig, cons
 	: device_t(mconfig, WATCHDOG_TIMER, tag, owner, clock)
 	, m_vblank_count(0)
 	, m_time(attotime::zero)
-	, m_screen_tag(nullptr)
+	, m_screen(*this, finder_base::DUMMY_TAG)
 {
-}
-
-
-//-------------------------------------------------
-//  static_set_vblank_count - configuration helper
-//  to set the number of VBLANKs
-//-------------------------------------------------
-
-void watchdog_timer_device::static_set_vblank_count(device_t &device, const char *screen_tag, int32_t count)
-{
-	watchdog_timer_device &watchdog = downcast<watchdog_timer_device &>(device);
-	watchdog.m_screen_tag = screen_tag;
-	watchdog.m_vblank_count = count;
-}
-
-
-//-------------------------------------------------
-//  static_set_time - configuration helper to set
-//  the time until reset
-//-------------------------------------------------
-
-void watchdog_timer_device::static_set_time(device_t &device, attotime time)
-{
-	watchdog_timer_device &watchdog = downcast<watchdog_timer_device &>(device);
-	watchdog.m_time = time;
 }
 
 
@@ -68,9 +43,10 @@ void watchdog_timer_device::device_validity_check(validity_checker &valid) const
 {
 	if (m_vblank_count != 0)
 	{
-		screen_device *screen = dynamic_cast<screen_device *>(siblingdevice(m_screen_tag));
-		if (screen == nullptr)
-			osd_printf_error("Invalid screen tag specified\n");
+		if (m_screen.finder_tag() == finder_base::DUMMY_TAG)
+			osd_printf_error("VBLANK count set without setting screen tag\n");
+		else if (!m_screen)
+			osd_printf_error("Screen device %s not found\n", m_screen.finder_tag());
 	}
 }
 
@@ -89,9 +65,8 @@ void watchdog_timer_device::device_start()
 	if (m_vblank_count != 0)
 	{
 		// fetch the screen
-		screen_device *screen = siblingdevice<screen_device>(m_screen_tag);
-		if (screen != nullptr)
-			screen->register_vblank_callback(vblank_state_delegate(&watchdog_timer_device::watchdog_vblank, this));
+		if (m_screen)
+			m_screen->register_vblank_callback(vblank_state_delegate(&watchdog_timer_device::watchdog_vblank, this));
 	}
 	save_item(NAME(m_enabled));
 	save_item(NAME(m_counter));

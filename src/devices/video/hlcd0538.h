@@ -40,23 +40,14 @@
 */
 
 
-// C/R pins (0538: d0-d7 for rows)
-#define MCFG_HLCD0538_WRITE_COLS_CB(_devcb) \
-	devcb = &hlcd0538_device::set_write_cols_callback(*device, DEVCB_##_devcb);
-
-// INTERRUPT pin
-#define MCFG_HLCD0538_INTERRUPT_CB(_devcb) \
-	devcb = &hlcd0538_device::set_write_interrupt_callback(*device, DEVCB_##_devcb);
-
-
 class hlcd0538_device : public device_t
 {
 public:
 	hlcd0538_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
-	// static configuration helpers
-	template <typename Object> static devcb_base &set_write_cols_callback(device_t &device, Object &&cb) { return downcast<hlcd0538_device &>(device).m_write_cols.set_callback(std::forward<Object>(cb)); }
-	template <typename Object> static devcb_base &set_write_interrupt_callback(device_t &device, Object &&cb) { return downcast<hlcd0538_device &>(device).m_write_interrupt.set_callback(std::forward<Object>(cb)); }
+	// configuration helpers
+	auto write_cols_callback() { return m_write_cols.bind(); }              // C/R pins (0538: d0-d7 for rows)
+	auto write_interrupt_callback() { return m_write_interrupt.bind(); }    // INTERRUPT pin
 
 	DECLARE_WRITE_LINE_MEMBER(write_clk);
 	DECLARE_WRITE_LINE_MEMBER(write_lcd);

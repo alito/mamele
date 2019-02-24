@@ -7,8 +7,9 @@
 
 #include "cpu/z80/z80.h"
 #include "bus/centronics/ctronics.h"
-#include "machine/ram.h"
 #include "bus/scsi/scsi.h"
+#include "imagedev/floppy.h"
+#include "machine/ram.h"
 #include "machine/timer.h"
 #include "machine/wd_fdc.h"
 #include "machine/z80ctc.h"
@@ -83,13 +84,16 @@ public:
 	DECLARE_READ8_MEMBER(io_read_byte);
 	DECLARE_WRITE8_MEMBER(io_write_byte);
 
+	void bullet(machine_config &config);
+	void bullet_io(address_map &map);
+	void bullet_mem(address_map &map);
 protected:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 
 	void update_dma_rdy();
 
-	required_device<cpu_device> m_maincpu;
+	required_device<z80_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
 	required_device<z80dart_device> m_dart;
 	required_device<z80dma_device> m_dmac;
@@ -159,6 +163,9 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( cstrb_w );
 	DECLARE_WRITE_LINE_MEMBER( req_w );
 
+	void bulletf(machine_config &config);
+	void bulletf_io(address_map &map);
+	void bulletf_mem(address_map &map);
 protected:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;

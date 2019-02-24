@@ -5,29 +5,35 @@
     Bishi Bashi Champ Mini Game Senshuken
 
 *************************************************************************/
+#ifndef MAME_INCLUDES_BISHI_H
+#define MAME_INCLUDES_BISHI_H
+
+#pragma once
 
 #include "machine/timer.h"
 #include "video/k054156_k054157_k056832.h"
 #include "video/k055555.h"
 #include "video/k054338.h"
 #include "video/konami_helper.h"
+#include "emupal.h"
 #include "screen.h"
 
-#define CPU_CLOCK       (XTAL_24MHz / 2)        /* 68000 clock */
-#define SOUND_CLOCK     XTAL_16_9344MHz     /* YMZ280 clock */
+#define CPU_CLOCK       (XTAL(24'000'000) / 2)        /* 68000 clock */
+#define SOUND_CLOCK     XTAL(16'934'400)     /* YMZ280 clock */
 
 class bishi_state : public driver_device
 {
 public:
-	bishi_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	bishi_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_audiocpu(*this, "audiocpu"),
 		m_k056832(*this, "k056832"),
 		m_k054338(*this, "k054338"),
 		m_k055555(*this, "k055555"),
 		m_palette(*this, "palette"),
-		m_screen(*this, "screen") { }
+		m_screen(*this, "screen")
+	{ }
 
 	DECLARE_READ16_MEMBER(control_r);
 	DECLARE_WRITE16_MEMBER(control_w);
@@ -38,6 +44,9 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(bishi_scanline);
 	K056832_CB_MEMBER(tile_callback);
 
+	void bishi(machine_config &config);
+	void dobouchn(machine_config &config);
+	void main_map(address_map &map);
 protected:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
@@ -62,3 +71,5 @@ private:
 	required_device<palette_device> m_palette;
 	required_device<screen_device> m_screen;
 };
+
+#endif // MAME_INCLUDES_BISHI_H

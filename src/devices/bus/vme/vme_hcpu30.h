@@ -11,7 +11,7 @@
 #include "machine/68230pit.h"
 #include "machine/scnxx562.h"
 #include "machine/terminal.h"
-#include "machine/wd33c93.h"
+#include "machine/wd33c9x.h"
 
 DECLARE_DEVICE_TYPE(VME_HCPU30, vme_hcpu30_card_device)
 
@@ -19,9 +19,6 @@ class vme_hcpu30_card_device : public device_t, public device_vme_card_interface
 {
 public:
 	vme_hcpu30_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	DECLARE_READ32_MEMBER(bootvect_r);
-	DECLARE_WRITE32_MEMBER(bootvect_w);
 
 protected:
 	vme_hcpu30_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -41,6 +38,11 @@ private:
 	// Pointer to System ROMs needed by bootvect_r and masking RAM buffer for post reset accesses
 	uint32_t    *m_sysrom;
 	uint32_t    m_sysram[2];
+
+	DECLARE_READ32_MEMBER(bootvect_r);
+	DECLARE_WRITE32_MEMBER(bootvect_w);
+
+	void hcpu30_mem(address_map &map);
 };
 
 #endif // MAME_BUS_VME_VME_HCPU30_H

@@ -52,6 +52,7 @@ protected:
 	// device_isa8_card_interface
 	virtual uint8_t dack_r(int line) override;
 	virtual void dack_w(int line, uint8_t data) override;
+	virtual void dack_line_w(int line, int state) override;
 
 private:
 	DECLARE_WRITE_LINE_MEMBER( irq5_w );
@@ -65,6 +66,8 @@ private:
 	DECLARE_WRITE8_MEMBER( wd1015_p1_w );
 	DECLARE_READ8_MEMBER( wd1015_p2_r );
 	DECLARE_WRITE8_MEMBER( wd1015_p2_w );
+
+	void wd1015_io(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
 	required_device<wd11c00_17_device> m_host;

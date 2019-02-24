@@ -62,28 +62,46 @@ class acrnsys1_state : public driver_device
 {
 public:
 	acrnsys1_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-		m_maincpu(*this, "maincpu"),
-		m_ttl74145(*this, "ic8_7445"),
-		m_cass(*this, "cassette"),
-		m_digit(0)
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+		, m_ttl74145(*this, "ic8_7445")
+		, m_cass(*this, "cassette")
+		, m_display(*this, "digit%u", 0U)
+		, m_digit(0)
 	{ }
 
+	void acrnsys1(machine_config &config);
+
+private:
+	virtual void machine_start() override;
 	DECLARE_READ8_MEMBER(ins8154_b1_port_a_r);
 	DECLARE_WRITE8_MEMBER(ins8154_b1_port_a_w);
 	DECLARE_WRITE8_MEMBER(acrnsys1_led_segment_w);
 	TIMER_DEVICE_CALLBACK_MEMBER(acrnsys1_c);
 	TIMER_DEVICE_CALLBACK_MEMBER(acrnsys1_p);
-private:
+	void acrnsys1_map(address_map &map);
+
 	required_device<cpu_device> m_maincpu;
 	required_device<ttl74145_device> m_ttl74145;
 	required_device<cassette_image_device> m_cass;
+	output_finder<9> m_display;
 	uint8_t m_digit;
 	uint8_t m_cass_data[4];
 	bool m_cass_state;
 	bool m_cassold;
 };
 
+
+
+void acrnsys1_state::machine_start()
+{
+	m_display.resolve();
+
+	save_item(NAME(m_digit));
+	save_item(NAME(m_cass_data));
+	save_item(NAME(m_cass_state));
+	save_item(NAME(m_cassold));
+}
 
 
 /***************************************************************************
@@ -152,9 +170,11 @@ TIMER_DEVICE_CALLBACK_MEMBER(acrnsys1_state::acrnsys1_p)
 
 WRITE8_MEMBER( acrnsys1_state::acrnsys1_led_segment_w )
 {
-	uint8_t key_line = m_ttl74145->read();
+	uint16_t const key_line = m_ttl74145->read();
 
-	output().set_digit_value(key_line, data);
+	for (unsigned i = 0U; 9U > i; ++i)
+		if (BIT(key_line, i))
+			m_display[i] = data;
 }
 
 
@@ -162,12 +182,13 @@ WRITE8_MEMBER( acrnsys1_state::acrnsys1_led_segment_w )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( acrnsys1_map, AS_PROGRAM, 8, acrnsys1_state )
-	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0e00, 0x0e7f) AM_MIRROR(0x100) AM_DEVREADWRITE("b1", ins8154_device, ins8154_r, ins8154_w)
-	AM_RANGE(0x0e80, 0x0eff) AM_MIRROR(0x100) AM_RAM
-	AM_RANGE(0xf800, 0xf9ff) AM_MIRROR(0x600) AM_ROM
-ADDRESS_MAP_END
+void acrnsys1_state::acrnsys1_map(address_map &map)
+{
+	map(0x0000, 0x03ff).ram();
+	map(0x0e00, 0x0e7f).mirror(0x100).rw("b1", FUNC(ins8154_device::ins8154_r), FUNC(ins8154_device::ins8154_w));
+	map(0x0e80, 0x0eff).mirror(0x100).ram();
+	map(0xf800, 0xf9ff).mirror(0x600).rom();
+}
 
 
 /***************************************************************************
@@ -243,28 +264,31 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static MACHINE_CONFIG_START( acrnsys1 )
+void acrnsys1_state::acrnsys1(machine_config &config)
+{
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M6502, 1008000)  /* 1.008 MHz */
-	MCFG_CPU_PROGRAM_MAP(acrnsys1_map)
+	M6502(config, m_maincpu, 1.008_MHz_XTAL);  /* 1.008 MHz */
+	m_maincpu->set_addrmap(AS_PROGRAM, &acrnsys1_state::acrnsys1_map);
 
-	MCFG_DEFAULT_LAYOUT(layout_acrnsys1)
+	config.set_default_layout(layout_acrnsys1);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	SPEAKER(config, "mono").front_center();
+	WAVE(config, "wave", m_cass).add_route(ALL_OUTPUTS, "mono", 0.25);
 
 	/* devices */
-	MCFG_DEVICE_ADD("b1", INS8154, 0)
-	MCFG_INS8154_IN_A_CB(READ8(acrnsys1_state, ins8154_b1_port_a_r))
-	MCFG_INS8154_OUT_A_CB(WRITE8(acrnsys1_state, ins8154_b1_port_a_w))
-	MCFG_INS8154_OUT_B_CB(WRITE8(acrnsys1_state, acrnsys1_led_segment_w))
-	MCFG_DEVICE_ADD("ic8_7445", TTL74145, 0)
-	MCFG_CASSETTE_ADD( "cassette" )
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("acrnsys1_c", acrnsys1_state, acrnsys1_c, attotime::from_hz(4800))
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("acrnsys1_p", acrnsys1_state, acrnsys1_p, attotime::from_hz(40000))
-MACHINE_CONFIG_END
+	ins8154_device &b1(INS8154(config, "b1"));
+	b1.in_a().set(FUNC(acrnsys1_state::ins8154_b1_port_a_r));
+	b1.out_a().set(FUNC(acrnsys1_state::ins8154_b1_port_a_w));
+	b1.out_b().set(FUNC(acrnsys1_state::acrnsys1_led_segment_w));
+
+	TTL74145(config, m_ttl74145, 0);
+
+	CASSETTE(config, m_cass);
+
+	TIMER(config, "acrnsys1_c").configure_periodic(FUNC(acrnsys1_state::acrnsys1_c), attotime::from_hz(4800));
+	TIMER(config, "acrnsys1_p").configure_periodic(FUNC(acrnsys1_state::acrnsys1_p), attotime::from_hz(40000));
+}
 
 
 /***************************************************************************
@@ -281,5 +305,5 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT COMPAT MACHINE   INPUT     STATE           INIT  COMPANY  FULLNAME          FLAGS */
-COMP( 1978, acrnsys1, 0,     0,     acrnsys1, acrnsys1, acrnsys1_state, 0,    "Acorn", "Acorn System 1", 0 )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY  FULLNAME          FLAGS
+COMP( 1979, acrnsys1, 0,      0,      acrnsys1, acrnsys1, acrnsys1_state, empty_init, "Acorn", "Acorn System 1", MACHINE_SUPPORTS_SAVE )

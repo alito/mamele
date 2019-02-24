@@ -32,12 +32,12 @@ protected:
 private:
 	// internal state
 	uint8_t m_lfo_val;
-	discrete_device *m_discrete;
+	required_device<discrete_device> m_discrete;
 };
 
 DECLARE_DEVICE_TYPE(GALAXIAN, galaxian_sound_device)
 
-MACHINE_CONFIG_EXTERN( mooncrst_audio );
-MACHINE_CONFIG_EXTERN( galaxian_audio );
+DISCRETE_SOUND_EXTERN(galaxian_discrete);
+DISCRETE_SOUND_EXTERN(mooncrst_discrete);
 
 #endif // MAME_AUDIO_GALAXIAN_H

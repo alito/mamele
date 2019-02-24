@@ -7,6 +7,7 @@
 
 #include "exp.h"
 #include "cpu/z80/z80.h"
+#include "imagedev/floppy.h"
 #include "machine/i8255.h"
 #include "machine/upd765.h"
 
@@ -22,10 +23,6 @@ public:
 	// construction/destruction
 	spc1000_fdd_exp_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// not really public
-	DECLARE_READ8_MEMBER(tc_r);
-	DECLARE_WRITE8_MEMBER(control_w);
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -37,17 +34,13 @@ protected:
 	virtual DECLARE_READ8_MEMBER(read) override;
 	virtual DECLARE_WRITE8_MEMBER(write) override;
 
-	DECLARE_WRITE8_MEMBER(i8255_b_w);
-	DECLARE_READ8_MEMBER(i8255_c_r);
-	DECLARE_WRITE8_MEMBER(i8255_c_w);
-
 private:
 	static constexpr device_timer_id TIMER_TC = 0;
 
 	// internal state
 	required_device<z80_device> m_cpu;
 	required_device<upd765a_device> m_fdc;
-	required_device<i8255_device> m_pio;
+	required_device<i8255_device> m_ppi;
 
 	floppy_image_device *m_fd0;
 	floppy_image_device *m_fd1;
@@ -57,6 +50,16 @@ private:
 	uint8_t m_i8255_0_pc;
 	uint8_t m_i8255_1_pc;
 	uint8_t m_i8255_portb;
+
+	DECLARE_WRITE8_MEMBER(i8255_b_w);
+	DECLARE_READ8_MEMBER(i8255_c_r);
+	DECLARE_WRITE8_MEMBER(i8255_c_w);
+
+	DECLARE_READ8_MEMBER(tc_r);
+	DECLARE_WRITE8_MEMBER(control_w);
+
+	void sd725_io(address_map &map);
+	void sd725_mem(address_map &map);
 };
 
 

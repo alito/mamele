@@ -19,29 +19,38 @@ needs inputs, prom decode, sound, artwork (lamps), probably some irq masking and
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
+#include "emupal.h"
 #include "screen.h"
 
 
 class summit_state : public driver_device
 {
 public:
-	summit_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	summit_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_attr(*this, "attr"),
 		m_vram(*this, "vram"),
 		m_maincpu(*this, "maincpu"),
 		m_gfxdecode(*this, "gfxdecode"),
-		m_palette(*this, "palette")  { }
+		m_palette(*this, "palette")
+	{ }
 
+	void summit(machine_config &config);
+
+protected:
+	virtual void video_start() override;
+
+private:
 	required_shared_ptr<uint8_t> m_attr;
 	required_shared_ptr<uint8_t> m_vram;
-	DECLARE_WRITE8_MEMBER(out_w);
-	virtual void video_start() override;
-	DECLARE_PALETTE_INIT(summit);
-	uint32_t screen_update_summit(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	required_device<cpu_device> m_maincpu;
 	required_device<gfxdecode_device> m_gfxdecode;
 	required_device<palette_device> m_palette;
+
+	DECLARE_WRITE8_MEMBER(out_w);
+	void summit_palette(palette_device &palette) const;
+	uint32_t screen_update_summit(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void mainmap(address_map &map);
 };
 
 
@@ -75,21 +84,22 @@ WRITE8_MEMBER(summit_state::out_w)
 }
 
 
-static ADDRESS_MAP_START( mainmap, AS_PROGRAM, 8, summit_state )
-	AM_RANGE(0x0000, 0x17ff) AM_ROM
+void summit_state::mainmap(address_map &map)
+{
+	map(0x0000, 0x17ff).rom();
 
-	AM_RANGE(0x2000, 0x23ff) AM_RAM AM_SHARE("attr")
-	AM_RANGE(0x2800, 0x2bff) AM_RAM AM_SHARE("vram")
+	map(0x2000, 0x23ff).ram().share("attr");
+	map(0x2800, 0x2bff).ram().share("vram");
 
-	AM_RANGE(0x3800, 0x3800) AM_READ_PORT("IN0")
+	map(0x3800, 0x3800).portr("IN0");
 //  AM_RANGE(0x3880, 0x3880) AM_WRITE(out_w)
-	AM_RANGE(0x3900, 0x3900) AM_READ_PORT("IN1") AM_WRITE(out_w) // lamps
+	map(0x3900, 0x3900).portr("IN1").w(FUNC(summit_state::out_w)); // lamps
 //  AM_RANGE(0x3980, 0x3980) AM_WRITE(out_w)
-	AM_RANGE(0x3a00, 0x3a00) AM_READ_PORT("IN2") //AM_WRITE(out_w)
-	AM_RANGE(0x3b00, 0x3b00) AM_READ_PORT("IN3")
+	map(0x3a00, 0x3a00).portr("IN2"); //AM_WRITE(out_w)
+	map(0x3b00, 0x3b00).portr("IN3");
 
-	AM_RANGE(0x7000, 0x71ff) AM_RAM
-ADDRESS_MAP_END
+	map(0x7000, 0x71ff).ram();
+}
 
 
 
@@ -296,19 +306,19 @@ static const gfx_layout tiles8x8_layout =
 	8*8
 };
 
-static GFXDECODE_START( summit )
+static GFXDECODE_START( gfx_summit )
 	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 1 )
 GFXDECODE_END
 
-PALETTE_INIT_MEMBER(summit_state, summit)
+void summit_state::summit_palette(palette_device &palette) const
 {
 }
 
-static MACHINE_CONFIG_START( summit )
+MACHINE_CONFIG_START(summit_state::summit)
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80,4000000)
-	MCFG_CPU_PROGRAM_MAP(mainmap)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", summit_state,  irq0_line_hold)
+	MCFG_DEVICE_ADD("maincpu", Z80,4000000)
+	MCFG_DEVICE_PROGRAM_MAP(mainmap)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", summit_state,  irq0_line_hold)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -317,12 +327,10 @@ static MACHINE_CONFIG_START( summit )
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
 	MCFG_SCREEN_UPDATE_DRIVER(summit_state, screen_update_summit)
-	MCFG_SCREEN_PALETTE("palette")
+	MCFG_SCREEN_PALETTE(m_palette)
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", summit)
-
-	MCFG_PALETTE_ADD("palette", 256)
-	MCFG_PALETTE_INIT_OWNER(summit_state, summit)
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_summit);
+	PALETTE(config, m_palette, FUNC(summit_state::summit_palette), 256);
 MACHINE_CONFIG_END
 
 
@@ -346,4 +354,4 @@ ROM_START( pushover )
 ROM_END
 
 
-GAME( 1981, pushover,  0,    summit, summit, summit_state,  0, ROT270, "Summit Coin", "Push Over (Summit Coin)", MACHINE_NOT_WORKING|MACHINE_NO_SOUND|MACHINE_WRONG_COLORS )
+GAME( 1981, pushover,  0,    summit, summit, summit_state, empty_init, ROT270, "Summit Coin", "Push Over (Summit Coin)", MACHINE_NOT_WORKING|MACHINE_NO_SOUND|MACHINE_WRONG_COLORS )

@@ -68,39 +68,29 @@ Priority word (Midres):
 DEFINE_DEVICE_TYPE(DECO_BAC06, deco_bac06_device, "deco_back06", "DECO BAC06 Tilemap")
 
 deco_bac06_device::deco_bac06_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, DECO_BAC06, tag, owner, clock),
-		m_pf_data(nullptr),
-		m_pf_rowscroll(nullptr),
-		m_pf_colscroll(nullptr),
-		m_tile_region_8(0),
-		m_tile_region_16(0),
-		m_supports_8x8(true),
-		m_supports_16x16(true),
-		m_supports_rc_scroll(true),
-		m_gfxcolmask(0),
-		m_rambank(0),
-		m_gfxregion8x8(0),
-		m_gfxregion16x16(0),
-		m_wide(0),
-		m_bppmult(0),
-		m_bppmask(0),
-		m_gfxdecode(*this, finder_base::DUMMY_TAG)
+	: device_t(mconfig, DECO_BAC06, tag, owner, clock)
+	, m_pf_data(nullptr)
+	, m_pf_rowscroll(nullptr)
+	, m_pf_colscroll(nullptr)
+	, m_tile_region_8(0)
+	, m_tile_region_16(0)
+	, m_supports_8x8(true)
+	, m_supports_16x16(true)
+	, m_supports_rc_scroll(true)
+	, m_gfxcolmask(0)
+	, m_rambank(0)
+	, m_gfxregion8x8(0)
+	, m_gfxregion16x16(0)
+	, m_wide(0)
+	, m_bppmult(0)
+	, m_bppmask(0)
+	, m_gfxdecode(*this, finder_base::DUMMY_TAG)
 {
 	for (int i = 0; i < 8; i++)
 		{
 			m_pf_control_0[i] = 0;
 			m_pf_control_1[i] = 0;
 		}
-}
-
-//-------------------------------------------------
-//  static_set_gfxdecode_tag: Set the tag of the
-//  gfx decoder
-//-------------------------------------------------
-
-void deco_bac06_device::static_set_gfxdecode_tag(device_t &device, const char *tag)
-{
-	downcast<deco_bac06_device &>(device).m_gfxdecode.set_tag(tag);
 }
 
 void deco_bac06_device::device_start()
@@ -118,26 +108,33 @@ void deco_bac06_device::device_start()
 	m_bppmult = 0x10;
 	m_bppmask = 0x0f;
 	m_rambank = 0;
+	m_flip_screen = false;
 
-	save_pointer(NAME(m_pf_data.get()), 0x4000/2);
-	save_pointer(NAME(m_pf_rowscroll.get()), 0x2000/2);
-	save_pointer(NAME(m_pf_colscroll.get()), 0x2000/2);
+	save_pointer(NAME(m_pf_data), 0x4000/2);
+	save_pointer(NAME(m_pf_rowscroll), 0x2000/2);
+	save_pointer(NAME(m_pf_colscroll), 0x2000/2);
 	save_item(NAME(m_pf_control_0));
 	save_item(NAME(m_pf_control_1));
 	save_item(NAME(m_gfxcolmask));
 	save_item(NAME(m_rambank));
+	save_item(NAME(m_flip_screen));
 }
 
 void deco_bac06_device::device_reset()
 {
 }
 
-void deco_bac06_device::set_gfx_region_wide(device_t &device, int region8x8, int region16x16, int wide)
+void deco_bac06_device::set_flip_screen(bool flip)
 {
-	deco_bac06_device &dev = downcast<deco_bac06_device &>(device);
-	dev.m_gfxregion8x8 = region8x8;
-	dev.m_gfxregion16x16 = region16x16;
-	dev.m_wide = wide;
+	if (m_flip_screen != flip)
+	{
+		m_flip_screen = flip;
+		for (int i = 0; i < 3; i++)
+		{
+			m_pf8x8_tilemap[i]->set_flip(flip ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+			m_pf16x16_tilemap[i]->set_flip(flip ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+		}
+	}
 }
 
 TILEMAP_MAPPER_MEMBER(deco_bac06_device::tile_shape0_scan)
@@ -280,21 +277,21 @@ void deco_bac06_device::custom_tilemap_draw(bitmap_ind16 &bitmap,
 	doesn't affect any games.
 	*/
 
-	if (machine().driver_data()->flip_screen())
+	if (m_flip_screen)
 		src_y = (src_bitmap.height() - 256) - scrolly;
 	else
 		src_y = scrolly;
 
-	for (y=0; y<=cliprect.max_y; y++) {
+	for (y=0; y<=cliprect.bottom(); y++) {
 		if (row_scroll_enabled)
 			src_x=scrollx + rowscroll_ptr[(src_y >> (control1[3]&0xf))&(0x1ff>>(control1[3]&0xf))];
 		else
 			src_x=scrollx;
 
-		if (machine().driver_data()->flip_screen())
+		if (m_flip_screen)
 			src_x=(src_bitmap.width() - 256) - src_x;
 
-		for (x=0; x<=cliprect.max_x; x++) {
+		for (x=0; x<=cliprect.right(); x++) {
 			if (col_scroll_enabled)
 				column_offset=colscroll_ptr[((src_x >> 3) >> (control1[2]&0xf))&(0x3f>>(control1[2]&0xf))];
 

@@ -40,6 +40,10 @@ public:
 	DECLARE_WRITE8_MEMBER( riot1_pb_w );
 	DECLARE_WRITE8_MEMBER( via_pb_w );
 
+	void c8050_fdc_mem(address_map &map);
+	void c8050_main_mem(address_map &map);
+	void c8250lp_fdc_mem(address_map &map);
+	void sfd1001_fdc_mem(address_map &map);
 protected:
 	c8050_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -56,6 +60,7 @@ protected:
 	virtual void ieee488_atn(int state) override;
 	virtual void ieee488_ifc(int state) override;
 
+	void add_common_devices(machine_config &config);
 	inline void update_ieee_signals();
 
 	required_device<m6502_device> m_maincpu;
@@ -68,6 +73,7 @@ protected:
 	optional_device<floppy_connector> m_floppy1;
 	required_device<c8050_fdc_device> m_fdc;
 	required_ioport m_address;
+	output_finder<4> m_leds;
 
 	// IEEE-488 bus
 	int m_rfdo;                         // not ready for data output

@@ -10,17 +10,17 @@
 
 struct le_score_memory_description {
 	/* Description of memory range */
-    le_score_memory_description() : cpu(NULL), address_space_name(NULL), address(0), number_of_bytes(0), encoding(LE_ENCODING_INVALID) { }
-    char *cpu;
-    char *address_space_name;
+    le_score_memory_description() : cpu(), address_space_name(), address(0), number_of_bytes(0), encoding(LE_ENCODING_INVALID) { }
+    std::string cpu;
+    std::string address_space_name;
 	u32 address, number_of_bytes;
 	int encoding;
 };
 
 struct le_gameover {
-    le_gameover() : cpu(NULL), address_space_name(NULL), address(0), bit(0), on(0) {}
-    char *cpu;
-    char *address_space_name;
+    le_gameover() : cpu(), address_space_name(), address(0), bit(0), on(0) {}
+    std::string cpu;
+    std::string address_space_name;
     u32 address;
     u8 bit;
     bool on;

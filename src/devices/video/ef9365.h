@@ -13,17 +13,8 @@
 
 #pragma once
 
-#define MCFG_EF936X_PALETTE(palette_tag) \
-		ef9365_device::static_set_palette_tag(*device, ("^" palette_tag));
+#include "emupal.h"
 
-#define MCFG_EF936X_BITPLANES_CNT(bitplanes_number) \
-		ef9365_device::static_set_nb_bitplanes(*device, (bitplanes_number));
-
-#define MCFG_EF936X_DISPLAYMODE(display_mode) \
-		ef9365_device::static_set_display_mode(*device, (ef9365_device::display_mode));
-
-#define MCFG_EF936X_IRQ_HANDLER(cb) \
-		devcb = &ef9365_device::set_irq_handler(*device, (DEVCB_##cb));
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -48,11 +39,11 @@ public:
 	// construction/destruction
 	ef9365_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration
-	static void static_set_palette_tag(device_t &device, const char *tag);
-	static void static_set_nb_bitplanes(device_t &device, int nb_bitplanes );
-	static void static_set_display_mode(device_t &device, int display_mode );
-	template<class _Object> static devcb_base &set_irq_handler(device_t &device, _Object object) { return downcast<ef9365_device &>(device).m_irq_handler.set_callback(object); }
+	// configuration
+	template <typename T> void set_palette_tag(T &&tag) { m_palette.set_tag(std::forward<T>(tag)); }
+	void set_nb_bitplanes(int nb_bitplanes );
+	void set_display_mode(int display_mode );
+	auto irq_handler() { return m_irq_handler.bind(); }
 
 	// device interface
 	DECLARE_READ8_MEMBER( data_r );
@@ -96,6 +87,8 @@ private:
 	int  cycles_to_us(int cycles);
 	void dump_bitplanes_word();
 	void update_interrupts();
+
+	void ef9365(address_map &map);
 
 	// internal state
 	static constexpr device_timer_id BUSY_TIMER = 0;

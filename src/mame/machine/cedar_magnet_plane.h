@@ -9,12 +9,7 @@
 #include "machine/cedar_magnet_board.h"
 #include "machine/z80pio.h"
 
-extern const device_type CEDAR_MAGNET_PLANE;
 DECLARE_DEVICE_TYPE(CEDAR_MAGNET_PLANE, cedar_magnet_plane_device)
-
-#define MCFG_CEDAR_MAGNET_PLANE_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, CEDAR_MAGNET_PLANE, 0)
-
 
 class cedar_magnet_plane_device : public device_t, public cedar_magnet_board_interface
 {
@@ -31,6 +26,8 @@ public:
 
 	uint32_t draw(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect, int palbase);
 
+	void cedar_magnet_plane_io(address_map &map);
+	void cedar_magnet_plane_map(address_map &map);
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual void device_start() override;

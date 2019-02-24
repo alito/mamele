@@ -113,13 +113,13 @@ void towns_state::towns_crtc_refresh_mode()
 	m_video.towns_crtc_layerscr[0].min_x = m_video.towns_crtc_reg[9] - m_video.towns_crtc_reg[0];
 	m_video.towns_crtc_layerscr[0].min_y = (m_video.towns_crtc_reg[13] - m_video.towns_crtc_reg[6]) / 2;
 	m_video.towns_crtc_layerscr[0].max_x = m_video.towns_crtc_reg[10] - m_video.towns_crtc_reg[0];
-	m_video.towns_crtc_layerscr[0].max_y = (m_video.towns_crtc_reg[14] - m_video.towns_crtc_reg[6]) / 2;
+	m_video.towns_crtc_layerscr[0].max_y = ((m_video.towns_crtc_reg[14] - m_video.towns_crtc_reg[6]) / 2) - 1;
 
 	// layer 1
 	m_video.towns_crtc_layerscr[1].min_x = m_video.towns_crtc_reg[11] - m_video.towns_crtc_reg[0];
 	m_video.towns_crtc_layerscr[1].min_y = (m_video.towns_crtc_reg[15] - m_video.towns_crtc_reg[6]) / 2;
 	m_video.towns_crtc_layerscr[1].max_x = m_video.towns_crtc_reg[12] - m_video.towns_crtc_reg[0];
-	m_video.towns_crtc_layerscr[1].max_y = (m_video.towns_crtc_reg[16] - m_video.towns_crtc_reg[6]) / 2;
+	m_video.towns_crtc_layerscr[1].max_y = ((m_video.towns_crtc_reg[16] - m_video.towns_crtc_reg[6]) / 2) - 1;
 
 	// sanity checks
 	if(scr.max_x == 0 || scr.max_y == 0)
@@ -127,7 +127,7 @@ void towns_state::towns_crtc_refresh_mode()
 	if(scr.max_x <= scr.min_x || scr.max_y <= scr.min_y)
 		return;
 
-	machine().first_screen()->configure(scr.max_x+1,scr.max_y+1,scr,HZ_TO_ATTOSECONDS(60));
+	m_screen->configure(scr.max_x+1,scr.max_y+1,scr,HZ_TO_ATTOSECONDS(60));
 }
 
 READ8_MEMBER( towns_state::towns_gfx_high_r )
@@ -137,15 +137,31 @@ READ8_MEMBER( towns_state::towns_gfx_high_r )
 
 WRITE8_MEMBER( towns_state::towns_gfx_high_w )
 {
-	m_towns_gfxvram[offset] = data;
+	u8 mask = m_vram_mask[offset & 3];
+	u8 mem = m_towns_gfxvram[offset];
+	m_towns_gfxvram[offset] = (mem & ~mask) | (data & mask);
 }
+
+READ8_MEMBER( towns_state::towns_gfx_packed_r )
+{
+	return m_towns_gfxvram[bitswap<19>(offset,2,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,1,0)];
+}
+
+WRITE8_MEMBER( towns_state::towns_gfx_packed_w )
+{
+	u8 mask = m_vram_mask[offset & 3];
+	offset = bitswap<19>(offset,2,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,1,0);
+	u8 mem = m_towns_gfxvram[offset];
+	m_towns_gfxvram[offset] = (mem & ~mask) | (data & mask);
+}
+
 
 READ8_MEMBER( towns_state::towns_gfx_r )
 {
 	uint8_t ret = 0;
 
 	if(m_towns_mainmem_enable != 0)
-		return m_messram->pointer()[offset+0xc0000];
+		return m_ram->pointer()[offset+0xc0000];
 
 	offset = offset << 2;
 
@@ -168,7 +184,7 @@ WRITE8_MEMBER( towns_state::towns_gfx_w )
 {
 	if(m_towns_mainmem_enable != 0)
 	{
-		m_messram->pointer()[offset+0xc0000] = data;
+		m_ram->pointer()[offset+0xc0000] = data;
 		return;
 	}
 	offset = offset << 2;
@@ -251,7 +267,7 @@ void towns_state::towns_update_kanji_offset()
 
 READ8_MEMBER( towns_state::towns_video_cff80_r )
 {
-	uint8_t* ROM = m_user->base();
+	uint8_t const* const ROM = m_user->base();
 
 	switch(offset)
 	{
@@ -267,10 +283,15 @@ READ8_MEMBER( towns_state::towns_video_cff80_r )
 			else
 				return 0x00;
 		case 0x06:
-			if(m_video.towns_vblank_flag != 0)
-				return 0x10;
-			else
-				return 0x00;
+			{
+				uint8_t ret = 0x10;
+				uint16_t const xpos = m_screen->hpos();
+				if(xpos < m_video.towns_crtc_layerscr[0].max_x && xpos > m_video.towns_crtc_layerscr[0].min_x)
+					ret |= 0x80;
+				if(m_video.towns_vblank_flag != 0)
+					ret |= 0x04;
+				return ret;
+			}
 		case 0x16:  // Kanji character data
 			return ROM[(m_video.towns_kanji_offset << 1) + 0x180000];
 		case 0x17:  // Kanji character data
@@ -329,7 +350,7 @@ WRITE8_MEMBER( towns_state::towns_video_cff80_w )
 READ8_MEMBER( towns_state::towns_video_cff80_mem_r )
 {
 	if(m_towns_mainmem_enable != 0)
-		return m_messram->pointer()[offset+0xcff80];
+		return m_ram->pointer()[offset+0xcff80];
 
 	return towns_video_cff80_r(space,offset);
 }
@@ -338,7 +359,7 @@ WRITE8_MEMBER( towns_state::towns_video_cff80_mem_w )
 {
 	if(m_towns_mainmem_enable != 0)
 	{
-		m_messram->pointer()[offset+0xcff80] = data;
+		m_ram->pointer()[offset+0xcff80] = data;
 		return;
 	}
 	towns_video_cff80_w(space,offset,data);
@@ -371,8 +392,8 @@ READ8_MEMBER(towns_state::towns_video_440_r)
 			if(m_video.towns_crtc_sel == 30)
 			{
 				// check video position
-				xpos = machine().first_screen()->hpos();
-				ypos = machine().first_screen()->vpos();
+				xpos = m_screen->hpos();
+				ypos = m_screen->vpos();
 
 				if(xpos < (m_video.towns_crtc_reg[0] & 0xfe))
 					ret |= 0x02;
@@ -409,6 +430,14 @@ READ8_MEMBER(towns_state::towns_video_440_r)
 		case 0x12:
 			if(LOG_VID) logerror("SPR: reading register %i (0x452) [%02x]\n",m_video.towns_sprite_sel,m_video.towns_sprite_reg[m_video.towns_sprite_sel]);
 			return m_video.towns_sprite_reg[m_video.towns_sprite_sel];
+		case 0x18:
+			return m_vram_mask_addr;
+		case 0x1a:
+		case 0x1b:
+		{
+			int idx = (m_vram_mask_addr << 1) + offset - 0x1a;
+			return m_vram_mask[idx];
+		}
 		//default:
 			//if(LOG_VID) logerror("VID: read port %04x\n",offset+0x440);
 	}
@@ -448,6 +477,16 @@ WRITE8_MEMBER(towns_state::towns_video_440_w)
 			logerror("SPR: writing register %i (0x452) [%02x]\n",m_video.towns_sprite_sel,data);
 			m_video.towns_sprite_reg[m_video.towns_sprite_sel] = data;
 			break;
+		case 0x18:
+			m_vram_mask_addr = data & 1;
+			break;
+		case 0x1a:
+		case 0x1b:
+		{
+			int idx = (m_vram_mask_addr << 1) + offset - 0x1a;
+			m_vram_mask[idx] = data;
+			break;
+		}
 		default:
 			if(LOG_VID) logerror("VID: wrote 0x%02x to port %04x\n",data,offset+0x440);
 	}
@@ -472,12 +511,10 @@ READ8_MEMBER(towns_state::towns_video_5c8_r)
 
 WRITE8_MEMBER(towns_state::towns_video_5c8_w)
 {
-	pic8259_device* dev = m_pic_slave;
-
 	switch(offset)
 	{
 		case 0x02:  // 0x5ca - VSync clear?
-			dev->ir3_w(0);
+			m_pic_slave->ir3_w(0);
 			if(IRQ_LOG) logerror("PIC: IRQ11 (VSync) set low\n");
 			//towns_vblank_flag = 0;
 			break;
@@ -494,18 +531,17 @@ void towns_state::towns_update_palette()
 	switch(m_video.towns_video_reg[1] & 0x30)  // Palette select
 	{
 		case 0x00:
-			m_palette16_0->set_pen_color(entry, r, g, b);
-			break;
 		case 0x20:
-			m_palette16_1->set_pen_color(entry, r, g, b);
+			m_palette16[(m_video.towns_video_reg[1] & 0x20) >> 5]->set_pen_color(entry, r, g, b);
 			break;
 		case 0x10:
 		case 0x30:
 			m_palette->set_pen_color(entry, r, g, b);
 			break;
 	}
+	// chasehq wants the + 8, the real hardware appears to be less consistent, revisit if other software doesn't like it
 	if(!m_screen->vblank())
-		m_screen->update_partial(m_screen->vpos());
+		m_screen->update_partial(m_screen->vpos() + 8);
 }
 
 /* Video/CRTC
@@ -522,10 +558,8 @@ READ8_MEMBER(towns_state::towns_video_fd90_r)
 
 	if(m_video.towns_video_reg[1] & 0x10)
 		pal = m_palette;
-	else if(m_video.towns_video_reg[1] & 0x20)
-		pal = m_palette16_1;
 	else
-		pal = m_palette16_0;
+		pal = m_palette16[(m_video.towns_video_reg[1] & 0x20) >> 5];
 //    if(LOG_VID) logerror("VID: read port %04x\n",offset+0xfd90);
 	switch(offset)
 	{
@@ -548,7 +582,7 @@ READ8_MEMBER(towns_state::towns_video_fd90_r)
 			return m_video.towns_degipal[offset-0x08];
 		case 0x10:  // "sub status register"
 			// check video position
-			xpos = machine().first_screen()->hpos();
+			xpos = m_screen->hpos();
 
 			if(xpos < m_video.towns_crtc_layerscr[0].max_x && xpos > m_video.towns_crtc_layerscr[0].min_x)
 				ret |= 0x02;
@@ -626,7 +660,7 @@ READ8_MEMBER(towns_state::towns_video_unknown_r)
  */
 READ8_MEMBER(towns_state::towns_spriteram_low_r)
 {
-	uint8_t* RAM = m_messram->pointer();
+	uint8_t* RAM = m_ram->pointer();
 	uint8_t* ROM = m_user->base();
 
 	if(offset < 0x1000)
@@ -664,7 +698,7 @@ READ8_MEMBER(towns_state::towns_spriteram_low_r)
 
 WRITE8_MEMBER(towns_state::towns_spriteram_low_w)
 {
-	uint8_t* RAM = m_messram->pointer();
+	uint8_t* RAM = m_ram->pointer();
 
 	if(offset < 0x1000)
 	{  // 0xc8000-0xc8fff
@@ -723,8 +757,9 @@ void towns_state::render_sprite_4(uint32_t poffset, uint32_t coffset, uint16_t x
 {
 	uint16_t xpos,ypos;
 	uint16_t col,pixel;
-	uint32_t voffset;
+	uint32_t vbase = m_video.towns_sprite_page ? 0x20000 : 0, voffset;
 	uint16_t xstart,xend,ystart,yend;
+	int linesize = m_video.towns_crtc_reg[24] * 4;
 	int xdir,ydir;
 	int width = (m_video.towns_crtc_reg[12] - m_video.towns_crtc_reg[11]) / (((m_video.towns_crtc_reg[27] & 0x0f00) >> 8)+1);
 	int height = (m_video.towns_crtc_reg[16] - m_video.towns_crtc_reg[15]) / (((m_video.towns_crtc_reg[27] & 0xf000) >> 12)+2);
@@ -793,30 +828,23 @@ void towns_state::render_sprite_4(uint32_t poffset, uint32_t coffset, uint16_t x
 		for(xpos=xstart;xpos!=xend;xpos+=xdir,xpos&=0x1ff)
 		{
 
-			if(m_video.towns_sprite_page != 0)
-				voffset = 0x20000;
-			else
-				voffset = 0x00000;
+			voffset = 0;
 			pixel = (m_towns_txtvram[poffset] & 0xf0) >> 4;
 			col = m_towns_txtvram[coffset+(pixel*2)] | (m_towns_txtvram[coffset+(pixel*2)+1] << 8);
 			if (rotation)
 			{
-				voffset += (m_video.towns_crtc_reg[24] * 4) * (xpos & 0x1ff);  // scanline size in bytes * y pos
+				voffset += linesize * (xpos & 0x1ff);  // scanline size in bytes * y pos
 				voffset += (ypos & 0x1ff) * 2;
 			}
 			else
 			{
-				voffset += (m_video.towns_crtc_reg[24] * 4) * (ypos & 0x1ff);  // scanline size in bytes * y pos
+				voffset += linesize * (ypos & 0x1ff);  // scanline size in bytes * y pos
 				voffset += (xpos & 0x1ff) * 2;
 			}
-			if((m_video.towns_sprite_page != 0 && voffset > 0x1ffff && voffset < 0x40000)
-					|| (m_video.towns_sprite_page == 0 && voffset < 0x20000))
+			if(voffset < 0x20000 && xpos < width && ypos < height && pixel != 0 && voffset > linesize)
 			{
-				if(xpos < width && ypos < height && pixel != 0)
-				{
-					m_towns_gfxvram[0x40000+voffset+1] = (col & 0xff00) >> 8;
-					m_towns_gfxvram[0x40000+voffset] = col & 0x00ff;
-				}
+				m_towns_gfxvram[0x40000+voffset+vbase+1] = (col & 0xff00) >> 8;
+				m_towns_gfxvram[0x40000+voffset+vbase] = col & 0x00ff;
 			}
 
 			if (!xhalfsize)
@@ -834,14 +862,10 @@ void towns_state::render_sprite_4(uint32_t poffset, uint32_t coffset, uint16_t x
 
 				pixel = m_towns_txtvram[poffset] & 0x0f;
 				col = m_towns_txtvram[coffset+(pixel*2)] | (m_towns_txtvram[coffset+(pixel*2)+1] << 8);
-				if((m_video.towns_sprite_page != 0 && voffset > 0x1ffff && voffset < 0x40000)
-						|| (m_video.towns_sprite_page == 0 && voffset < 0x20000))
+				if(voffset < 0x20000 && xpos < width && ypos < height && pixel != 0 && voffset > linesize)
 				{
-					if(xpos < width && ypos < height && pixel != 0)
-					{
-						m_towns_gfxvram[0x40000+voffset+1] = (col & 0xff00) >> 8;
-						m_towns_gfxvram[0x40000+voffset] = col & 0x00ff;
-					}
+					m_towns_gfxvram[0x40000+voffset+vbase+1] = (col & 0xff00) >> 8;
+					m_towns_gfxvram[0x40000+voffset+vbase] = col & 0x00ff;
 				}
 			}
 
@@ -859,8 +883,9 @@ void towns_state::render_sprite_16(uint32_t poffset, uint16_t x, uint16_t y, boo
 {
 	uint16_t xpos,ypos;
 	uint16_t col;
-	uint32_t voffset;
+	uint32_t vbase = m_video.towns_sprite_page ? 0x20000 : 0, voffset;
 	uint16_t xstart,ystart,xend,yend;
+	int linesize = m_video.towns_crtc_reg[24] * 4;
 	int xdir,ydir;
 	int width = (m_video.towns_crtc_reg[12] - m_video.towns_crtc_reg[11]) / (((m_video.towns_crtc_reg[27] & 0x0f00) >> 8)+1);
 	int height = (m_video.towns_crtc_reg[16] - m_video.towns_crtc_reg[15]) / (((m_video.towns_crtc_reg[27] & 0xf000) >> 12)+2);
@@ -903,9 +928,9 @@ void towns_state::render_sprite_16(uint32_t poffset, uint16_t x, uint16_t y, boo
 	{
 		ystart = y;
 		if (yhalfsize)
-			yend = y+16;
-		else
 			yend = y+8;
+		else
+			yend = y+16;
 		ydir = 1;
 	}
 	xstart &= 0x1ff;
@@ -918,29 +943,22 @@ void towns_state::render_sprite_16(uint32_t poffset, uint16_t x, uint16_t y, boo
 	{
 		for(xpos=xstart;xpos!=xend;xpos+=xdir,xpos&=0x1ff)
 		{
-			if(m_video.towns_sprite_page != 0)
-				voffset = 0x20000;
-			else
-				voffset = 0x00000;
+			voffset = 0;
 			col = m_towns_txtvram[poffset] | (m_towns_txtvram[poffset+1] << 8);
 			if (rotation)
 			{
-				voffset += (m_video.towns_crtc_reg[24] * 4) * (xpos & 0x1ff);  // scanline size in bytes * y pos
+				voffset += linesize * (xpos & 0x1ff);  // scanline size in bytes * y pos
 				voffset += (ypos & 0x1ff) * 2;
 			}
 			else
 			{
-				voffset += (m_video.towns_crtc_reg[24] * 4) * (ypos & 0x1ff);  // scanline size in bytes * y pos
+				voffset += linesize * (ypos & 0x1ff);  // scanline size in bytes * y pos
 				voffset += (xpos & 0x1ff) * 2;
 			}
-			if((m_video.towns_sprite_page != 0 && voffset > 0x1ffff && voffset < 0x40000)
-					|| (m_video.towns_sprite_page == 0 && voffset < 0x20000))
+			if(voffset < 0x20000 && xpos < width && ypos < height && col< 0x8000 && voffset > linesize)
 			{
-				if(xpos < width && ypos < height && col < 0x8000)
-				{
-					m_towns_gfxvram[0x40000+voffset+1] = (col & 0xff00) >> 8;
-					m_towns_gfxvram[0x40000+voffset] = col & 0x00ff;
-				}
+				m_towns_gfxvram[0x40000+vbase+voffset+1] = (col & 0xff00) >> 8;
+				m_towns_gfxvram[0x40000+vbase+voffset] = col & 0x00ff;
 			}
 			if (xhalfsize)
 				poffset+=4;
@@ -962,16 +980,23 @@ void towns_state::draw_sprites(const rectangle* rect)
 	uint16_t xoff = (m_video.towns_sprite_reg[2] | (m_video.towns_sprite_reg[3] << 8)) & 0x1ff;
 	uint16_t yoff = (m_video.towns_sprite_reg[4] | (m_video.towns_sprite_reg[5] << 8)) & 0x1ff;
 	uint32_t poffset,coffset;
+	int linesize = m_video.towns_crtc_reg[24] * 4;
 	bool xflip, yflip, xhalfsize, yhalfsize, rotation;
 
 	if(!(m_video.towns_sprite_reg[1] & 0x80))
 		return;
 
-	// clears VRAM for each frame?
+	// TODO: I'm not confident about this but based on the behavior of aburner and rbisland, it's probably in the ballpark
+	// aburner writes the backgound color from 0 to 0x400 in both pages while rbisland from 0 to 0x800 (What's the difference?)
+	// it's only written when the color changes so the sprite engine has to be prevented from writing there
+	uint8_t *vram;
 	if(m_video.towns_sprite_page == 0)
-		memset(m_towns_gfxvram.get()+0x40000,0x80,0x20000);
+		vram = m_towns_gfxvram.get() + 0x40000;
 	else
-		memset(m_towns_gfxvram.get()+0x60000,0x80,0x20000);
+		vram = m_towns_gfxvram.get() + 0x60000;
+
+	for(int i = linesize; i < 0x20000; i += linesize)
+		memcpy(vram + i, vram, linesize);
 
 	for(n=sprite_limit;n<1024;n++)
 	{
@@ -1033,14 +1058,25 @@ void towns_state::towns_crtc_draw_scan_layer_hicolour(bitmap_rgb32 &bitmap,const
 	int hzoom = 1;
 	int linesize;
 	uint32_t scroll;
+	int pixel;
+	int page = 0;
+	bool sphscroll = !(m_video.towns_crtc_reg[28] & (layer ? 0x20 : 0x10));
 
-	if(layer == 0)
-		linesize = m_video.towns_crtc_reg[20] * 4;
+	if(m_video.towns_video_reg[0] & 0x10)
+	{
+		if(layer == 0)
+			linesize = m_video.towns_crtc_reg[20] * 4;
+		else
+			linesize = m_video.towns_crtc_reg[24] * 4;
+	}
 	else
-		linesize = m_video.towns_crtc_reg[24] * 4;
+		linesize = m_video.towns_crtc_reg[20] * 8;
 
 	if(m_video.towns_display_page_sel != 0)
+	{
 		off = 0x20000;
+		page = 1;
+	}
 
 //  if((layer == 1) && (m_video.towns_sprite_reg[1] & 0x80) && (m_video.towns_sprite_page == 1))
 //      off = 0x20000;
@@ -1049,7 +1085,7 @@ void towns_state::towns_crtc_draw_scan_layer_hicolour(bitmap_rgb32 &bitmap,const
 	{
 		if(!(m_video.towns_video_reg[0] & 0x10))
 			return;
-		if(!(m_video.towns_crtc_reg[28] & 0x10))
+		if(!sphscroll)
 			off += (m_video.towns_crtc_reg[21]) << 2;  // initial offset
 		else
 		{
@@ -1061,7 +1097,7 @@ void towns_state::towns_crtc_draw_scan_layer_hicolour(bitmap_rgb32 &bitmap,const
 	}
 	else
 	{
-		if(!(m_video.towns_crtc_reg[28] & 0x20))
+		if(!sphscroll)
 			off += (m_video.towns_crtc_reg[17]) << 2;  // initial offset
 		else
 		{
@@ -1075,149 +1111,28 @@ void towns_state::towns_crtc_draw_scan_layer_hicolour(bitmap_rgb32 &bitmap,const
 	off += line * linesize;
 	off &= ~0x01;
 
-	if(hzoom == 1)
+	for(x=rect->min_x;x<rect->max_x;x+=hzoom)
 	{
-		for(x=rect->min_x;x<rect->max_x;x++)
+		if(m_video.towns_video_reg[0] & 0x10)
+			off &= 0x3ffff;  // 2 layers
+		else
+			off &= 0x7ffff;  // 1 layer
+		colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
+		if(colour < 0x8000 || !(m_video.towns_video_reg[0] & 0x10))
 		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-
-			colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour < 0x8000)
-			{
-				bitmap.pix32(scanline, x) =
+			for (pixel = 0; pixel < hzoom; pixel++)
+				bitmap.pix32(scanline, x+pixel) =
 					((colour & 0x001f) << 3)
 					| ((colour & 0x7c00) << 1)
 					| ((colour & 0x03e0) << 14);
-			}
-			off+=2;
 		}
-	}
-
-	if(hzoom == 2)
-	{  // x2 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=2)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour < 0x8000)
-			{
-				bitmap.pix32(scanline, x) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+1) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-			}
-			off+=2;
-		}
-	}
-
-	if(hzoom == 3)
-	{  // x3 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=3)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour < 0x8000)
-			{
-				bitmap.pix32(scanline, x) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+1) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+2) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-			}
-			off+=2;
-		}
-	}
-
-	if(hzoom == 4)
-	{  // x4 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=4)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour < 0x8000)
-			{
-				bitmap.pix32(scanline, x) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+1) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+2) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+3) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-			}
-			off+=2;
-		}
-	}
-
-	if(hzoom == 5)
-	{  // x5 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=5)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = (m_towns_gfxvram[off+(layer*0x40000)+1] << 8) | m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour < 0x8000)
-			{
-				bitmap.pix32(scanline, x) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+1) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+2) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+3) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-				bitmap.pix32(scanline, x+4) =
-					((colour & 0x001f) << 3)
-					| ((colour & 0x7c00) << 1)
-					| ((colour & 0x03e0) << 14);
-			}
-			off+=2;
-		}
+		off+=2;
+		if ((off - (page * 0x20000)) % linesize == 0 && sphscroll)
+			off -= linesize;
 	}
 }
 
-void towns_state::towns_crtc_draw_scan_layer_256(bitmap_rgb32 &bitmap,const rectangle* rect,int layer,int line,int scanline)
+void towns_state::towns_crtc_draw_scan_layer_256(bitmap_rgb32 &bitmap,const rectangle* rect,int line,int scanline)
 {
 	int off = 0;
 	int x;
@@ -1225,140 +1140,46 @@ void towns_state::towns_crtc_draw_scan_layer_256(bitmap_rgb32 &bitmap,const rect
 	int hzoom = 1;
 	int linesize;
 	uint32_t scroll;
+	int pixel;
+	int page = 0;
+	bool sphscroll = !(m_video.towns_crtc_reg[28] & 0x10);
 
 	if(m_video.towns_display_page_sel != 0)
+	{
 		off = 0x20000;
-
-//  if((layer == 1) && (m_video.towns_sprite_reg[1] & 0x80) && (m_video.towns_sprite_page == 1))
-//      off = 0x20000;
-
-	if(layer == 0)
-		linesize = m_video.towns_crtc_reg[20] * 8;
-	else
-		linesize = m_video.towns_crtc_reg[24] * 8;
-
-	if(layer != 0)
-	{
-		if(!(m_video.towns_video_reg[0] & 0x10))
-			return;
-		if(!(m_video.towns_crtc_reg[28] & 0x10))
-			off += m_video.towns_crtc_reg[21] << 3;  // initial offset
-		else
-		{
-			scroll = ((m_video.towns_crtc_reg[21] & 0xfc00) << 3) | (((m_video.towns_crtc_reg[21] & 0x3ff) << 3));
-			off += scroll;
-		}
-		hzoom = ((m_video.towns_crtc_reg[27] & 0x0f00) >> 8) + 1;
-		off += (m_video.towns_crtc_reg[11] - m_video.towns_crtc_reg[22]) / hzoom;
+		page = 1;
 	}
+
+	linesize = m_video.towns_crtc_reg[20] * 4;
+
+	if(!sphscroll)
+		off += m_video.towns_crtc_reg[17] << 2;  // initial offset
 	else
 	{
-		if(!(m_video.towns_crtc_reg[28] & 0x20))
-			off += m_video.towns_crtc_reg[17] << 3;  // initial offset
-		else
-		{
-			scroll = ((m_video.towns_crtc_reg[17] & 0xfc00) << 3) | (((m_video.towns_crtc_reg[17] & 0x3ff) << 3));
-			off += scroll;
-		}
-		hzoom = (m_video.towns_crtc_reg[27] & 0x000f) + 1;
-		off += (m_video.towns_crtc_reg[9] - m_video.towns_crtc_reg[18]) / hzoom;
+		scroll = ((m_video.towns_crtc_reg[17] & 0xfc00) << 2) | (((m_video.towns_crtc_reg[17] & 0x3ff) << 2));
+		off += scroll;
 	}
+	hzoom = (m_video.towns_crtc_reg[27] & 0x000f) + 1;
+	int subpix = (m_video.towns_crtc_reg[9] - m_video.towns_crtc_reg[18]) / hzoom;
 
 	off += line * linesize;
+	off += (subpix >> 1) & ~3;
+	subpix = subpix & 7;
 
-	if(hzoom == 1)
+	for(x=rect->min_x;x<rect->max_x;x+=hzoom)
 	{
-		for(x=rect->min_x;x<rect->max_x;x++)
+		off &= 0x3ffff;
+		colour = m_towns_gfxvram[off+(subpix >= 4 ? (subpix & 3)+0x40000 : subpix)];
+		for (pixel = 0; pixel < hzoom; pixel++)
+			bitmap.pix32(scanline, x+pixel) = m_palette->pen(colour);
+		subpix++;
+		if(subpix == 8)
 		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)];
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = m_palette->pen(colour);
-			}
-			off++;
+			off += 4;
+			subpix = 0;
 		}
-	}
-
-	if(hzoom == 2)
-	{  // x2 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=2)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)+1];
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+1) = m_palette->pen(colour);
-			}
-			off++;
-		}
-	}
-
-	if(hzoom == 3)
-	{  // x3 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=3)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)+1];
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+1) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+2) = m_palette->pen(colour);
-			}
-			off++;
-		}
-	}
-
-	if(hzoom == 4)
-	{  // x4 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=4)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)+1];
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+1) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+2) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+3) = m_palette->pen(colour);
-			}
-			off++;
-		}
-	}
-
-	if(hzoom == 5)
-	{  // x5 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=5)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)+1];
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+1) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+2) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+3) = m_palette->pen(colour);
-				bitmap.pix32(scanline, x+4) = m_palette->pen(colour);
-			}
-			off++;
-		}
+		if ((off - (page * 0x20000)) % linesize == 0 && subpix == 0 && sphscroll)
+			off -= linesize;
 	}
 }
 
@@ -1370,10 +1191,18 @@ void towns_state::towns_crtc_draw_scan_layer_16(bitmap_rgb32 &bitmap,const recta
 	int hzoom = 1;
 	int linesize;
 	uint32_t scroll;
-	palette_device* pal = (layer == 0) ? m_palette16_0 : m_palette16_1;
+	int pixel;
+	int page = 0;
+	palette_device* pal = m_palette16[layer];
+	bool sphscroll = !(m_video.towns_crtc_reg[28] & (layer ? 0x20 : 0x10));
 
 	if(m_video.towns_display_page_sel != 0)
+	{
 		off = 0x20000;
+		page = 1;
+	}
+
+	bool bottom_layer = (m_video.towns_video_reg[1] & 0x01) != layer;
 
 //  if((layer == 1) && (m_video.towns_sprite_reg[1] & 0x80) && (m_video.towns_sprite_page == 1))
 //      off = 0x20000;
@@ -1387,7 +1216,7 @@ void towns_state::towns_crtc_draw_scan_layer_16(bitmap_rgb32 &bitmap,const recta
 	{
 		if(!(m_video.towns_video_reg[0] & 0x10))
 			return;
-		if(!(m_video.towns_crtc_reg[28] & 0x10))
+		if(!sphscroll)
 			off += m_video.towns_crtc_reg[21] << 2;  // initial offset
 		else
 		{
@@ -1399,7 +1228,7 @@ void towns_state::towns_crtc_draw_scan_layer_16(bitmap_rgb32 &bitmap,const recta
 	}
 	else
 	{
-		if(!(m_video.towns_crtc_reg[28] & 0x20))
+		if(!sphscroll)
 			off += m_video.towns_crtc_reg[17] << 2;  // initial offset
 		else
 		{
@@ -1412,134 +1241,27 @@ void towns_state::towns_crtc_draw_scan_layer_16(bitmap_rgb32 &bitmap,const recta
 
 	off += line * linesize;
 
-	if(hzoom == 1)
+	for(x=rect->min_x;x<rect->max_x;x+=hzoom*2)
 	{
-		for(x=rect->min_x;x<rect->max_x;x+=2)
+		if(m_video.towns_video_reg[0] & 0x10)
+			off &= 0x3ffff;  // 2 layers
+		else
+			off &= 0x7ffff;  // 1 layer
+		colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
+		if(colour != 0 || bottom_layer)
 		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x+1) = pal->pen(colour);
-			}
-			colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = pal->pen(colour);
-			}
-			off++;
+			for (pixel = 0; pixel < hzoom; pixel++)
+				bitmap.pix32(scanline, x+hzoom+pixel) = pal->pen(colour);
 		}
-	}
-
-	if(hzoom == 2)
-	{  // x2 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=4)
+		colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
+		if(colour != 0 || bottom_layer)
 		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x+2) = pal->pen(colour);
-				bitmap.pix32(scanline, x+3) = pal->pen(colour);
-			}
-			colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = pal->pen(colour);
-				bitmap.pix32(scanline, x+1) = pal->pen(colour);
-			}
-			off++;
+			for (pixel = 0; pixel < hzoom; pixel++)
+				bitmap.pix32(scanline, x+pixel) = pal->pen(colour);
 		}
-	}
-
-	if(hzoom == 3)
-	{  // x3 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=6)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x+3) = pal->pen(colour);
-				bitmap.pix32(scanline, x+4) = pal->pen(colour);
-				bitmap.pix32(scanline, x+5) = pal->pen(colour);
-			}
-			colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = pal->pen(colour);
-				bitmap.pix32(scanline, x+1) = pal->pen(colour);
-				bitmap.pix32(scanline, x+2) = pal->pen(colour);
-			}
-			off++;
-		}
-	}
-
-	if(hzoom == 4)
-	{  // x4 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=8)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x+4) = pal->pen(colour);
-				bitmap.pix32(scanline, x+5) = pal->pen(colour);
-				bitmap.pix32(scanline, x+6) = pal->pen(colour);
-				bitmap.pix32(scanline, x+7) = pal->pen(colour);
-			}
-			colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = pal->pen(colour);
-				bitmap.pix32(scanline, x+1) = pal->pen(colour);
-				bitmap.pix32(scanline, x+2) = pal->pen(colour);
-				bitmap.pix32(scanline, x+3) = pal->pen(colour);
-			}
-			off++;
-		}
-	}
-
-	if(hzoom == 5)
-	{  // x5 horizontal zoom
-		for(x=rect->min_x;x<rect->max_x;x+=10)
-		{
-			if(m_video.towns_video_reg[0] & 0x10)
-				off &= 0x3ffff;  // 2 layers
-			else
-				off &= 0x7ffff;  // 1 layer
-			colour = m_towns_gfxvram[off+(layer*0x40000)] >> 4;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x+5) = pal->pen(colour);
-				bitmap.pix32(scanline, x+6) = pal->pen(colour);
-				bitmap.pix32(scanline, x+7) = pal->pen(colour);
-				bitmap.pix32(scanline, x+8) = pal->pen(colour);
-				bitmap.pix32(scanline, x+9) = pal->pen(colour);
-			}
-			colour = m_towns_gfxvram[off+(layer*0x40000)] & 0x0f;
-			if(colour != 0)
-			{
-				bitmap.pix32(scanline, x) = pal->pen(colour);
-				bitmap.pix32(scanline, x+1) = pal->pen(colour);
-				bitmap.pix32(scanline, x+2) = pal->pen(colour);
-				bitmap.pix32(scanline, x+3) = pal->pen(colour);
-				bitmap.pix32(scanline, x+4) = pal->pen(colour);
-			}
-			off++;
-		}
+		off++;
+		if ((off - (page * 0x20000)) % linesize == 0 && sphscroll)
+			off -= linesize;
 	}
 }
 
@@ -1580,7 +1302,7 @@ void towns_state::towns_crtc_draw_layer(bitmap_rgb32 &bitmap,const rectangle* re
 				{
 					do
 					{
-						towns_crtc_draw_scan_layer_256(bitmap,rect,layer,line,scanline);
+						towns_crtc_draw_scan_layer_256(bitmap,rect,line,scanline);
 						scanline++;
 						count++;
 					} while(count < zoom);
@@ -1618,18 +1340,6 @@ void towns_state::towns_crtc_draw_layer(bitmap_rgb32 &bitmap,const rectangle* re
 					do
 					{
 						towns_crtc_draw_scan_layer_16(bitmap,rect,layer,line,scanline);
-						scanline++;
-						count++;
-					} while(count < zoom);
-					count = 0;
-				}
-				break;
-			case 0x08:
-				for(line=top;line<=bottom;line++)
-				{
-					do
-					{
-						towns_crtc_draw_scan_layer_256(bitmap,rect,layer,line,scanline);
 						scanline++;
 						count++;
 					} while(count < zoom);
@@ -1776,19 +1486,17 @@ TIMER_CALLBACK_MEMBER(towns_state::towns_sprite_done)
 TIMER_CALLBACK_MEMBER(towns_state::towns_vblank_end)
 {
 	// here we'll clear the vsync signal, I presume it goes low on it's own eventually
-	device_t* dev = (device_t*)ptr;
-	downcast<pic8259_device *>(dev)->ir3_w(0);  // IRQ11 = VSync
+	m_pic_slave->ir3_w(0);  // IRQ11 = VSync
 	if(IRQ_LOG) logerror("PIC: IRQ11 (VSync) set low\n");
 	m_video.towns_vblank_flag = 0;
 }
 
 INTERRUPT_GEN_MEMBER(towns_state::towns_vsync_irq)
 {
-	pic8259_device* dev = m_pic_slave;
-	dev->ir3_w(1);  // IRQ11 = VSync
+	m_pic_slave->ir3_w(1);  // IRQ11 = VSync
 	if(IRQ_LOG) logerror("PIC: IRQ11 (VSync) set high\n");
 	m_video.towns_vblank_flag = 1;
-	machine().scheduler().timer_set(machine().first_screen()->time_until_vblank_end(), timer_expired_delegate(FUNC(towns_state::towns_vblank_end),this), 0, (void*)dev);
+	machine().scheduler().timer_set(m_screen->time_until_vblank_end(), timer_expired_delegate(FUNC(towns_state::towns_vblank_end),this), 0, (void*)m_pic_slave);
 	if(m_video.towns_tvram_enable)
 		draw_text_layer();
 	if(m_video.towns_sprite_reg[1] & 0x80)

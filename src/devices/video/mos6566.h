@@ -85,35 +85,14 @@
 
 
 
-//***************************************************************************
-// DEVICE CONFIGURATION MACROS
-//***************************************************************************
-
-#define MCFG_MOS6566_CPU(_tag) \
-	mos6566_device::static_set_cpu_tag(*device, "^" _tag);
-
-#define MCFG_MOS6566_IRQ_CALLBACK(_write) \
-	devcb = &mos6566_device::set_irq_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_MOS6566_BA_CALLBACK(_write) \
-	devcb = &mos6566_device::set_ba_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_MOS6566_AEC_CALLBACK(_write) \
-	devcb = &mos6566_device::set_aec_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_MOS8564_K_CALLBACK(_write) \
-	devcb = &mos6566_device::set_k_wr_callback(*device, DEVCB_##_write);
-
-
-
 //**************************************************************************
 //  MACROS / CONSTANTS
 //**************************************************************************
 
-#define VIC6566_CLOCK           (XTAL_8MHz / 8) // 1000000
-#define VIC6567R56A_CLOCK       (XTAL_8MHz / 8) // 1000000
-#define VIC6567_CLOCK           (XTAL_14_31818MHz / 14) // 1022727
-#define VIC6569_CLOCK           (XTAL_17_734472MHz / 18) // 985248
+#define VIC6566_CLOCK           (XTAL(8'000'000) / 8) // 1000000
+#define VIC6567R56A_CLOCK       (XTAL(8'000'000) / 8) // 1000000
+#define VIC6567_CLOCK           (XTAL(14'318'181) / 14) // 1022727
+#define VIC6569_CLOCK           (XTAL(17'734'472) / 18) // 985248
 
 #define VIC6566_DOTCLOCK        (VIC6566_CLOCK * 8) // 8000000
 #define VIC6567R56A_DOTCLOCK    (VIC6567R56A_CLOCK * 8) // 8000000
@@ -126,10 +105,10 @@
 #define VIC6567_LINES       263
 #define VIC6569_LINES       312
 
-#define VIC6566_VRETRACERATE        ((float)VIC6566_CLOCK / 262 / 64)
-#define VIC6567R56A_VRETRACERATE    ((float)VIC6567R56A_CLOCK / 262 / 64)
-#define VIC6567_VRETRACERATE        ((float)VIC6567_CLOCK / 263 / 65)
-#define VIC6569_VRETRACERATE        ((float)VIC6569_CLOCK / 312 / 63)
+#define VIC6566_VRETRACERATE        (VIC6566_CLOCK / 262 / 64)
+#define VIC6567R56A_VRETRACERATE    (VIC6567R56A_CLOCK / 262 / 64)
+#define VIC6567_VRETRACERATE        (VIC6567_CLOCK / 263 / 65)
+#define VIC6569_VRETRACERATE        (VIC6569_CLOCK / 312 / 63)
 
 #define VIC6566_HRETRACERATE    (VIC6566_CLOCK / VIC6566_CYCLESPERLINE)
 #define VIC6567_HRETRACERATE    (VIC6567_CLOCK / VIC6567_CYCLESPERLINE)
@@ -212,11 +191,11 @@ public:
 	// construction/destruction
 	mos6566_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	static void static_set_cpu_tag(device_t &device, const char *tag) { downcast<mos6566_device &>(device).m_cpu.set_tag(tag); }
-	template <class Object> static devcb_base &set_irq_wr_callback(device_t &device, Object &&cb) { return downcast<mos6566_device &>(device).m_write_irq.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_ba_wr_callback(device_t &device, Object &&cb) { return downcast<mos6566_device &>(device).m_write_ba.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_aec_wr_callback(device_t &device, Object &&cb) { return downcast<mos6566_device &>(device).m_write_aec.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_k_wr_callback(device_t &device, Object &&cb) { return downcast<mos6566_device &>(device).m_write_k.set_callback(std::forward<Object>(cb)); }
+	template <class T> void set_cpu(T &&tag) { m_cpu.set_tag(tag); }
+	auto irq_callback() { return m_write_irq.bind(); }
+	auto ba_callback() { return m_write_ba.bind(); }
+	auto aec_callback() { return m_write_aec.bind(); }
+	auto k_callback() { return m_write_k.bind(); }
 
 	virtual space_config_vector memory_space_config() const override;
 
@@ -280,6 +259,9 @@ protected:
 	inline void draw_multi( uint16_t p, uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3 );
 	void draw_graphics();
 	void draw_sprites();
+
+	void mos6566_colorram_map(address_map &map);
+	void mos6566_videoram_map(address_map &map);
 
 	int m_icount;
 	const int m_variant;

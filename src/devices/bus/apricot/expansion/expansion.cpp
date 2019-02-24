@@ -68,7 +68,9 @@ apricot_expansion_bus_device::apricot_expansion_bus_device(const machine_config 
 	m_ext1_handler(*this),
 	m_ext2_handler(*this),
 	m_int2_handler(*this),
-	m_int3_handler(*this), m_cpu_tag(nullptr), m_iop_tag(nullptr)
+	m_int3_handler(*this),
+	m_cpu(*this, finder_base::DUMMY_TAG),
+	m_iop(*this, finder_base::DUMMY_TAG)
 {
 }
 
@@ -102,13 +104,11 @@ void apricot_expansion_bus_device::device_start()
 
 void apricot_expansion_bus_device::device_reset()
 {
-	cpu_device *cpu = m_owner->subdevice<cpu_device>(m_cpu_tag);
-	m_program = &cpu->space(AS_PROGRAM);
-	m_io = &cpu->space(AS_IO);
+	m_program = &m_cpu->space(AS_PROGRAM);
+	m_io = &m_cpu->space(AS_IO);
 
-	cpu_device *iop = m_owner->subdevice<cpu_device>(m_iop_tag);
-	m_program_iop = &iop->space(AS_PROGRAM);
-	m_io_iop = &iop->space(AS_IO);
+	m_program_iop = &m_iop->space(AS_PROGRAM);
+	m_io_iop = &m_iop->space(AS_IO);
 }
 
 //-------------------------------------------------
@@ -119,26 +119,6 @@ void apricot_expansion_bus_device::add_card(device_apricot_expansion_card_interf
 {
 	card->set_bus_device(this);
 	m_dev.append(*card);
-}
-
-//-------------------------------------------------
-//  set_cpu_tag - set cpu we are attached to
-//-------------------------------------------------
-
-void apricot_expansion_bus_device::set_cpu_tag(device_t &device, device_t *owner, const char *tag)
-{
-	apricot_expansion_bus_device &bus = dynamic_cast<apricot_expansion_bus_device &>(device);
-	bus.m_cpu_tag = tag;
-}
-
-//-------------------------------------------------
-//  set_iop_tag - set iop we are attached to
-//-------------------------------------------------
-
-void apricot_expansion_bus_device::set_iop_tag(device_t &device, device_t *owner, const char *tag)
-{
-	apricot_expansion_bus_device &bus = dynamic_cast<apricot_expansion_bus_device &>(device);
-	bus.m_iop_tag = tag;
 }
 
 // callbacks from slot device to the host

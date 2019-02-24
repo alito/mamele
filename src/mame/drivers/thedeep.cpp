@@ -30,7 +30,6 @@ Notes:
 #include "includes/thedeep.h"
 
 #include "cpu/m6502/m65c02.h"
-#include "cpu/mcs51/mcs51.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "screen.h"
@@ -81,10 +80,12 @@ WRITE8_MEMBER(thedeep_state::protection_w)
 	{
 		case 0x11:
 			flip_screen_set(1);
+			m_spritegen->set_flip_screen(true);
 		break;
 
 		case 0x20:
 			flip_screen_set(0);
+			m_spritegen->set_flip_screen(false);
 		break;
 
 		case 0x30:
@@ -125,7 +126,7 @@ WRITE8_MEMBER(thedeep_state::protection_w)
 		break;
 
 		default:
-			logerror( "pc %04x: protection_command %02x\n", space.device().safe_pc(),m_protection_command);
+			logerror( "pc %04x: protection_command %02x\n", m_maincpu->pc(),m_protection_command);
 	}
 }
 
@@ -143,29 +144,30 @@ READ8_MEMBER(thedeep_state::protection_r)
 WRITE8_MEMBER(thedeep_state::e100_w)
 {
 	if (data != 1)
-		logerror("pc %04x: e100 = %02x\n", space.device().safe_pc(),data);
+		logerror("pc %04x: e100 = %02x\n", m_maincpu->pc(),data);
 }
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 8, thedeep_state )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")    // ROM (banked)
-	AM_RANGE(0xc000, 0xcfff) AM_RAM
-	AM_RANGE(0xd000, 0xdfff) AM_RAM                             // RAM (MCU data copied here)
-	AM_RANGE(0xe000, 0xe000) AM_READWRITE(protection_r, protection_w)   // To MCU
-	AM_RANGE(0xe004, 0xe004) AM_READWRITE(e004_r, nmi_w)    //
-	AM_RANGE(0xe008, 0xe008) AM_READ_PORT("e008")           // P1 (Inputs)
-	AM_RANGE(0xe009, 0xe009) AM_READ_PORT("e009")           // P2
-	AM_RANGE(0xe00a, 0xe00a) AM_READ_PORT("e00a")           // DSW1
-	AM_RANGE(0xe00b, 0xe00b) AM_READ_PORT("e00b")           // DSW2
-	AM_RANGE(0xe00c, 0xe00c) AM_DEVWRITE("soundlatch", generic_latch_8_device, write)  // To Sound CPU
-	AM_RANGE(0xe100, 0xe100) AM_WRITE(e100_w)   // ?
-	AM_RANGE(0xe210, 0xe213) AM_WRITEONLY AM_SHARE("scroll")    // Scroll
-	AM_RANGE(0xe400, 0xe7ff) AM_RAM AM_SHARE("spriteram")   // Sprites
-	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(vram_1_w) AM_SHARE("vram_1")  // Text Layer
-	AM_RANGE(0xf000, 0xf7ff) AM_RAM_WRITE(vram_0_w) AM_SHARE("vram_0")  // Background Layer
-	AM_RANGE(0xf800, 0xf83f) AM_RAM AM_SHARE("scroll2") // Column Scroll
-	AM_RANGE(0xf840, 0xffff) AM_RAM
-ADDRESS_MAP_END
+void thedeep_state::main_map(address_map &map)
+{
+	map(0x0000, 0x7fff).rom();
+	map(0x8000, 0xbfff).bankr("bank1");    // ROM (banked)
+	map(0xc000, 0xcfff).ram();
+	map(0xd000, 0xdfff).ram();                             // RAM (MCU data copied here)
+	map(0xe000, 0xe000).rw(FUNC(thedeep_state::protection_r), FUNC(thedeep_state::protection_w));   // To MCU
+	map(0xe004, 0xe004).rw(FUNC(thedeep_state::e004_r), FUNC(thedeep_state::nmi_w));    //
+	map(0xe008, 0xe008).portr("e008");           // P1 (Inputs)
+	map(0xe009, 0xe009).portr("e009");           // P2
+	map(0xe00a, 0xe00a).portr("e00a");           // DSW1
+	map(0xe00b, 0xe00b).portr("e00b");           // DSW2
+	map(0xe00c, 0xe00c).w(m_soundlatch, FUNC(generic_latch_8_device::write));  // To Sound CPU
+	map(0xe100, 0xe100).w(FUNC(thedeep_state::e100_w));   // ?
+	map(0xe210, 0xe213).writeonly().share("scroll");    // Scroll
+	map(0xe400, 0xe7ff).ram().share("spriteram");   // Sprites
+	map(0xe800, 0xefff).ram().w(FUNC(thedeep_state::vram_1_w)).share("vram_1");  // Text Layer
+	map(0xf000, 0xf7ff).ram().w(FUNC(thedeep_state::vram_0_w)).share("vram_0");  // Background Layer
+	map(0xf800, 0xf83f).ram().share("scroll2"); // Column Scroll
+	map(0xf840, 0xffff).ram();
+}
 
 
 /***************************************************************************
@@ -174,12 +176,13 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-static ADDRESS_MAP_START( audio_map, AS_PROGRAM, 8, thedeep_state )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x0800, 0x0801) AM_DEVWRITE("ymsnd", ym2203_device, write)  //
-	AM_RANGE(0x3000, 0x3000) AM_DEVREAD("soundlatch", generic_latch_8_device, read) // From Main CPU
-	AM_RANGE(0x8000, 0xffff) AM_ROM
-ADDRESS_MAP_END
+void thedeep_state::audio_map(address_map &map)
+{
+	map(0x0000, 0x07ff).ram();
+	map(0x0800, 0x0801).w("ymsnd", FUNC(ym2203_device::write));  //
+	map(0x3000, 0x3000).r(m_soundlatch, FUNC(generic_latch_8_device::read)); // From Main CPU
+	map(0x8000, 0xffff).rom();
+}
 
 
 /***************************************************************************
@@ -190,7 +193,8 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(thedeep_state::p1_w)
 {
-	flip_screen_set((data & 1) ^ 1);
+	flip_screen_set(!BIT(data, 0));
+	m_spritegen->set_flip_screen(!BIT(data, 0));
 	membank("bank1")->set_entry((data & 6) >> 1);
 	logerror("P1 %02x\n",data);
 }
@@ -236,14 +240,6 @@ READ8_MEMBER(thedeep_state::p0_r)
 
 	return (ioport("COINS")->read() & 0xfe) | (coin_mux & 1);
 }
-
-static ADDRESS_MAP_START( mcu_io_map, AS_IO, 8, thedeep_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(MCS51_PORT_P0,MCS51_PORT_P0) AM_READ(p0_r)
-	AM_RANGE(MCS51_PORT_P1,MCS51_PORT_P1) AM_WRITE(p1_w)
-	AM_RANGE(MCS51_PORT_P2,MCS51_PORT_P2) AM_READWRITE(from_main_r,to_main_w)
-	AM_RANGE(MCS51_PORT_P3,MCS51_PORT_P3) AM_WRITE(p3_w)
-ADDRESS_MAP_END
 
 
 /***************************************************************************
@@ -322,7 +318,7 @@ static INPUT_PORTS_START( thedeep )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
 
 	PORT_START("COINS")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) // mux of bits 1-2-3
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) // mux of bits 1-2-3
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -358,7 +354,7 @@ static const gfx_layout layout_16x16x4 =
 	16*16
 };
 
-static GFXDECODE_START( thedeep )
+static GFXDECODE_START( gfx_thedeep )
 	GFXDECODE_ENTRY( "sprites", 0, layout_16x16x4,  0x080,  8 ) // [0] Sprites
 	GFXDECODE_ENTRY( "bg_gfx", 0, layout_16x16x4,   0x100, 16 ) // [1] Background Layer
 	GFXDECODE_ENTRY( "text", 0, layout_8x8x2,   0x000, 16 ) // [2] Text Layer
@@ -404,52 +400,55 @@ INTERRUPT_GEN_MEMBER(thedeep_state::mcu_irq)
 	m_mcu->set_input_line(MCS51_INT1_LINE, ASSERT_LINE);
 }
 
-static MACHINE_CONFIG_START( thedeep )
-
+void thedeep_state::thedeep(machine_config &config)
+{
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)      /* verified on pcb */
-	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", thedeep_state, interrupt, "screen", 0, 1)
+	Z80(config, m_maincpu, XTAL(12'000'000)/2); /* verified on pcb */
+	m_maincpu->set_addrmap(AS_PROGRAM, &thedeep_state::main_map);
 
-	MCFG_CPU_ADD("audiocpu", M65C02, XTAL_12MHz/8)      /* verified on pcb */
-	MCFG_CPU_PROGRAM_MAP(audio_map)
+	TIMER(config, "scantimer", 0).configure_scanline(FUNC(thedeep_state::interrupt), "screen", 0, 1);
+
+	M65C02(config, m_audiocpu, XTAL(12'000'000)/8); /* verified on pcb */
+	m_audiocpu->set_addrmap(AS_PROGRAM, &thedeep_state::audio_map);
 	/* IRQ by YM2203, NMI by when sound latch written by main cpu */
 
 	/* MCU is a i8751 running at 8Mhz (8mhz xtal)*/
-	MCFG_CPU_ADD("mcu", I8751, XTAL_8MHz)
-	MCFG_CPU_IO_MAP(mcu_io_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", thedeep_state, mcu_irq) // unknown source, but presumably vblank
-	MCFG_DEVICE_DISABLE()
-
+	I8751(config, m_mcu, XTAL(8'000'000));
+	m_mcu->port_in_cb<0>().set(FUNC(thedeep_state::p0_r));
+	m_mcu->port_out_cb<1>().set(FUNC(thedeep_state::p1_w));
+	m_mcu->port_in_cb<1>().set(FUNC(thedeep_state::from_main_r));
+	m_mcu->port_out_cb<2>().set(FUNC(thedeep_state::to_main_w));
+	m_mcu->port_out_cb<3>().set(FUNC(thedeep_state::p3_w));
+	m_mcu->set_vblank_int("screen", FUNC(thedeep_state::mcu_irq)); // unknown source, but presumably vblank
+	m_mcu->set_disable();
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(0x100, 0xf8)
-	MCFG_SCREEN_VISIBLE_AREA(0, 0x100-1, 0, 0xf8-1)
-	MCFG_SCREEN_UPDATE_DRIVER(thedeep_state, screen_update)
-	MCFG_SCREEN_PALETTE("palette")
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+	screen.set_refresh_hz(60);
+	screen.set_vblank_time(ATTOSECONDS_IN_USEC(0));
+	screen.set_size(0x100, 0xf8);
+	screen.set_visarea(0, 0x100-1, 0, 0xf8-1);
+	screen.set_screen_update(FUNC(thedeep_state::screen_update));
+	screen.set_palette(m_palette);
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", thedeep)
-	MCFG_PALETTE_ADD("palette", 512)
-	MCFG_PALETTE_INIT_OWNER(thedeep_state, thedeep)
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_thedeep);
+	PALETTE(config, m_palette, FUNC(thedeep_state::thedeep_palette), 512);
 
-	MCFG_DEVICE_ADD("spritegen", DECO_MXC06, 0)
-	MCFG_DECO_MXC06_GFX_REGION(0)
-	MCFG_DECO_MXC06_GFXDECODE("gfxdecode")
-	MCFG_DECO_MXC06_RAMSIZE(0x400)
+	DECO_MXC06(config, m_spritegen, 0);
+	m_spritegen->set_gfx_region(0);
+	m_spritegen->set_gfxdecode_tag(m_gfxdecode);
+	m_spritegen->set_ram_size(0x400);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
+	SPEAKER(config, "mono").front_center();
 
-	MCFG_GENERIC_LATCH_8_ADD("soundlatch")
-	MCFG_GENERIC_LATCH_DATA_PENDING_CB(INPUTLINE("audiocpu", INPUT_LINE_NMI))
+	GENERIC_LATCH_8(config, m_soundlatch);
+	m_soundlatch->data_pending_callback().set_inputline(m_audiocpu, INPUT_LINE_NMI);
 
-	MCFG_SOUND_ADD("ymsnd", YM2203, XTAL_12MHz/4)  /* verified on pcb */
-	MCFG_YM2203_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-MACHINE_CONFIG_END
+	ym2203_device &ym(YM2203(config, "ymsnd", XTAL(12'000'000)/4)); /* verified on pcb */
+	ym.irq_handler().set_inputline("audiocpu", 0);
+	ym.add_route(ALL_OUTPUTS, "mono", 1.0);
+}
 
 
 
@@ -542,5 +541,5 @@ ROM_START( rundeep )
 	ROM_LOAD( "fi-3", 0x400, 0x200, CRC(f61a9686) SHA1(24082f60b72268d240ceca6999bdf18872625cd2) )
 ROM_END
 
-GAME( 1987, thedeep, 0,       thedeep, thedeep, thedeep_state, 0, ROT270, "Wood Place Inc.", "The Deep (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, rundeep, thedeep, thedeep, thedeep, thedeep_state, 0, ROT270, "bootleg (Cream)", "Run Deep",         MACHINE_SUPPORTS_SAVE )
+GAME( 1987, thedeep, 0,       thedeep, thedeep, thedeep_state, empty_init, ROT270, "Wood Place Inc.", "The Deep (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, rundeep, thedeep, thedeep, thedeep, thedeep_state, empty_init, ROT270, "bootleg (Cream)", "Run Deep",         MACHINE_SUPPORTS_SAVE )

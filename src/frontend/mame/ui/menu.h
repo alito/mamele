@@ -27,6 +27,7 @@
 
 
 namespace ui {
+
 /***************************************************************************
     TYPE DEFINITIONS
 ***************************************************************************/
@@ -35,18 +36,17 @@ class menu
 {
 public:
 	// flags for menu items
-	enum
+	enum : unsigned
 	{
-		FLAG_LEFT_ARROW     = (1 << 0),
-		FLAG_RIGHT_ARROW    = (1 << 1),
-		FLAG_INVERT         = (1 << 2),
-		FLAG_MULTILINE      = (1 << 3),
-		FLAG_REDTEXT        = (1 << 4),
-		FLAG_DISABLE        = (1 << 5),
-		FLAG_UI_DATS        = (1 << 6),
-		FLAG_UI_FAVORITE    = (1 << 7),
-		FLAG_UI_HEADING     = (1 << 8),
-		FLAG_COLOR_BOX      = (1 << 9)
+		FLAG_LEFT_ARROW     = 1U << 0,
+		FLAG_RIGHT_ARROW    = 1U << 1,
+		FLAG_INVERT         = 1U << 2,
+		FLAG_MULTILINE      = 1U << 3,
+		FLAG_REDTEXT        = 1U << 4,
+		FLAG_DISABLE        = 1U << 5,
+		FLAG_UI_DATS        = 1U << 6,
+		FLAG_UI_HEADING     = 1U << 7,
+		FLAG_COLOR_BOX      = 1U << 8
 	};
 
 	virtual ~menu();
@@ -56,6 +56,7 @@ public:
 	void item_append(std::string &&text, std::string &&subtext, uint32_t flags, void *ref, menu_item_type type = menu_item_type::UNKNOWN);
 	void item_append(menu_item item);
 	void item_append(menu_item_type type, uint32_t flags = 0);
+	void item_append_on_off(const std::string &text, bool state, uint32_t flags, void *ref, menu_item_type type = menu_item_type::UNKNOWN);
 
 	// Global initialization
 	static void init(running_machine &machine, ui_options &mopt);
@@ -150,7 +151,6 @@ protected:
 
 	void reset(reset_options options);
 	void reset_parent(reset_options options) { m_parent->reset(options); }
-	void reset_topmost(reset_options options) { m_global_state->reset_topmost(options); }
 
 	template <typename T> T *topmost_menu() const { return m_global_state->topmost_menu<T>(); }
 	template <typename T> static T *topmost_menu(running_machine &machine) { return get_global_state(machine)->topmost_menu<T>(); }
@@ -308,8 +308,6 @@ private:
 
 		bitmap_argb32 *bgrnd_bitmap() { return m_bgrnd_bitmap.get(); }
 		render_texture *bgrnd_texture() { return m_bgrnd_texture.get(); }
-
-		void reset_topmost(reset_options options) { if (m_stack) m_stack->reset(options); }
 
 		template <typename T>
 		T *topmost_menu() const { return dynamic_cast<T *>(m_stack.get()); }

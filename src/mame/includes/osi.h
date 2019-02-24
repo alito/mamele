@@ -1,9 +1,9 @@
 // license:BSD-3-Clause
 // copyright-holders:Curt Coder, Robbbert, Wilbert Pol
-#pragma once
+#ifndef MAME_INCLUDES_OSI_H
+#define MAME_INCLUDES_OSI_H
 
-#ifndef __OSI__
-#define __OSI__
+#pragma once
 
 
 #include "cpu/m6502/m6502.h"
@@ -15,13 +15,14 @@
 #include "machine/ram.h"
 #include "sound/discrete.h"
 #include "sound/beep.h"
+#include "emupal.h"
 
 #define SCREEN_TAG      "screen"
 #define M6502_TAG       "m6502"
 #define DISCRETE_TAG    "discrete"
 
 #define X1          3932160
-#define UK101_X1    XTAL_8MHz
+#define UK101_X1    XTAL(8'000'000)
 
 #define OSI600_VIDEORAM_SIZE    0x400
 #define OSI630_COLORRAM_SIZE    0x400
@@ -42,8 +43,13 @@ public:
 		, m_io_keyboard(*this, "ROW%u", 0)
 		, m_io_sound(*this, "Sound")
 		, m_io_reset(*this, "Reset")
-		, m_beeper(*this, "beeper")
-		{ }
+	{ }
+
+	void osi600(machine_config &config);
+
+protected:
+	virtual void machine_start() override;
+	virtual void video_start() override;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	DECLARE_READ8_MEMBER( keyboard_r );
@@ -54,17 +60,11 @@ public:
 
 	void floppy_index_callback(floppy_image_device *floppy, int state);
 
-	DECLARE_PALETTE_INIT(osi630);
+	void osi630_palette(palette_device &palette) const;
 
-protected:
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-	virtual void machine_start() override;
-	virtual void video_start() override;
-
-	enum
-	{
-		TIMER_SETUP_BEEP
-	};
+	void osi600_video(machine_config &config);
+	void osi630_video(machine_config &config);
+	void osi600_mem(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
 	required_device<acia6850_device> m_acia_0;
@@ -77,7 +77,6 @@ protected:
 	required_ioport_array<8> m_io_keyboard;
 	required_ioport m_io_sound;
 	required_ioport m_io_reset;
-	optional_device<beep_device> m_beeper;
 
 	/* floppy state */
 	int m_fdc_index;
@@ -95,16 +94,26 @@ class c1p_state : public sb2m600_state
 public:
 	c1p_state(const machine_config &mconfig, device_type type, const char *tag)
 		: sb2m600_state(mconfig, type, tag)
-		, m_beep(*this, "beeper")
+		, m_beeper(*this, "beeper")
 	{ }
 
-	required_device<beep_device> m_beep;
+	void init_c1p();
+	void c1p(machine_config &config);
+
+protected:
+	enum
+	{
+		TIMER_SETUP_BEEP
+	};
 
 	virtual void machine_start() override;
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 
 	DECLARE_WRITE8_MEMBER( osi630_ctrl_w );
 	DECLARE_WRITE8_MEMBER( osi630_sound_w );
-	DECLARE_DRIVER_INIT(c1p);
+	void c1p_mem(address_map &map);
+
+	required_device<beep_device> m_beeper;
 };
 
 class c1pmf_state : public c1p_state
@@ -114,15 +123,19 @@ public:
 		: c1p_state(mconfig, type, tag)
 		, m_floppy0(*this, "floppy0")
 		, m_floppy1(*this, "floppy1")
-		{ }
+	{ }
+
+	void c1pmf(machine_config &config);
+
+protected:
+	virtual void machine_start() override;
 
 	DECLARE_READ8_MEMBER( osi470_pia_pa_r );
 	DECLARE_WRITE8_MEMBER( osi470_pia_pa_w );
 	DECLARE_WRITE8_MEMBER( osi470_pia_pb_w );
 	DECLARE_WRITE_LINE_MEMBER( osi470_pia_cb2_w );
 
-protected:
-	virtual void machine_start() override;
+	void c1pmf_mem(address_map &map);
 
 private:
 	required_device<floppy_connector> m_floppy0;
@@ -134,17 +147,16 @@ class uk101_state : public sb2m600_state
 public:
 	uk101_state(const machine_config &mconfig, device_type type, const char *tag)
 		: sb2m600_state(mconfig, type, tag)
-		{ }
+	{ }
 
+	void uk101(machine_config &config);
+
+protected:
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
 	DECLARE_WRITE8_MEMBER( keyboard_w );
+	void uk101_video(machine_config &config);
+	void uk101_mem(address_map &map);
 };
 
-/* ---------- defined in video/osi.c ---------- */
-
-MACHINE_CONFIG_EXTERN( osi600_video );
-MACHINE_CONFIG_EXTERN( uk101_video );
-MACHINE_CONFIG_EXTERN( osi630_video );
-
-#endif
+#endif // MAME_INCLUDES_OSI_H

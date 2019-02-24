@@ -14,6 +14,7 @@
 #include "cbmiec.h"
 #include "cpu/m6502/m65c02.h"
 #include "formats/d81_dsk.h"
+#include "imagedev/floppy.h"
 #include "machine/6522via.h"
 #include "machine/upd765.h"
 
@@ -64,9 +65,14 @@ protected:
 	void cbm_iec_data(int state) override;
 	void cbm_iec_reset(int state) override;
 
+	void add_common_devices(machine_config &config);
+
 	required_device<m65c02_device> m_maincpu;
 	required_device<upd765_family_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;
+
+private:
+	void fd2000_mem(address_map &map);
 };
 
 
@@ -81,6 +87,9 @@ public:
 protected:
 	virtual const tiny_rom_entry *device_rom_region() const override;
 	virtual void device_add_mconfig(machine_config &config) override;
+
+private:
+	void fd4000_mem(address_map &map);
 };
 
 

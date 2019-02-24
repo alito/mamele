@@ -1,9 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Wilbert Pol, Curt Coder
 
-#ifndef __CRVISION__
-#define __CRVISION__
-
+#ifndef MAME_INCLUDES_CRVISION_H
+#define MAME_INCLUDES_CRVISION_H
 
 #include "cpu/m6502/m6502.h"
 #include "imagedev/cassette.h"
@@ -37,6 +36,7 @@ public:
 		m_psg(*this, SN76489_TAG),
 		m_cassette(*this, "cassette"),
 		m_cart(*this, "cartslot"),
+		m_centronics(*this, CENTRONICS_TAG),
 		m_cent_data_out(*this, "cent_data_out"),
 		m_ram(*this, RAM_TAG),
 		m_inp_pa0(*this, "PA0.%u", 0),
@@ -50,6 +50,7 @@ public:
 	required_device<sn76496_base_device> m_psg;
 	required_device<cassette_image_device> m_cassette;
 	required_device<crvision_cart_slot_device> m_cart;
+	required_device<centronics_device> m_centronics;
 	required_device<output_latch_device> m_cent_data_out;
 	required_device<ram_device> m_ram;
 	optional_ioport_array<8> m_inp_pa0;
@@ -65,6 +66,9 @@ public:
 	DECLARE_READ8_MEMBER( pia_pb_r );
 	DECLARE_INPUT_CHANGED_MEMBER( trigger_nmi );
 
+	void creativision(machine_config &config);
+	void ntsc(machine_config &config);
+	void crvision_map(address_map &map);
 protected:
 	virtual void machine_start() override;
 };
@@ -75,6 +79,7 @@ public:
 	crvision_pal_state(const machine_config &mconfig, device_type type, const char *tag)
 		: crvision_state(mconfig, type, tag)
 	{ }
+	void pal(machine_config &config);
 };
 
 class laser2001_state : public crvision_state
@@ -106,8 +111,10 @@ public:
 	DECLARE_READ_LINE_MEMBER( pia_cb1_r );
 	DECLARE_WRITE_LINE_MEMBER( pia_cb2_w );
 
+	void lasr2001(machine_config &config);
+	void lasr2001_map(address_map &map);
 protected:
 	virtual void machine_start() override;
 };
 
-#endif // __CRVISION__
+#endif // MAME_INCLUDES_CRVISION_H

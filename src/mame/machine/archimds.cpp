@@ -508,7 +508,7 @@ bool archimedes_state::check_floppy_ready()
 READ32_MEMBER( archimedes_state::ioc_ctrl_r )
 {
 	if(IOC_LOG)
-	logerror("IOC: R %s = %02x (PC=%x) %02x\n", ioc_regnames[offset&0x1f], m_ioc_regs[offset&0x1f], m_maincpu->pc(),offset & 0x1f);
+		logerror("IOC: R %s = %02x (PC=%x) %02x\n", ioc_regnames[offset&0x1f], m_ioc_regs[offset&0x1f], m_maincpu->pc(),offset & 0x1f);
 
 	switch (offset & 0x1f)
 	{
@@ -575,7 +575,7 @@ READ32_MEMBER( archimedes_state::ioc_ctrl_r )
 		case T3_LATCH_HI: return (m_ioc_timerout[3]>>8)&0xff;
 		default:
 			if(!IOC_LOG)
-				logerror("IOC: R %s = %02x (PC=%x) %02x\n", ioc_regnames[offset&0x1f], m_ioc_regs[offset&0x1f], space.device() .safe_pc( ),offset & 0x1f);
+				logerror("IOC: R %s = %02x (PC=%x) %02x\n", ioc_regnames[offset&0x1f], m_ioc_regs[offset&0x1f], m_maincpu->pc(), offset & 0x1f);
 			break;
 	}
 
@@ -586,7 +586,7 @@ READ32_MEMBER( archimedes_state::ioc_ctrl_r )
 WRITE32_MEMBER( archimedes_state::ioc_ctrl_w )
 {
 	if(IOC_LOG)
-	logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], space.device() .safe_pc( ));
+	logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], m_maincpu->pc());
 
 	switch (offset&0x1f)
 	{
@@ -704,7 +704,7 @@ WRITE32_MEMBER( archimedes_state::ioc_ctrl_w )
 
 		default:
 			if(!IOC_LOG)
-				logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], space.device() .safe_pc( ));
+				logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], m_maincpu->pc());
 
 			m_ioc_regs[offset&0x1f] = data & 0xff;
 			break;
@@ -733,15 +733,7 @@ READ32_MEMBER(archimedes_state::archimedes_ioc_r)
 					if (m_fdc)
 					{
 						//printf("17XX: R @ addr %x mask %08x\n", offset*4, mem_mask);
-						switch(ioc_addr & 0xc)
-						{
-							case 0x00: return m_fdc->status_r();
-							case 0x04: return m_fdc->track_r();
-							case 0x08: return m_fdc->sector_r();
-							case 0x0c: return m_fdc->data_r();
-						}
-
-						return 0;
+						return m_fdc->read((ioc_addr >> 2) & 0x03);
 					} else {
 						logerror("Read from FDC device?\n");
 						return 0;
@@ -804,24 +796,8 @@ WRITE32_MEMBER(archimedes_state::archimedes_ioc_w)
 						if (m_fdc)
 						{
 							//printf("17XX: %x to addr %x mask %08x\n", data, offset*4, mem_mask);
-							switch(ioc_addr & 0xc)
-							{
-								case 0x00:
-									m_fdc->cmd_w(data);
-									return;
-
-								case 0x04:
-									m_fdc->track_w(data);
-									return;
-
-								case 0x08:
-									m_fdc->sector_w(data);
-									return;
-
-									case 0x0c:
-									m_fdc->data_w(data);
-									return;
-							}
+							m_fdc->write((ioc_addr >> 2) & 0x03, data);
+							return;
 						}
 						else
 						{
@@ -883,7 +859,7 @@ WRITE32_MEMBER(archimedes_state::archimedes_ioc_w)
 	}
 
 
-	logerror("(PC=%08x) I/O: W %x @ %x (mask %08x)\n", space.device().safe_pc(), data, (offset*4)+0x3000000, mem_mask);
+	logerror("(PC=%08x) I/O: W %x @ %x (mask %08x)\n", m_maincpu->pc(), data, (offset*4)+0x3000000, mem_mask);
 }
 
 READ32_MEMBER(archimedes_state::archimedes_vidc_r)
@@ -908,22 +884,18 @@ void archimedes_state::vidc_dynamic_res_change()
 			(m_vidc_regs[VIDC_HBER] >= m_vidc_regs[VIDC_HBSR]) &&
 			(m_vidc_regs[VIDC_VBER] >= m_vidc_regs[VIDC_VBSR]))
 		{
-			rectangle visarea;
-			attoseconds_t refresh;
-
-			visarea.min_x = 0;
-			visarea.min_y = 0;
-			visarea.max_x = m_vidc_regs[VIDC_HBER] - m_vidc_regs[VIDC_HBSR] - 1;
-			visarea.max_y = (m_vidc_regs[VIDC_VBER] - m_vidc_regs[VIDC_VBSR]) * (m_vidc_interlace+1);
+			rectangle const visarea(
+					0, m_vidc_regs[VIDC_HBER] - m_vidc_regs[VIDC_HBSR] - 1,
+					0, (m_vidc_regs[VIDC_VBER] - m_vidc_regs[VIDC_VBSR]) * (m_vidc_interlace + 1));
 
 			m_vidc_vblank_time = m_vidc_regs[VIDC_VBER] * (m_vidc_interlace+1);
 			//logerror("Configuring: htotal %d vtotal %d border %d x %d display origin %d x %d vblank = %d\n",
 			//  m_vidc_regs[VIDC_HCR], m_vidc_regs[VIDC_VCR],
-			//  visarea.max_x, visarea.max_y,
+			//  visarea.right(), visarea.bottom(),
 			//  m_vidc_regs[VIDC_HDER]-m_vidc_regs[VIDC_HDSR],m_vidc_regs[VIDC_VDER]-m_vidc_regs[VIDC_VDSR]+1,
 			//  m_vidc_vblank_time);
 
-			refresh = HZ_TO_ATTOSECONDS(pixel_rate[m_vidc_pixel_clk]) * m_vidc_regs[VIDC_HCR] * m_vidc_regs[VIDC_VCR];
+			attoseconds_t const refresh = HZ_TO_ATTOSECONDS(pixel_rate[m_vidc_pixel_clk]) * m_vidc_regs[VIDC_HCR] * m_vidc_regs[VIDC_VCR];
 
 			m_screen->configure(m_vidc_regs[VIDC_HCR], m_vidc_regs[VIDC_VCR] * (m_vidc_interlace+1), visarea, refresh);
 		}
@@ -970,7 +942,7 @@ WRITE32_MEMBER(archimedes_state::archimedes_vidc_w)
 		r = (val & 0x000f) >> 0;
 
 		if(reg == 0x40 && val & 0xfff)
-			logerror("WARNING: border color write here (PC=%08x)!\n",space.device().safe_pc());
+			logerror("WARNING: border color write here (PC=%08x)!\n",m_maincpu->pc());
 
 		m_palette->set_pen_color(reg >> 2, pal4bit(r), pal4bit(g), pal4bit(b) );
 
@@ -990,7 +962,7 @@ WRITE32_MEMBER(archimedes_state::archimedes_vidc_w)
 		}
 
 		// update partials
-		machine().first_screen()->update_partial(machine().first_screen()->vpos());
+		m_screen->update_partial(m_screen->vpos());
 	}
 	else if (reg >= 0x60 && reg <= 0x7c)
 	{
@@ -1110,7 +1082,7 @@ WRITE32_MEMBER(archimedes_state::archimedes_memc_w)
 			case 7: /* Control */
 				m_memc_pagesize = ((data>>2) & 3);
 
-				logerror("(PC = %08x) MEMC: %x to Control (page size %d, %s, %s)\n", space.device().safe_pc(), data & 0x1ffc, page_sizes[m_memc_pagesize], ((data>>10)&1) ? "Video DMA on" : "Video DMA off", ((data>>11)&1) ? "Sound DMA on" : "Sound DMA off");
+				logerror("(PC = %08x) MEMC: %x to Control (page size %d, %s, %s)\n", m_maincpu->pc(), data & 0x1ffc, page_sizes[m_memc_pagesize], ((data>>10)&1) ? "Video DMA on" : "Video DMA off", ((data>>11)&1) ? "Sound DMA on" : "Sound DMA off");
 
 				m_video_dma_on = ((data>>10)&1);
 				m_audio_dma_on = ((data>>11)&1);
@@ -1216,5 +1188,5 @@ WRITE32_MEMBER(archimedes_state::archimedes_memc_page_w)
 	// now go ahead and set the mapping in the page table
 	m_memc_pages[log] = phys + (memc*0x80);
 
-//  printf("PC=%08x = MEMC_PAGE(%d): W %08x: log %x to phys %x, MEMC %d, perms %d\n", space.device().safe_pc(),memc_pagesize, data, log, phys, memc, perms);
+//  printf("PC=%08x = MEMC_PAGE(%d): W %08x: log %x to phys %x, MEMC %d, perms %d\n", m_maincpu->pc(),memc_pagesize, data, log, phys, memc, perms);
 }

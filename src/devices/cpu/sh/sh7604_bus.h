@@ -14,13 +14,6 @@
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_SH7604_BUS_ADD(_tag,_freq) \
-	MCFG_DEVICE_ADD(_tag, SH7604_BUS, _freq)
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -33,7 +26,7 @@ public:
 	sh7604_bus_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// I/O operations
-	DECLARE_ADDRESS_MAP( bus_regs, 16 );
+	void bus_regs(address_map &map);
 
 	DECLARE_WRITE32_MEMBER( write );
 	DECLARE_READ32_MEMBER( read );

@@ -14,6 +14,7 @@
 #include "adamnet.h"
 #include "cpu/m6800/m6801.h"
 #include "formats/adam_dsk.h"
+#include "imagedev/floppy.h"
 #include "machine/wd_fdc.h"
 
 
@@ -31,13 +32,6 @@ public:
 	// construction/destruction
 	adam_fdc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// not really public
-	DECLARE_READ8_MEMBER( data_r );
-	DECLARE_READ8_MEMBER( p1_r );
-	DECLARE_WRITE8_MEMBER( p1_w );
-	DECLARE_READ8_MEMBER( p2_r );
-	DECLARE_WRITE8_MEMBER( p2_w );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -50,15 +44,23 @@ protected:
 	// device_adamnet_card_interface overrides
 	virtual void adamnet_reset_w(int state) override;
 
-	required_device<cpu_device> m_maincpu;
+private:
+	required_device<m6801_cpu_device> m_maincpu;
 	required_device<wd2793_device> m_fdc;
 	required_device<floppy_connector> m_connector;
 	floppy_image_device *m_floppy;
 	required_shared_ptr<uint8_t> m_ram;
 	required_ioport m_sw3;
 
-private:
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
+
+	DECLARE_READ8_MEMBER( data_r );
+	DECLARE_READ8_MEMBER( p1_r );
+	DECLARE_WRITE8_MEMBER( p1_w );
+	DECLARE_READ8_MEMBER( p2_r );
+	DECLARE_WRITE8_MEMBER( p2_w );
+
+	void adam_fdc_mem(address_map &map);
 };
 
 

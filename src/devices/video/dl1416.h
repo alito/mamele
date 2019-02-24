@@ -21,20 +21,9 @@
     DEVICE TYPES
 ***************************************************************************/
 
-extern device_type const DL1414T;
-extern device_type const DL1416B;
-extern device_type const DL1416T;
-
-
-/***************************************************************************
-    DEVICE CONFIGURATION MACROS
-***************************************************************************/
-
-#define MCFG_DL1414_UPDATE_HANDLER(_devcb) \
-	devcb = &dl1414_device::set_update_handler(*device, DEVCB_##_devcb);
-
-#define MCFG_DL1416_UPDATE_HANDLER(_devcb) \
-	devcb = &dl1416_device::set_update_handler(*device, DEVCB_##_devcb);
+DECLARE_DEVICE_TYPE(DL1414T, dl1414_device)
+DECLARE_DEVICE_TYPE(DL1416B, dl1416_device)
+DECLARE_DEVICE_TYPE(DL1416T, dl1416_device)
 
 
 /***************************************************************************
@@ -44,8 +33,7 @@ extern device_type const DL1416T;
 class dl1414_device : public device_t
 {
 public:
-	template <typename Object> static devcb_base &set_update_handler(device_t &device, Object &&cb)
-	{ return downcast<dl1414_device &>(device).m_update_cb.set_callback(std::forward<Object>(cb)); }
+	auto update() { return m_update_cb.bind(); }
 
 	// signal-level interface
 	DECLARE_WRITE_LINE_MEMBER(wr_w); // write strobe (rising edge)

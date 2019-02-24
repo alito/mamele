@@ -14,7 +14,7 @@
 #define DIABLO_HD_0 "diablo0"
 #define DIABLO_HD_1 "diablo1"
 
-extern const device_type DIABLO_HD;
+DECLARE_DEVICE_TYPE(DIABLO_HD, diablo_hd_device)
 
 class diablo_hd_device : public device_t
 {
@@ -162,7 +162,4 @@ private:
 	void sector_mark_0();
 };
 
-#define MCFG_DIABLO_DRIVES_ADD()    \
-	MCFG_DEVICE_ADD(DIABLO_HD_0, DIABLO_HD, 3333333)    \
-	MCFG_DEVICE_ADD(DIABLO_HD_1, DIABLO_HD, 3333333)
 #endif  // !defined(_DIABLO_HD_DEVICE_)

@@ -183,16 +183,6 @@ tc0480scp_device::tc0480scp_device(const machine_config &mconfig, const char *ta
 }
 
 //-------------------------------------------------
-//  static_set_gfxdecode_tag: Set the tag of the
-//  gfx decoder
-//-------------------------------------------------
-
-void tc0480scp_device::static_set_gfxdecode_tag(device_t &device, const char *tag)
-{
-	downcast<tc0480scp_device &>(device).m_gfxdecode.set_tag(tag);
-}
-
-//-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
 
@@ -296,7 +286,6 @@ void tc0480scp_device::device_start()
 	save_item(NAME(m_bgscrolly));
 	save_item(NAME(m_pri_reg));
 	save_item(NAME(m_dblwidth));
-	machine().save().register_postload(save_prepost_delegate(FUNC(tc0480scp_device::postload), this));
 }
 
 //-------------------------------------------------
@@ -975,7 +964,11 @@ READ8_MEMBER( tc0480scp_device::pri_reg_r )
 	return m_pri_reg;
 }
 
-void tc0480scp_device::postload()
+//-------------------------------------------------
+//  device_post_load - device-specific postload
+//-------------------------------------------------
+
+void tc0480scp_device::device_post_load()
 {
 	int reg;
 	int flip = m_ctrl[0xf] & 0x40;

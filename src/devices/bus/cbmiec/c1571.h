@@ -68,6 +68,7 @@ public:
 
 	void wpt_callback(floppy_image_device *floppy, int state);
 
+	void c1571_mem(address_map &map);
 protected:
 	c1571_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -90,6 +91,9 @@ protected:
 	virtual void parallel_data_w(uint8_t data) override;
 	virtual void parallel_strobe_w(int state) override;
 
+	void add_base_mconfig(machine_config &config);
+	void add_cia_mconfig(machine_config &config);
+
 	enum
 	{
 		LED_POWER = 0,
@@ -106,6 +110,7 @@ protected:
 	required_device<c64h156_device> m_ga;
 	required_device<floppy_image_device> m_floppy;
 	required_ioport m_address;
+	output_finder<2> m_leds;
 
 	// signals
 	int m_1_2mhz;                           // clock speed
@@ -174,6 +179,8 @@ private:
 	DECLARE_READ8_MEMBER( cia_pa_r );
 	DECLARE_WRITE8_MEMBER( cia_pa_w );
 	DECLARE_WRITE8_MEMBER( cia_pb_w );
+
+	void mini_chief_mem(address_map &map);
 };
 
 

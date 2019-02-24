@@ -12,18 +12,6 @@
 #pragma once
 
 
-
-
-///*************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-///*************************************************************************
-
-#define MCFG_PROF80_MMU_ADD(_tag, _program_map) \
-	MCFG_DEVICE_ADD(_tag, PROF80_MMU, 0) \
-	MCFG_DEVICE_ADDRESS_MAP(AS_PROGRAM, _program_map)
-
-
-
 ///*************************************************************************
 //  TYPE DEFINITIONS
 ///*************************************************************************
@@ -35,11 +23,12 @@ class prof80_mmu_device : public device_t, public device_memory_interface
 public:
 	prof80_mmu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	virtual DECLARE_ADDRESS_MAP(z80_program_map, 8);
+	virtual void z80_program_map(address_map &map);
 
 	DECLARE_WRITE8_MEMBER( par_w );
 	DECLARE_WRITE_LINE_MEMBER( mme_w );
 
+	void program_map(address_map &map);
 protected:
 	// device-level overrides
 	virtual void device_start() override;

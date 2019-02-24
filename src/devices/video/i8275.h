@@ -44,26 +44,6 @@
 #define I8275_DRAW_CHARACTER_MEMBER(_name) void _name(bitmap_rgb32 &bitmap, int x, int y, uint8_t linecount, uint8_t charcode, uint8_t lineattr, uint8_t lten, uint8_t rvv, uint8_t vsp, uint8_t gpa, uint8_t hlgt)
 
 
-#define MCFG_I8275_CHARACTER_WIDTH(_value) \
-	i8275_device::static_set_character_width(*device, _value);
-
-#define MCFG_I8275_DRAW_CHARACTER_CALLBACK_OWNER(_class, _method) \
-	i8275_device::static_set_display_callback(*device, i8275_device::draw_character_delegate(&_class::_method, #_class "::" #_method, downcast<_class *>(owner)));
-
-#define MCFG_I8275_DRQ_CALLBACK(_write) \
-	devcb = &i8275_device::set_drq_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_I8275_IRQ_CALLBACK(_write) \
-	devcb = &i8275_device::set_irq_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_I8275_HRTC_CALLBACK(_write) \
-	devcb = &i8275_device::set_hrtc_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_I8275_VRTC_CALLBACK(_write) \
-	devcb = &i8275_device::set_vrtc_wr_callback(*device, DEVCB_##_write);
-
-
-
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
@@ -80,13 +60,26 @@ public:
 	// construction/destruction
 	i8275_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	static void static_set_character_width(device_t &device, int value) { downcast<i8275_device &>(device).m_hpixels_per_column = value; }
-	static void static_set_display_callback(device_t &device, draw_character_delegate &&cb) { downcast<i8275_device &>(device).m_display_cb = std::move(cb); }
+	void set_character_width(int value) { m_hpixels_per_column = value; }
+	template <typename... T> void set_display_callback(T &&... args) { m_display_cb = draw_character_delegate(std::forward<T>(args)...); }
+	void set_display_callback(draw_character_delegate callback) { m_display_cb = callback; }
+	template <class FunctionClass> void set_display_callback(const char *devname,
+		void (FunctionClass::*callback)(bitmap_rgb32 &, int, int, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t),
+		const char *name)
+	{
+		set_display_callback(draw_character_delegate(callback, name, devname, static_cast<FunctionClass *>(nullptr)));
+	}
+	template <class FunctionClass> void set_display_callback(
+		void (FunctionClass::*callback)(bitmap_rgb32 &, int, int, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t),
+		const char *name)
+	{
+		set_display_callback(draw_character_delegate(callback, name, nullptr, static_cast<FunctionClass *>(nullptr)));
+	}
 
-	template <class Object> static devcb_base &set_drq_wr_callback(device_t &device, Object &&cb) { return downcast<i8275_device &>(device).m_write_drq.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_irq_wr_callback(device_t &device, Object &&cb) { return downcast<i8275_device &>(device).m_write_irq.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_hrtc_wr_callback(device_t &device, Object &&cb) { return downcast<i8275_device &>(device).m_write_hrtc.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_vrtc_wr_callback(device_t &device, Object &&cb) { return downcast<i8275_device &>(device).m_write_vrtc.set_callback(std::forward<Object>(cb)); }
+	auto drq_wr_callback() { return m_write_drq.bind(); }
+	auto irq_wr_callback() { return m_write_irq.bind(); }
+	auto hrtc_wr_callback() { return m_write_hrtc.bind(); }
+	auto vrtc_wr_callback() { return m_write_vrtc.bind(); }
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
@@ -98,10 +91,16 @@ public:
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 protected:
+	i8275_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+
+	void vrtc_start();
+	void vrtc_end();
+	void dma_start();
 
 	void recompute_parameters();
 
@@ -197,7 +196,8 @@ protected:
 	uint8_t m_fifo[2][16];
 	int m_buffer_idx;
 	int m_fifo_idx;
-	bool m_fifo_next;
+	int m_dma_idx;
+	uint8_t m_dma_last_char;
 	int m_buffer_dma;
 
 	int m_lpen;
@@ -212,9 +212,9 @@ protected:
 	int m_irq_scanline;
 	int m_vrtc_scanline;
 	int m_vrtc_drq_scanline;
-	bool m_du;
 	bool m_dma_stop;
 	bool m_end_of_screen;
+	bool m_preset;
 
 	int m_cursor_blink;
 	int m_char_blink;
@@ -226,8 +226,16 @@ protected:
 	emu_timer *m_scanline_timer;
 };
 
+class i8276_device : public i8275_device
+{
+public:
+	// construction/destruction
+	i8276_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+};
+
 
 // device type definition
 DECLARE_DEVICE_TYPE(I8275, i8275_device)
+DECLARE_DEVICE_TYPE(I8276, i8276_device)
 
 #endif // MAME_VIDEO_I8275_H

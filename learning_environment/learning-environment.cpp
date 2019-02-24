@@ -21,6 +21,11 @@ This is a pass-through driver
 
 #define MAX_PLAYER 8
 
+
+using std::cerr;
+using std::endl;
+using std::string;
+
 const static int WaitFrames = 500; //Number of frames to wait till input is gotten
 const static input_code no_code = input_seq::end_code;
 
@@ -52,8 +57,8 @@ static le_gameover game_over;
 
 static int g_player = 1;
 static bool g_initialised_input = false;
-static const char *le_library = NULL;
-static char *le_args = NULL;
+static string le_library;
+static string le_args;
 static void *le_lib_handle;
 
 static le_state_updater le_update_state = NULL;
@@ -63,19 +68,16 @@ static le_game_finisher le_finish_game = NULL;
 static le_reset_checker le_check_reset = NULL;
 static le_memory_consumer le_consume_memory = NULL;
 
-using std::cerr;
-using std::endl;
-
 
 
 /* 
 Copy number of bytes from address space address_space_name attached to cpu cpu starting at offset 
 address into destination 
 */
-static inline void copy_from_memory (running_machine &machine, const char* cpu, 
+static inline void copy_from_memory (running_machine &machine, const string &cpu, 
 									int address, int number_of_bytes, u8 *destination)
 {
-	cpu_device* p_cpu = machine.device<cpu_device>(cpu);
+	cpu_device* p_cpu = machine.device<cpu_device>(cpu.c_str());
 
 	// We restrict ourselves to looking in the AS_PROGRAM memory space
 	address_space &space = p_cpu->space(AS_PROGRAM);
@@ -129,7 +131,7 @@ static int get_current_score(running_machine &machine) {
 
 /* Check if game is over */
 static bool is_game_over(running_machine &machine) {
-	if (game_over.cpu == NULL) {
+	if (game_over.cpu.empty()) {
 		// We don't have a game over detector
 		return false;
 	}
@@ -274,8 +276,8 @@ static void extract_main_memory(running_machine &machine) {
 				// Found a RAM section
 				le_memory_t * memory_node = (le_memory_t *) malloc(sizeof(le_memory_t));
 				memory_node->next = last_node;
-				memory_node->start = entry.m_bytestart;
-				memory_node->size = entry.m_byteend - entry.m_bytestart + 1;
+				memory_node->start = entry.m_addrstart;
+				memory_node->size = space.address_to_byte(entry.m_addrend - entry.m_addrstart + 1);
 				memory_node->content = (uint8_t *) malloc(memory_node->size);
 				last_node = memory_node;
 			}
@@ -306,13 +308,12 @@ int le_init(const running_machine &machine)
 	char library_file_full_path[PATH_MAX + 1];
 
 	le_library = machine.options().learning_environment();
-	if (le_library == NULL) {
+	if (le_library.empty()) {
 		cerr << "Need to specify controller" << endl;
 		return 1;
 	}
 
-
-	le_args = core_strdup(machine.options().learning_environment_options());
+	le_args = machine.options().learning_environment_options();
 	g_player = machine.options().learning_environment_player();
 
 	if ((g_player < 1) || (g_player > MAX_PLAYER)) {
@@ -328,11 +329,11 @@ int le_init(const running_machine &machine)
 
 
 	/* Load given environment */
-	if (realpath(le_library, library_file_full_path) == NULL) {
+	if (realpath(le_library.c_str(), library_file_full_path) == NULL) {
 		cerr << "Failed to find full path of " << le_library << endl;
 		return 1;
 	}
-	/*fprintf(stderr,"About to load %s\n",le_library);*/
+	/*fprintf(stderr,"About to load %s\n",le_library.c_str());*/
 	le_lib_handle = dlopen(library_file_full_path,RTLD_LAZY | RTLD_GLOBAL);
 	if (!le_lib_handle) {
 		cerr << "Failed to load " << library_file_full_path << ": " << dlerror() << endl;
@@ -347,7 +348,7 @@ int le_init(const running_machine &machine)
 		return 1;
 	}
 	/*fprintf(stderr,"About to call function\n");*/
-	le_functions_ = (*le_get_functions)(le_args);
+	le_functions_ = (*le_get_functions)(le_args.c_str());
 
 	le_start_game = le_functions_.start;
 	le_finish_game = le_functions_.finish;

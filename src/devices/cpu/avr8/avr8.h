@@ -44,30 +44,6 @@
 
 
 //**************************************************************************
-//  FUSE BITS CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_CPU_AVR8_LFUSE(byte) \
-	((avr8_device*) device)->set_low_fuses(byte);
-
-#define MCFG_CPU_AVR8_HFUSE(byte) \
-	((avr8_device*) device)->set_high_fuses(byte);
-
-#define MCFG_CPU_AVR8_EFUSE(byte) \
-	((avr8_device*) device)->set_extended_fuses(byte);
-
-#define MCFG_CPU_AVR8_LOCK(byte) \
-	((avr8_device*) device)->set_lock_bits(byte);
-
-//**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_CPU_AVR8_EEPROM(_tag) \
-	avr8_device::set_eeprom_tag(*device, "^" _tag);
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -80,7 +56,7 @@ class avr8_device : public cpu_device
 {
 public:
 	// inline configuration helpers
-	static void set_eeprom_tag(device_t &device, const char *tag) { downcast<avr8_device &>(device).m_eeprom.set_tag(tag); }
+	void set_eeprom_tag(const char *tag) { m_eeprom.set_tag(tag); }
 
 	// fuse configs
 	void set_low_fuses(uint8_t byte);
@@ -93,8 +69,8 @@ public:
 	uint64_t get_elapsed_cycles() const { return m_elapsed_cycles; }
 
 	// register handling
-	DECLARE_WRITE8_MEMBER( regs_w );
-	DECLARE_READ8_MEMBER( regs_r );
+	DECLARE_WRITE8_MEMBER(regs_w);
+	DECLARE_READ8_MEMBER(regs_r);
 	uint32_t m_shifted_pc;
 
 protected:
@@ -123,7 +99,7 @@ protected:
 	virtual space_config_vector memory_space_config() const override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 	// device_state_interface overrides
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
@@ -258,6 +234,7 @@ class atmega88_device : public avr8_device
 public:
 	// construction/destruction
 	atmega88_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	void atmega88_internal_map(address_map &map);
 };
 
 // ======================> atmega644_device
@@ -269,6 +246,7 @@ public:
 	atmega644_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	virtual void update_interrupt(int source) override;
+	void atmega644_internal_map(address_map &map);
 };
 
 // ======================> atmega1280_device
@@ -280,6 +258,7 @@ public:
 	atmega1280_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	virtual void update_interrupt(int source) override;
+	void atmega1280_internal_map(address_map &map);
 };
 
 // ======================> atmega2560_device
@@ -291,6 +270,7 @@ public:
 	atmega2560_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	virtual void update_interrupt(int source) override;
+	void atmega2560_internal_map(address_map &map);
 };
 
 /***************************************************************************
@@ -846,4 +826,4 @@ enum
 #define AVR8_SPCR_CPHA_MASK     0x04
 #define AVR8_SPCR_SPR_MASK      0x03
 
-#endif /* __AVR8_H__ */
+#endif /* MAME_CPU_AVR8_AVR8_H */

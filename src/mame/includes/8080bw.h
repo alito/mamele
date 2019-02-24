@@ -18,6 +18,7 @@
 #include "sound/sn76477.h"
 #include "sound/spkrdev.h"
 
+#include "emupal.h"
 #include "screen.h"
 
 
@@ -28,28 +29,64 @@
 class _8080bw_state : public mw8080bw_state
 {
 public:
-	_8080bw_state(const machine_config &mconfig, device_type type, const char *tag)
-		: mw8080bw_state(mconfig, type, tag),
+	_8080bw_state(const machine_config &mconfig, device_type type, const char *tag) :
+		mw8080bw_state(mconfig, type, tag),
 		m_schaser_effect_555_timer(*this, "schaser_sh_555"),
 		m_claybust_gun_on(*this, "claybust_gun"),
-		m_discrete(*this, "discrete"),
 		m_speaker(*this, "speaker"),
 		m_eeprom(*this, "eeprom"),
-		m_sn(*this, "snsnd"),
-		m_screen(*this, "screen"),
 		m_palette(*this, "palette"),
 		m_gunx(*this, "GUNX"),
 		m_guny(*this, "GUNY")
 	{ }
 
+	void indianbtbr(machine_config &config);
+	void claybust(machine_config &config);
+	void shuttlei(machine_config &config);
+	void spcewarla(machine_config &config);
+	void escmars(machine_config &config);
+	void lrescue(machine_config &config);
+	void invmulti(machine_config &config);
+	void yosakdon(machine_config &config);
+	void polaris(machine_config &config);
+	void attackfc(machine_config &config);
+	void astropal(machine_config &config);
+	void rollingc(machine_config &config);
+	void vortex(machine_config &config);
+	void invrvnge(machine_config &config);
+	void sflush(machine_config &config);
+	void invadpt2(machine_config &config);
+	void lupin3a(machine_config &config);
+	void indianbt(machine_config &config);
+	void starw1(machine_config &config);
+	void cosmo(machine_config &config);
+	void spcewars(machine_config &config);
+	void cosmicmo(machine_config &config);
+	void darthvdr(machine_config &config);
+	void ballbomb(machine_config &config);
+	void spacecom(machine_config &config);
+	void crashrd(machine_config &config);
+	void schasercv(machine_config &config);
+	void lupin3(machine_config &config);
+	void spacerng(machine_config &config);
+	void steelwkr(machine_config &config);
+	void schaser(machine_config &config);
+
+	void init_invmulti();
+	void init_spacecom();
+	void init_vortex();
+	void init_attackfc();
+
+	DECLARE_CUSTOM_INPUT_MEMBER(sflush_80_r);
+	DECLARE_INPUT_CHANGED_MEMBER(claybust_gun_trigger);
+	DECLARE_CUSTOM_INPUT_MEMBER(claybust_gun_on_r);
+
+private:
 	/* devices/memory pointers */
 	optional_device<timer_device> m_schaser_effect_555_timer;
 	optional_device<timer_device> m_claybust_gun_on;
-	optional_device<discrete_device> m_discrete;
 	optional_device<speaker_sound_device> m_speaker;
 	optional_device<eeprom_serial_93cxx_device> m_eeprom;
-	optional_device<sn76477_device> m_sn;
-	required_device<screen_device> m_screen;
 	optional_device<palette_device> m_palette;
 
 	/* misc game specific */
@@ -69,10 +106,6 @@ public:
 	uint8_t m_schaser_background_disable;
 	uint8_t m_schaser_background_select;
 	uint16_t m_claybust_gun_pos;
-
-	DECLARE_CUSTOM_INPUT_MEMBER(sflush_80_r);
-	DECLARE_INPUT_CHANGED_MEMBER(claybust_gun_trigger);
-	DECLARE_CUSTOM_INPUT_MEMBER(claybust_gun_on_r);
 
 	DECLARE_READ8_MEMBER(indianbt_r);
 	DECLARE_READ8_MEMBER(polaris_port00_r);
@@ -108,6 +141,8 @@ public:
 	DECLARE_READ8_MEMBER(schasercv_02_r);
 	DECLARE_WRITE8_MEMBER(schasercv_sh_port_1_w);
 	DECLARE_WRITE8_MEMBER(schasercv_sh_port_2_w);
+	DECLARE_WRITE8_MEMBER(crashrd_port03_w);
+	DECLARE_WRITE8_MEMBER(crashrd_port05_w);
 	DECLARE_WRITE8_MEMBER(yosakdon_sh_port_1_w);
 	DECLARE_WRITE8_MEMBER(yosakdon_sh_port_2_w);
 	DECLARE_READ8_MEMBER(shuttlei_ff_r);
@@ -127,11 +162,6 @@ public:
 	DECLARE_READ8_MEMBER(schaser_scattered_colorram_r);
 	DECLARE_WRITE8_MEMBER(schaser_scattered_colorram_w);
 
-	DECLARE_DRIVER_INIT(invmulti);
-	DECLARE_DRIVER_INIT(spacecom);
-	DECLARE_DRIVER_INIT(vortex);
-	DECLARE_DRIVER_INIT(attackfc);
-
 	DECLARE_MACHINE_START(extra_8080bw);
 	DECLARE_MACHINE_START(rollingc);
 	DECLARE_MACHINE_START(sflush);
@@ -147,8 +177,8 @@ public:
 	DECLARE_MACHINE_RESET(schaser_sh);
 	DECLARE_MACHINE_START(claybust);
 
-	DECLARE_PALETTE_INIT(rollingc);
-	DECLARE_PALETTE_INIT(sflush);
+	void rollingc_palette(palette_device &palette) const;
+	void sflush_palette(palette_device &palette) const;
 
 	uint32_t screen_update_invadpt2(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_cosmo(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
@@ -175,6 +205,45 @@ public:
 	inline void set_pixel( bitmap_rgb32 &bitmap, uint8_t y, uint8_t x, int color );
 	inline void set_8_pixels( bitmap_rgb32 &bitmap, uint8_t y, uint8_t x, uint8_t data, int fore_color, int back_color );
 	void clear_extra_columns( bitmap_rgb32 &bitmap, int color );
+
+	void astropal_io_map(address_map &map);
+	void attackfc_io_map(address_map &map);
+	void ballbomb_io_map(address_map &map);
+	void claybust_io_map(address_map &map);
+	void cosmicmo_io_map(address_map &map);
+	void cosmo_io_map(address_map &map);
+	void cosmo_map(address_map &map);
+	void crashrd_io_map(address_map &map);
+	void darthvdr_io_map(address_map &map);
+	void darthvdr_map(address_map &map);
+	void escmars_map(address_map &map);
+	void indianbt_io_map(address_map &map);
+	void indianbtbr_io_map(address_map &map);
+	void invadpt2_io_map(address_map &map);
+	void invmulti_map(address_map &map);
+	void invrvnge_io_map(address_map &map);
+	void invrvnge_sound_map(address_map &map);
+	void lrescue_io_map(address_map &map);
+	void lupin3_io_map(address_map &map);
+	void polaris_io_map(address_map &map);
+	void rollingc_io_map(address_map &map);
+	void rollingc_map(address_map &map);
+	void schaser_io_map(address_map &map);
+	void schaser_map(address_map &map);
+	void schasercv_io_map(address_map &map);
+	void sflush_map(address_map &map);
+	void shuttlei_io_map(address_map &map);
+	void shuttlei_map(address_map &map);
+	void spacecom_io_map(address_map &map);
+	void spacecom_map(address_map &map);
+	void spacerng_io_map(address_map &map);
+	void spcewarla_io_map(address_map &map);
+	void spcewars_io_map(address_map &map);
+	void starw1_io_map(address_map &map);
+	void steelwkr_io_map(address_map &map);
+	void vortex_io_map(address_map &map);
+	void yosakdon_io_map(address_map &map);
+	void yosakdon_map(address_map &map);
 };
 
 
@@ -182,9 +251,9 @@ public:
 extern const char *const lrescue_sample_names[];
 extern const char *const lupin3_sample_names[];
 
-DISCRETE_SOUND_EXTERN( ballbomb );
-DISCRETE_SOUND_EXTERN( indianbt );
-DISCRETE_SOUND_EXTERN( polaris );
-DISCRETE_SOUND_EXTERN( schaser );
+DISCRETE_SOUND_EXTERN( ballbomb_discrete );
+DISCRETE_SOUND_EXTERN( indianbt_discrete );
+DISCRETE_SOUND_EXTERN( polaris_discrete );
+DISCRETE_SOUND_EXTERN( schaser_discrete );
 
 #endif // MAME_INCLUDES_8080BW_H

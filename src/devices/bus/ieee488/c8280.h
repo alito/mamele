@@ -14,6 +14,7 @@
 #include "ieee488.h"
 #include "cpu/m6502/m6502.h"
 #include "formats/c8280_dsk.h"
+#include "imagedev/floppy.h"
 #include "machine/mos6530n.h"
 #include "machine/wd_fdc.h"
 
@@ -30,9 +31,6 @@ class c8280_device : public device_t, public device_ieee488_interface
 public:
 	// construction/destruction
 	c8280_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	DECLARE_READ8_MEMBER( fk5_r );
-	DECLARE_WRITE8_MEMBER( fk5_w );
 
 protected:
 	// device-level overrides
@@ -57,6 +55,11 @@ private:
 	DECLARE_WRITE8_MEMBER( riot1_pa_w );
 	DECLARE_READ8_MEMBER( riot1_pb_r );
 	DECLARE_WRITE8_MEMBER( riot1_pb_w );
+	DECLARE_READ8_MEMBER( fk5_r );
+	DECLARE_WRITE8_MEMBER( fk5_w );
+
+	void c8280_fdc_mem(address_map &map);
+	void c8280_main_mem(address_map &map);
 
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
@@ -69,6 +72,7 @@ private:
 	required_device<floppy_connector> m_floppy1;
 	required_ioport m_address;
 	floppy_image_device *m_floppy;
+	output_finder<4> m_leds;
 
 	// IEEE-488 bus
 	int m_rfdo;                         // not ready for data output

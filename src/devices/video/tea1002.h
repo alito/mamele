@@ -25,15 +25,6 @@
 #pragma once
 
 
-
-//**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_TEA1002_ADD(_tag, _clock) \
-	MCFG_DEVICE_ADD(_tag, TEA1002, _clock)
-
-
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
@@ -60,7 +51,6 @@ private:
 };
 
 // device type definition
-extern const device_type TEA1002;
 DECLARE_DEVICE_TYPE(TEA1002, tea1002_device)
 
 #endif // MAME_VIDEO_TEA1002_H

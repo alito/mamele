@@ -191,26 +191,26 @@ READ_LINE_MEMBER( vicdual_state::carnival_music_port_t1_r )
 }
 
 
-static ADDRESS_MAP_START( mboard_map, AS_PROGRAM, 8, vicdual_state )
-	AM_RANGE(0x0000, 0x03ff) AM_ROM
-ADDRESS_MAP_END
+void vicdual_state::mboard_map(address_map &map)
+{
+	map(0x0000, 0x03ff).rom();
+}
 
 
-MACHINE_CONFIG_START( carnival_audio )
-
+void vicdual_state::carnival_audio(machine_config &config)
+{
 	/* music board */
-	MCFG_CPU_ADD("audiocpu", I8039, XTAL_3_579545MHz)
-	MCFG_CPU_PROGRAM_MAP(mboard_map)
-	MCFG_MCS48_PORT_P1_OUT_CB(WRITE8(vicdual_state, carnival_music_port_1_w))
-	MCFG_MCS48_PORT_P2_OUT_CB(WRITE8(vicdual_state, carnival_music_port_2_w))
-	MCFG_MCS48_PORT_T1_IN_CB(READLINE(vicdual_state, carnival_music_port_t1_r))
+	I8039(config, m_audiocpu, XTAL(3'579'545));
+	m_audiocpu->set_addrmap(AS_PROGRAM, &vicdual_state::mboard_map);
+	m_audiocpu->p1_out_cb().set(FUNC(vicdual_state::carnival_music_port_1_w));
+	m_audiocpu->p2_out_cb().set(FUNC(vicdual_state::carnival_music_port_2_w));
+	m_audiocpu->t1_in_cb().set(FUNC(vicdual_state::carnival_music_port_t1_r));
 
-	MCFG_SOUND_ADD("psg", AY8912, XTAL_3_579545MHz/3)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	AY8912(config, m_psg, XTAL(3'579'545)/3).add_route(ALL_OUTPUTS, "mono", 0.25);
 
 	/* samples */
-	MCFG_SOUND_ADD("samples", SAMPLES, 0)
-	MCFG_SAMPLES_CHANNELS(10)
-	MCFG_SAMPLES_NAMES(carnival_sample_names)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
-MACHINE_CONFIG_END
+	SAMPLES(config, m_samples);
+	m_samples->set_channels(10);
+	m_samples->set_samples_names(carnival_sample_names);
+	m_samples->add_route(ALL_OUTPUTS, "mono", 0.5);
+}

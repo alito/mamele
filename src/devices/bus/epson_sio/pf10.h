@@ -15,6 +15,7 @@
 
 #include "epson_sio.h"
 #include "cpu/m6800/m6801.h"
+#include "imagedev/floppy.h"
 #include "machine/upd765.h"
 
 
@@ -28,17 +29,6 @@ class epson_pf10_device : public device_t,
 public:
 	// construction/destruction
 	epson_pf10_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	// floppy disk controller
-	DECLARE_READ8_MEMBER( fdc_r );
-	DECLARE_WRITE8_MEMBER( fdc_w );
-	DECLARE_WRITE8_MEMBER( fdc_tc_w );
-
-	// hd6303 i/o
-	DECLARE_READ8_MEMBER( port1_r );
-	DECLARE_WRITE8_MEMBER( port1_w );
-	DECLARE_READ8_MEMBER( port2_r );
-	DECLARE_WRITE8_MEMBER( port2_w );
 
 protected:
 	// device-level overrides
@@ -62,13 +52,25 @@ private:
 	DECLARE_WRITE_LINE_MEMBER( rxc_w );
 	DECLARE_WRITE_LINE_MEMBER( pinc_w );
 
+	// floppy disk controller
+	DECLARE_READ8_MEMBER( fdc_r );
+	DECLARE_WRITE8_MEMBER( fdc_w );
+	DECLARE_WRITE8_MEMBER( fdc_tc_w );
+
+	// hd6303 i/o
+	DECLARE_READ8_MEMBER( port1_r );
+	DECLARE_WRITE8_MEMBER( port1_w );
+	DECLARE_READ8_MEMBER( port2_r );
+	DECLARE_WRITE8_MEMBER( port2_w );
+
+	void cpu_mem(address_map &map);
 
 	required_device<hd6303y_cpu_device> m_cpu;
 	required_device<upd765a_device> m_fdc;
 	required_device<epson_sio_device> m_sio_output;
+	required_device<floppy_connector> m_floppy;
 
 	epson_sio_device *m_sio_input;
-	floppy_image_device *m_floppy;
 
 	emu_timer *m_timer;
 

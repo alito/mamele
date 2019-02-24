@@ -7,24 +7,22 @@
 
 #include <memory>
 
-#define MCFG_BAC06_BOOTLEG_DISABLE_8x8 \
-	deco_bac06_device::disable_8x8(*device);
-
-#define MCFG_BAC06_BOOTLEG_DISABLE_16x16 \
-	deco_bac06_device::disable_16x16(*device);
-
-#define MCFG_BAC06_BOOTLEG_DISABLE_RC_SCROLL \
-	deco_bac06_device::disable_rc_scroll(*device);
-
-
 class deco_bac06_device : public device_t
 {
 public:
 	deco_bac06_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration
-	static void static_set_gfxdecode_tag(device_t &device, const char *tag);
-	static void set_gfx_region_wide(device_t &device, int region8x8, int region16x16, int wide);
+	// configuration
+	template <typename T> void set_gfxdecode_tag(T &&tag) { m_gfxdecode.set_tag(std::forward<T>(tag)); }
+	void set_gfx_region_wide(int region8x8, int region16x16, int wide)
+	{
+		m_gfxregion8x8 = region8x8;
+		m_gfxregion16x16 = region16x16;
+		m_wide = wide;
+	}
+	void disable_8x8() { m_supports_8x8 = false; }
+	void disable_16x16() { m_supports_16x16 = false; }
+	void disable_rc_scroll() { m_supports_rc_scroll = false; }
 
 	std::unique_ptr<uint16_t[]> m_pf_data;
 	std::unique_ptr<uint16_t[]> m_pf_rowscroll;
@@ -39,24 +37,6 @@ public:
 	bool    m_supports_8x8;
 	bool    m_supports_16x16;
 	bool    m_supports_rc_scroll;
-
-	static void disable_8x8(device_t &device)
-	{
-		deco_bac06_device &dev = downcast<deco_bac06_device &>(device);
-		dev.m_supports_8x8 = false;
-	}
-
-	static void disable_16x16(device_t &device)
-	{
-		deco_bac06_device &dev = downcast<deco_bac06_device &>(device);
-		dev.m_supports_16x16 = false;
-	}
-
-	static void disable_rc_scroll(device_t &device)
-	{
-		deco_bac06_device &dev = downcast<deco_bac06_device &>(device);
-		dev.m_supports_rc_scroll = false;
-	}
 
 	void create_tilemaps(int region8x8,int region16x16);
 	uint16_t m_pf_control_0[8];
@@ -83,8 +63,11 @@ public:
 
 	void set_colmask(int data) { m_gfxcolmask = data; }
 	void set_bppmultmask( int mult, int mask ) { m_bppmult = mult; m_bppmask = mask; } // stadium hero has 3bpp tiles
+	void set_flip_screen(bool flip);
+
 	uint8_t m_gfxcolmask;
 	int m_rambank; // external connection?
+	bool m_flip_screen;
 
 	/* 16-bit accessors */
 
@@ -101,7 +84,7 @@ public:
 
 	/* 8-bit accessors */
 
-	/* for dec8.c, pcktgal.c */
+	/* for dec8.cpp, pcktgal.cpp */
 	DECLARE_READ8_MEMBER( pf_data_8bit_r );
 	DECLARE_WRITE8_MEMBER( pf_data_8bit_w );
 
@@ -112,7 +95,7 @@ public:
 	DECLARE_READ8_MEMBER( pf_rowscroll_8bit_r );
 	DECLARE_WRITE8_MEMBER( pf_rowscroll_8bit_w );
 
-	/* for hippodrm (dec0.c) and actfancr / triothep (H6280 based games)*/
+	/* for hippodrm (dec0.cpp) and actfancr / triothep (H6280 based games)*/
 	DECLARE_WRITE8_MEMBER( pf_control0_8bit_packed_w );
 	DECLARE_WRITE8_MEMBER( pf_control1_8bit_swap_w );
 	DECLARE_READ8_MEMBER( pf_data_8bit_swap_r );
@@ -154,11 +137,5 @@ private:
 };
 
 DECLARE_DEVICE_TYPE(DECO_BAC06, deco_bac06_device)
-
-#define MCFG_DECO_BAC06_GFXDECODE(_gfxtag) \
-	deco_bac06_device::static_set_gfxdecode_tag(*device, "^" _gfxtag);
-
-#define MCFG_DECO_BAC06_GFX_REGION_WIDE(_8x8, _16x16, _wide) \
-	deco_bac06_device::set_gfx_region_wide(*device, _8x8, _16x16, _wide);
 
 #endif // MAME_VIDEO_DECOBAC06_H

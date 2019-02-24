@@ -13,6 +13,7 @@
 
 #include "exp.h"
 #include "cpu/m6502/m6510t.h"
+#include "imagedev/floppy.h"
 #include "machine/64h156.h"
 #include "machine/6525tpi.h"
 #include "machine/pla.h"
@@ -30,9 +31,6 @@ class c1551_device : public device_t, public device_plus4_expansion_card_interfa
 public:
 	// construction/destruction
 	c1551_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	DECLARE_READ8_MEMBER( tpi0_r );
-	DECLARE_WRITE8_MEMBER( tpi0_w );
 
 protected:
 	// device-level overrides
@@ -62,6 +60,11 @@ private:
 	DECLARE_READ8_MEMBER( tpi1_pc_r );
 	DECLARE_WRITE8_MEMBER( tpi1_pc_w );
 
+	DECLARE_READ8_MEMBER( tpi0_r );
+	DECLARE_WRITE8_MEMBER( tpi0_w );
+
+	void c1551_mem(address_map &map);
+
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 	enum
@@ -76,10 +79,11 @@ private:
 	required_device<tpi6525_device> m_tpi0;
 	required_device<tpi6525_device> m_tpi1;
 	required_device<c64h156_device> m_ga;
-	required_device<pla_device> m_pla;
+	required_device<pls100_device> m_pla;
 	required_device<floppy_image_device> m_floppy;
 	required_device<plus4_expansion_slot_device> m_exp;
 	required_ioport m_jp1;
+	output_finder<2> m_leds;
 
 	// TCBM bus
 	uint8_t m_tcbm_data;                      // data
@@ -95,7 +99,6 @@ private:
 
 
 // device type definition
-extern const device_type C1551;
 DECLARE_DEVICE_TYPE(C1551, c1551_device)
 
 #endif // MAME_BUS_PLUS4_C1551_H

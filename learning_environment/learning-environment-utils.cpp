@@ -9,8 +9,8 @@
 
 using namespace std;
 
-const char score_description_filename[] = "score_description.txt";
-const char gameover_description_filename[] = "gameover_description.txt";
+const string score_description_filename("score_description.txt");
+const string gameover_description_filename("gameover_description.txt");
 
 /*
 String converter using strtol but keeping the same interface
@@ -29,7 +29,7 @@ static u32 string_to_number(const string& description_string, size_t& start_posi
 /*
 Read until next colon, make a copy of the string, modify pointer to first character past it
 */
-static char* next_description_string(const string& description_line, size_t& start_index) 
+static std::string next_description_string(const string& description_line, size_t& start_index) 
 {
 	size_t original_start = start_index;
 	size_t next_colon = description_line.find(':', start_index);
@@ -37,10 +37,10 @@ static char* next_description_string(const string& description_line, size_t& sta
 	if (next_colon == string::npos) {
 		// not found, the whole thing is it
 		start_index = string::npos;
-		return core_strdup(description_line.substr(original_start).c_str());
+		return description_line.substr(original_start);
 	} else {
 		start_index = next_colon + 1;
-		return core_strdup(description_line.substr(original_start, next_colon - original_start).c_str());
+		return description_line.substr(original_start, next_colon - original_start);
 	}
 }
 

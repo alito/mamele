@@ -9,29 +9,35 @@
 #include "emu.h"
 #include "cpu/ssem/ssem.h"
 #include "imagedev/snapquik.h"
+#include "emupal.h"
 #include "screen.h"
 
 
 class ssem_state : public driver_device
 {
 public:
-	ssem_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	ssem_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_store(*this, "store"),
 		m_screen(*this, "screen")
 	{
 	}
 
+	void ssem(machine_config &config);
+
+	DECLARE_INPUT_CHANGED_MEMBER(panel_check);
+
+private:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 	uint32_t screen_update_ssem(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	DECLARE_INPUT_CHANGED_MEMBER(panel_check);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(ssem_store);
 	inline uint32_t reverse(uint32_t v);
 	void strlower(char *buf);
 
-private:
+	void ssem_map(address_map &map);
+
 	template <typename Format, typename... Params>
 	void glyph_print(bitmap_rgb32 &bitmap, int32_t x, int32_t y, Format &&fmt, Params &&...args);
 
@@ -75,9 +81,10 @@ inline uint32_t ssem_state::reverse(uint32_t v)
 * Address map                                        *
 \****************************************************/
 
-static ADDRESS_MAP_START( ssem_map, AS_PROGRAM, 8, ssem_state )
-	AM_RANGE(0x00, 0x7f) AM_RAM AM_SHARE("store")// Primary store
-ADDRESS_MAP_END
+void ssem_state::ssem_map(address_map &map)
+{
+	map(0x00, 0x7f).ram().share("store");// Primary store
+}
 
 /****************************************************\
 * Input ports and front panel handling               *
@@ -625,10 +632,10 @@ void ssem_state::machine_reset()
 	m_store_line = 0;
 }
 
-static MACHINE_CONFIG_START( ssem )
+MACHINE_CONFIG_START(ssem_state::ssem)
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", SSEMCPU, 700)
-	MCFG_CPU_PROGRAM_MAP(ssem_map)
+	MCFG_DEVICE_ADD("maincpu", SSEMCPU, 700)
+	MCFG_DEVICE_PROGRAM_MAP(ssem_map)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -637,7 +644,7 @@ static MACHINE_CONFIG_START( ssem )
 	MCFG_SCREEN_SIZE(256, 280)
 	MCFG_SCREEN_VISIBLE_AREA(0, 255, 0, 279)
 	MCFG_SCREEN_UPDATE_DRIVER(ssem_state, screen_update_ssem)
-	MCFG_PALETTE_ADD_MONOCHROME("palette")
+	PALETTE(config, "palette", palette_device::MONOCHROME);
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", ssem_state, ssem_store, "snp,asm", 1)
@@ -649,5 +656,5 @@ ROM_START( ssem )
 ROM_END
 
 
-//   YEAR  NAME     PARENT    COMPAT   MACHINE  INPUT  STATE        INIT  COMPANY                  FULLNAME
-COMP(1948, ssem,    0,        0,       ssem,    ssem,  ssem_state,  0,    "Manchester University", "Small-Scale Experimental Machine (SSEM), 'Baby'", MACHINE_NO_SOUND_HW | MACHINE_SUPPORTS_SAVE)
+//   YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY                  FULLNAME
+COMP(1948, ssem, 0,      0,      ssem,    ssem,  ssem_state, empty_init, "Manchester University", "Small-Scale Experimental Machine (SSEM), 'Baby'", MACHINE_NO_SOUND_HW | MACHINE_SUPPORTS_SAVE)

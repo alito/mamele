@@ -30,7 +30,7 @@
  *
  *************************************/
 
-VIDEO_START_MEMBER(jedi_state,jedi)
+void jedi_state::video_start()
 {
 	/* register for saving */
 	save_item(NAME(m_vscroll));
@@ -108,8 +108,8 @@ void jedi_state::do_pen_lookup(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 
 	get_pens(pens);
 
-	for (y = cliprect.min_y; y <= cliprect.max_y; y++)
-		for(x = cliprect.min_x; x <= cliprect.max_x; x++)
+	for (y = cliprect.top(); y <= cliprect.bottom(); y++)
+		for(x = cliprect.left(); x <= cliprect.right(); x++)
 			bitmap.pix32(y, x) = pens[bitmap.pix32(y, x)];
 }
 
@@ -158,12 +158,12 @@ void jedi_state::draw_background_and_text(bitmap_rgb32 &bitmap, const rectangle 
 
 	memset(background_line_buffer, 0, 0x200 * sizeof(int));
 
-	for (y = cliprect.min_y; y <= cliprect.max_y; y++)
+	for (y = cliprect.top(); y <= cliprect.bottom(); y++)
 	{
 		int x;
 		int bg_last_col = 0;
 
-		for (x = cliprect.min_x; x <= cliprect.max_x; x += 2)
+		for (x = cliprect.left(); x <= cliprect.right(); x += 2)
 		{
 			int tx_col1, tx_col2, bg_col;
 			int bg_tempcol;
@@ -285,7 +285,7 @@ void jedi_state::draw_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 			int i;
 			uint16_t x = spriteram[offs + 0x100] + ((spriteram[offs + 0x40] & 0x01) << 8) - 2;
 
-			if ((y < cliprect.min_y) || (y > cliprect.max_y))
+			if ((y < cliprect.top()) || (y > cliprect.bottom()))
 				continue;
 
 			if (flip_x)
@@ -361,12 +361,10 @@ uint32_t jedi_state::screen_update_jedi(screen_device &screen, bitmap_rgb32 &bit
  *
  *************************************/
 
-MACHINE_CONFIG_START( jedi_video )
+MACHINE_CONFIG_START(jedi_state::jedi_video)
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(64*8, 262) /* verify vert size */
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 37*8-1, 0*8, 30*8-1)
 	MCFG_SCREEN_UPDATE_DRIVER(jedi_state, screen_update_jedi)
-
-	MCFG_VIDEO_START_OVERRIDE(jedi_state,jedi)
 MACHINE_CONFIG_END

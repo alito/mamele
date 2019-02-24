@@ -51,6 +51,9 @@ public:
 		, m_io_joy(*this, "JOY")
 	{ }
 
+	void sv8000(machine_config &config);
+
+private:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( cart );
 
 	DECLARE_READ8_MEMBER( ay_port_a_r );
@@ -67,9 +70,10 @@ public:
 
 	DECLARE_READ8_MEMBER( mc6847_videoram_r );
 
-private:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
+	void sv8000_io(address_map &map);
+	void sv8000_mem(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
 	required_device<s68047_device> m_s68047p;
@@ -94,21 +98,23 @@ private:
 };
 
 
-static ADDRESS_MAP_START(sv8000_mem, AS_PROGRAM, 8, sv8000_state)
-	ADDRESS_MAP_UNMAP_HIGH
+void sv8000_state::sv8000_mem(address_map &map)
+{
+	map.unmap_value_high();
 	//AM_RANGE(0x0000, 0x0fff)      // mapped by the cartslot
-	AM_RANGE( 0x8000, 0x83ff ) AM_RAM // Work RAM??
-	AM_RANGE( 0xc000, 0xcbff ) AM_RAM AM_SHARE("videoram")
-ADDRESS_MAP_END
+	map(0x8000, 0x83ff).ram(); // Work RAM??
+	map(0xc000, 0xcbff).ram().share("videoram");
+}
 
 
-static ADDRESS_MAP_START(sv8000_io, AS_IO, 8, sv8000_state)
-	ADDRESS_MAP_UNMAP_HIGH
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("i8255", i8255_device, read, write)
-	AM_RANGE(0xc0, 0xc0) AM_DEVWRITE("ay8910", ay8910_device, data_w)   // Not sure yet
-	AM_RANGE(0xc1, 0xc1) AM_DEVWRITE("ay8910", ay8910_device, address_w) // Not sure yet
-ADDRESS_MAP_END
+void sv8000_state::sv8000_io(address_map &map)
+{
+	map.unmap_value_high();
+	map.global_mask(0xff);
+	map(0x80, 0x83).rw("i8255", FUNC(i8255_device::read), FUNC(i8255_device::write));
+	map(0xc0, 0xc0).w("ay8910", FUNC(ay8910_device::data_w));   // Not sure yet
+	map(0xc1, 0xc1).w("ay8910", FUNC(ay8910_device::address_w)); // Not sure yet
+}
 
 
 /* Input ports */
@@ -368,36 +374,37 @@ READ8_MEMBER( sv8000_state::mc6847_videoram_r )
 	return data;
 }
 
-static MACHINE_CONFIG_START( sv8000 )
+MACHINE_CONFIG_START(sv8000_state::sv8000)
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",Z80, XTAL_10_738635MHz/3)  /* Not verified */
-	MCFG_CPU_PROGRAM_MAP(sv8000_mem)
-	MCFG_CPU_IO_MAP(sv8000_io)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", sv8000_state,  irq0_line_hold)
+	MCFG_DEVICE_ADD("maincpu",Z80, XTAL(10'738'635)/3)  /* Not verified */
+	MCFG_DEVICE_PROGRAM_MAP(sv8000_mem)
+	MCFG_DEVICE_IO_MAP(sv8000_io)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", sv8000_state,  irq0_line_hold)
 
-	MCFG_DEVICE_ADD("i8255", I8255, 0)
-	MCFG_I8255_IN_PORTA_CB(READ8(sv8000_state, i8255_porta_r))
-	MCFG_I8255_OUT_PORTA_CB(WRITE8(sv8000_state, i8255_porta_w))
-	MCFG_I8255_IN_PORTB_CB(READ8(sv8000_state, i8255_portb_r))
-	MCFG_I8255_OUT_PORTB_CB(WRITE8(sv8000_state, i8255_portb_w))
-	MCFG_I8255_IN_PORTC_CB(READ8(sv8000_state, i8255_portc_r))
-	MCFG_I8255_OUT_PORTC_CB(WRITE8(sv8000_state, i8255_portc_w))
+	i8255_device &ppi(I8255(config, "i8255"));
+	ppi.in_pa_callback().set(FUNC(sv8000_state::i8255_porta_r));
+	ppi.out_pa_callback().set(FUNC(sv8000_state::i8255_porta_w));
+	ppi.in_pb_callback().set(FUNC(sv8000_state::i8255_portb_r));
+	ppi.out_pb_callback().set(FUNC(sv8000_state::i8255_portb_w));
+	ppi.in_pc_callback().set(FUNC(sv8000_state::i8255_portc_r));
+	ppi.out_pc_callback().set(FUNC(sv8000_state::i8255_portc_w));
 
 	/* video hardware */
 	// S68047P - Unknown whether the internal or an external character rom is used
-	MCFG_DEVICE_ADD("s68047p", S68047, XTAL_10_738635MHz/3 )  // Clock not verified
-	MCFG_MC6847_INPUT_CALLBACK(READ8(sv8000_state, mc6847_videoram_r))
+	S68047(config, m_s68047p, XTAL(10'738'635)/3);  // Clock not verified
+	m_s68047p->input_callback().set(FUNC(sv8000_state::mc6847_videoram_r));
+	m_s68047p->set_screen("screen");
 
-	MCFG_SCREEN_MC6847_NTSC_ADD("screen", "s68047p")
+	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ay8910", AY8910, XTAL_10_738635MHz/3/2)  /* Exact model and clock not verified */
-	MCFG_AY8910_PORT_A_READ_CB(READ8(sv8000_state, ay_port_a_r))
-	MCFG_AY8910_PORT_B_READ_CB(READ8(sv8000_state, ay_port_b_r))
-	MCFG_AY8910_PORT_A_WRITE_CB(WRITE8(sv8000_state, ay_port_a_w))
-	MCFG_AY8910_PORT_B_WRITE_CB(WRITE8(sv8000_state, ay_port_b_w))
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	SPEAKER(config, "mono").front_center();
+	ay8910_device &ay8910(AY8910(config, "ay8910", XTAL(10'738'635)/3/2));  /* Exact model and clock not verified */
+	ay8910.port_a_read_callback().set(FUNC(sv8000_state::ay_port_a_r));
+	ay8910.port_b_read_callback().set(FUNC(sv8000_state::ay_port_b_r));
+	ay8910.port_a_write_callback().set(FUNC(sv8000_state::ay_port_a_w));
+	ay8910.port_b_write_callback().set(FUNC(sv8000_state::ay_port_b_w));
+	ay8910.add_route(ALL_OUTPUTS, "mono", 0.50);
 
 	/* cartridge */
 	MCFG_GENERIC_CARTSLOT_ADD("cartslot", generic_plain_slot, "sv8000_cart")
@@ -415,5 +422,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE  INPUT   STATE          INIT  COMPANY   FULLNAME                            FLAGS */
-CONS( 1979, sv8000, 0,      0,       sv8000,  sv8000, sv8000_state,  0,    "Bandai", "Super Vision 8000 (TV Jack 8000)", 0 )
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE  INPUT   STATE         INIT        COMPANY   FULLNAME                            FLAGS */
+CONS( 1979, sv8000, 0,      0,       sv8000,  sv8000, sv8000_state, empty_init, "Bandai", "Super Vision 8000 (TV Jack 8000)", 0 )

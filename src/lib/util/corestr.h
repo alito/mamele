@@ -8,10 +8,10 @@
 
 ***************************************************************************/
 
-#pragma once
+#ifndef MAME_UTIL_CORESTR_H
+#define MAME_UTIL_CORESTR_H
 
-#ifndef __CORESTR_H__
-#define __CORESTR_H__
+#pragma once
 
 #include "osdcore.h"
 #include "strformat.h"
@@ -49,14 +49,6 @@ int core_strnicmp(const char *s1, const char *s2, size_t n);
 #define strncasecmp MUST_USE_CORE_STRNICMP_INSTEAD
 
 
-/* since strdup is not part of the standard, we use this instead - free with free() */
-char *core_strdup(const char *str);
-
-/* this macro prevents people from using strdup directly */
-#undef strdup
-#define strdup MUST_USE_CORE_STRDUP_INSTEAD
-
-
 /* additional string compare helper (up to 16 characters at the moment) */
 int core_strwildcmp(const char *sp1, const char *sp2);
 bool core_iswildstr(const char *sp);
@@ -72,4 +64,11 @@ std::string &strmakeupper(std::string& str);
 std::string &strmakelower(std::string& str);
 int strreplace(std::string &str, const std::string& search, const std::string& replace);
 
-#endif /* __CORESTR_H__ */
+namespace util {
+
+// based on Jaro-Winkler distance - returns value from 0.0 (totally dissimilar) to 1.0 (identical)
+double edit_distance(std::u32string const &lhs, std::u32string const &rhs);
+
+} // namespace util
+
+#endif // MAME_UTIL_CORESTR_H

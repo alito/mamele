@@ -10,15 +10,13 @@
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
 
-#define MCFG_M24_Z8000_HALT(_devcb) \
-	devcb = &m24_z8000_device::set_halt_callback(*device, DEVCB_##_devcb);
 
 class m24_z8000_device :  public device_t
 {
 public:
 	m24_z8000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	template <class Object> static devcb_base &set_halt_callback(device_t &device, Object &&cb) { return downcast<m24_z8000_device &>(device).m_halt_out.set_callback(std::forward<Object>(cb)); }
+	auto halt_callback() { return m_halt_out.bind(); }
 
 	DECLARE_READ16_MEMBER(pmem_r);
 	DECLARE_WRITE16_MEMBER(pmem_w);
@@ -36,6 +34,9 @@ public:
 
 	bool halted() const { return m_z8000_halt; }
 
+	void z8000_data(address_map &map);
+	void z8000_io(address_map &map);
+	void z8000_prog(address_map &map);
 protected:
 	void device_start() override;
 	void device_reset() override;
@@ -57,7 +58,6 @@ private:
 	IRQ_CALLBACK_MEMBER(int_cb);
 };
 
-extern const device_type M24_Z8000;
 DECLARE_DEVICE_TYPE(M24_Z8000, m24_z8000_device)
 
 #endif // MAME_MACHINE_M24_Z8000_H

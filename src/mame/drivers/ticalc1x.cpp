@@ -67,6 +67,9 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void cmulti8(machine_config &config);
+
+private:
 	void prepare_display();
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
@@ -184,16 +187,16 @@ static INPUT_PORTS_START( cmulti8 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( cmulti8 )
+MACHINE_CONFIG_START(cmulti8_state::cmulti8)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1070, 250000) // approximation - RC osc. R=56K, C=68pf
-	MCFG_TMS1XXX_READ_K_CB(READ8(cmulti8_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(cmulti8_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(cmulti8_state, write_r))
+	TMS1070(config, m_maincpu, 250000); // approximation - RC osc. R=56K, C=68pf
+	m_maincpu->k().set(FUNC(cmulti8_state::read_k));
+	m_maincpu->o().set(FUNC(cmulti8_state::write_o));
+	m_maincpu->r().set(FUNC(cmulti8_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_cmulti8)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_cmulti8);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -225,6 +228,7 @@ public:
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
 	DECLARE_READ8_MEMBER(read_k);
+	void tisr16(machine_config &config);
 };
 
 // handlers
@@ -400,16 +404,16 @@ static INPUT_PORTS_START( tisr16ii )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_9_PAD) PORT_NAME("9")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( tisr16 )
+MACHINE_CONFIG_START(tisr16_state::tisr16)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1000, 300000) // approximation - RC osc. R=43K, C=68pf (note: tisr16ii MCU RC osc. is different: R=30K, C=100pf, same freq)
-	MCFG_TMS1XXX_READ_K_CB(READ8(tisr16_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(tisr16_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(tisr16_state, write_r))
+	TMS1000(config, m_maincpu, 300000); // approximation - RC osc. R=43K, C=68pf (note: tisr16ii MCU RC osc. is different: R=30K, C=100pf, same freq)
+	m_maincpu->k().set(FUNC(tisr16_state::read_k));
+	m_maincpu->o().set(FUNC(tisr16_state::write_o));
+	m_maincpu->r().set(FUNC(tisr16_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_tisr16)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_tisr16);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -450,6 +454,10 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void ti1270(machine_config &config);
+	void ti1250(machine_config &config);
+
+private:
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
 	DECLARE_READ8_MEMBER(read_k);
@@ -538,29 +546,30 @@ static INPUT_PORTS_START( ti1270 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_NAME("+/-")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ti1250 )
+MACHINE_CONFIG_START(ti1250_state::ti1250)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS0950, 200000) // approximation - RC osc. R=68K, C=68pf
-	MCFG_TMS1XXX_READ_K_CB(READ8(ti1250_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(ti1250_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(ti1250_state, write_r))
+	TMS0950(config, m_maincpu, 200000); // approximation - RC osc. R=68K, C=68pf
+	m_maincpu->k().set(FUNC(ti1250_state::read_k));
+	m_maincpu->o().set(FUNC(ti1250_state::write_o));
+	m_maincpu->r().set(FUNC(ti1250_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_ti1250)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_ti1250);
 
 	/* no sound! */
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( ti1270, ti1250 )
+MACHINE_CONFIG_START(ti1250_state::ti1270)
+	ti1250(config);
 
 	/* basic machine hardware */
-	MCFG_CPU_REPLACE("maincpu", TMS0970, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(ti1250_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(ti1250_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(ti1250_state, write_r))
+	TMS0970(config.replace(), m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(ti1250_state::read_k));
+	m_maincpu->o().set(FUNC(ti1250_state::write_o));
+	m_maincpu->r().set(FUNC(ti1250_state::write_r));
 
-	MCFG_DEFAULT_LAYOUT(layout_ti1270)
+	config.set_default_layout(layout_ti1270);
 MACHINE_CONFIG_END
 
 
@@ -582,6 +591,9 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void ti25503(machine_config &config);
+
+private:
 	void prepare_display();
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
@@ -664,16 +676,16 @@ static INPUT_PORTS_START( ti25503 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_X) PORT_NAME("1/x")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ti25503 )
+MACHINE_CONFIG_START(ti25503_state::ti25503)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1000, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(ti25503_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(ti25503_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(ti25503_state, write_r))
+	TMS1000(config, m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(ti25503_state::read_k));
+	m_maincpu->o().set(FUNC(ti25503_state::write_o));
+	m_maincpu->r().set(FUNC(ti25503_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_ti25503)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_ti25503);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -700,6 +712,9 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void ti1000(machine_config &config);
+
+private:
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
 	DECLARE_READ8_MEMBER(read_k);
@@ -764,16 +779,16 @@ static INPUT_PORTS_START( ti1000 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_NAME("=")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ti1000 )
+MACHINE_CONFIG_START(ti1000_state::ti1000)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1990, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(ti1000_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(ti1000_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(ti1000_state, write_r))
+	TMS1990(config, m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(ti1000_state::read_k));
+	m_maincpu->o().set(FUNC(ti1000_state::write_o));
+	m_maincpu->r().set(FUNC(ti1000_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_ti1270)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_ti1270);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -796,6 +811,8 @@ public:
 	wizatron_state(const machine_config &mconfig, device_type type, const char *tag)
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
+
+	void wizatron(machine_config &config);
 
 	virtual DECLARE_WRITE16_MEMBER(write_o);
 	virtual DECLARE_WRITE16_MEMBER(write_r);
@@ -864,16 +881,16 @@ static INPUT_PORTS_START( wizatron )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_SLASH_PAD) PORT_NAME(UTF8_DIVIDE)
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( wizatron )
+MACHINE_CONFIG_START(wizatron_state::wizatron)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS0970, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(wizatron_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(wizatron_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(wizatron_state, write_r))
+	TMS0970(config, m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(wizatron_state::read_k));
+	m_maincpu->o().set(FUNC(wizatron_state::write_o));
+	m_maincpu->r().set(FUNC(wizatron_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_wizatron)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_wizatron);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -900,6 +917,9 @@ public:
 		: wizatron_state(mconfig, type, tag)
 	{ }
 
+	void lilprof(machine_config &config);
+
+private:
 	virtual DECLARE_WRITE16_MEMBER(write_o) override;
 	virtual DECLARE_READ8_MEMBER(read_k) override;
 };
@@ -938,16 +958,16 @@ static INPUT_PORTS_START( lilprof )
 	PORT_CONFSETTING(    0x08, "4" )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( lilprof )
+MACHINE_CONFIG_START(lilprof_state::lilprof)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS0970, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(lilprof_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(lilprof_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(wizatron_state, write_r))
+	TMS0970(config, m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(lilprof_state::read_k));
+	m_maincpu->o().set(FUNC(lilprof_state::write_o));
+	m_maincpu->r().set(FUNC(wizatron_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_wizatron)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_wizatron);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -974,6 +994,9 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void lilprof78(machine_config &config);
+
+private:
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
 	DECLARE_READ8_MEMBER(read_k);
@@ -1048,16 +1071,16 @@ static INPUT_PORTS_START( lilprof78 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_PLUS_PAD) PORT_NAME("+")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( lilprof78 )
+MACHINE_CONFIG_START(lilprof78_state::lilprof78)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1990, 250000) // approximation
-	MCFG_TMS1XXX_READ_K_CB(READ8(lilprof78_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(lilprof78_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(lilprof78_state, write_r))
+	TMS1990(config, m_maincpu, 250000); // approximation
+	m_maincpu->k().set(FUNC(lilprof78_state::read_k));
+	m_maincpu->o().set(FUNC(lilprof78_state::write_o));
+	m_maincpu->r().set(FUNC(lilprof78_state::write_r));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_wizatron)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_wizatron);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -1080,6 +1103,8 @@ public:
 	dataman_state(const machine_config &mconfig, device_type type, const char *tag)
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
+
+	void dataman(machine_config &config);
 
 	virtual void prepare_display();
 	virtual DECLARE_WRITE16_MEMBER(write_o);
@@ -1160,17 +1185,17 @@ static INPUT_PORTS_START( dataman )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_E) PORT_NAME("Electro Flash")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( dataman )
+MACHINE_CONFIG_START(dataman_state::dataman)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1980, 300000) // patent says 300kHz
-	MCFG_TMS1XXX_READ_K_CB(READ8(dataman_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(dataman_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(dataman_state, write_r))
-	MCFG_TMS1XXX_POWER_OFF_CB(WRITELINE(hh_tms1k_state, auto_power_off))
+	TMS1980(config, m_maincpu, 300000); // patent says 300kHz
+	m_maincpu->k().set(FUNC(dataman_state::read_k));
+	m_maincpu->o().set(FUNC(dataman_state::write_o));
+	m_maincpu->r().set(FUNC(dataman_state::write_r));
+	m_maincpu->power_off().set(FUNC(hh_tms1k_state::auto_power_off));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_dataman)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_dataman);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -1196,6 +1221,9 @@ public:
 		: dataman_state(mconfig, type, tag)
 	{ }
 
+	void mathmarv(machine_config &config);
+
+private:
 	virtual DECLARE_WRITE16_MEMBER(write_r) override;
 };
 
@@ -1227,21 +1255,21 @@ static INPUT_PORTS_START( mathmarv )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_F) PORT_NAME("Flash")
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( mathmarv )
+MACHINE_CONFIG_START(mathmarv_state::mathmarv)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS1980, 300000) // assume same as dataman
-	MCFG_TMS1XXX_READ_K_CB(READ8(dataman_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(dataman_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(mathmarv_state, write_r))
-	MCFG_TMS1XXX_POWER_OFF_CB(WRITELINE(hh_tms1k_state, auto_power_off))
+	TMS1980(config, m_maincpu, 300000); // assume same as dataman
+	m_maincpu->k().set(FUNC(dataman_state::read_k));
+	m_maincpu->o().set(FUNC(dataman_state::write_o));
+	m_maincpu->r().set(FUNC(mathmarv_state::write_r));
+	m_maincpu->power_off().set(FUNC(hh_tms1k_state::auto_power_off));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_mathmarv)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_mathmarv);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	SPEAKER(config, "mono").front_center();
+	MCFG_DEVICE_ADD("speaker", SPEAKER_SOUND)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
@@ -1277,6 +1305,9 @@ public:
 		: ticalc1x_state(mconfig, type, tag)
 	{ }
 
+	void ti30(machine_config &config);
+
+private:
 	DECLARE_WRITE16_MEMBER(write_o);
 	DECLARE_WRITE16_MEMBER(write_r);
 	DECLARE_READ8_MEMBER(read_k);
@@ -1487,17 +1518,17 @@ static INPUT_PORTS_START( tibusan )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_PGDN) PORT_NAME("Off") PORT_CHANGED_MEMBER(DEVICE_SELF, hh_tms1k_state, power_button, (void *)false)
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( ti30 )
+MACHINE_CONFIG_START(ti30_state::ti30)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", TMS0980, 400000) // guessed
-	MCFG_TMS1XXX_READ_K_CB(READ8(ti30_state, read_k))
-	MCFG_TMS1XXX_WRITE_O_CB(WRITE16(ti30_state, write_o))
-	MCFG_TMS1XXX_WRITE_R_CB(WRITE16(ti30_state, write_r))
-	MCFG_TMS1XXX_POWER_OFF_CB(WRITELINE(hh_tms1k_state, auto_power_off))
+	TMS0980(config, m_maincpu, 400000); // guessed
+	m_maincpu->k().set(FUNC(ti30_state::read_k));
+	m_maincpu->o().set(FUNC(ti30_state::write_o));
+	m_maincpu->r().set(FUNC(ti30_state::write_r));
+	m_maincpu->power_off().set(FUNC(hh_tms1k_state::auto_power_off));
 
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("display_decay", hh_tms1k_state, display_decay_tick, attotime::from_msec(1))
-	MCFG_DEFAULT_LAYOUT(layout_ti30)
+	TIMER(config, "display_decay").configure_periodic(FUNC(hh_tms1k_state::display_decay_tick), attotime::from_msec(1));
+	config.set_default_layout(layout_ti30);
 
 	/* no sound! */
 MACHINE_CONFIG_END
@@ -1729,27 +1760,27 @@ ROM_END
 
 
 
-//    YEAR  NAME       PARENT  CMP MACHINE    INPUT      STATE         INIT  COMPANY, FULLNAME, FLAGS
-COMP( 1977, cmulti8,   0,       0, cmulti8,   cmulti8,   cmulti8_state,   0, "Canon", "Multi 8 (Canon)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+//    YEAR  NAME       PARENT  CMP MACHINE    INPUT      CLASS            INIT        COMPANY              FULLNAME, FLAGS
+COMP( 1977, cmulti8,   0,       0, cmulti8,   cmulti8,   cmulti8_state,   empty_init, "Canon",             "Multi 8 (Canon)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1974, tisr16,    0,       0, tisr16,    tisr16,    tisr16_state,    0, "Texas Instruments", "SR-16", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1975, tisr16ii,  0,       0, tisr16,    tisr16ii,  tisr16_state,    0, "Texas Instruments", "SR-16 II", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1974, tisr16,    0,       0, tisr16,    tisr16,    tisr16_state,    empty_init, "Texas Instruments", "SR-16", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1975, tisr16ii,  0,       0, tisr16,    tisr16ii,  tisr16_state,    empty_init, "Texas Instruments", "SR-16 II", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1975, ti1250,    0,       0, ti1250,    ti1250,    ti1250_state,    0, "Texas Instruments", "TI-1250 (1975 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1976, ti125076,  ti1250,  0, ti1270,    ti1250,    ti1250_state,    0, "Texas Instruments", "TI-1250 (1976 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1976, ti1270,    0,       0, ti1270,    ti1270,    ti1250_state,    0, "Texas Instruments", "TI-1270", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1975, ti1250,    0,       0, ti1250,    ti1250,    ti1250_state,    empty_init, "Texas Instruments", "TI-1250 (1975 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, ti125076,  ti1250,  0, ti1270,    ti1250,    ti1250_state,    empty_init, "Texas Instruments", "TI-1250 (1976 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, ti1270,    0,       0, ti1270,    ti1270,    ti1250_state,    empty_init, "Texas Instruments", "TI-1270", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1976, ti25503,   0,       0, ti25503,   ti25503,   ti25503_state,   0, "Texas Instruments", "TI-2550 III", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, ti25503,   0,       0, ti25503,   ti25503,   ti25503_state,   empty_init, "Texas Instruments", "TI-2550 III", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1977, ti1000,    0,       0, ti1000,    ti1000,    ti1000_state,    0, "Texas Instruments", "TI-1000 (1977 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1977, ti1000,    0,       0, ti1000,    ti1000,    ti1000_state,    empty_init, "Texas Instruments", "TI-1000 (1977 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1977, wizatron,  0,       0, wizatron,  wizatron,  wizatron_state,  0, "Texas Instruments", "Wiz-A-Tron", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1976, lilprof,   0,       0, lilprof,   lilprof,   lilprof_state,   0, "Texas Instruments", "Little Professor (1976 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1978, lilprof78, lilprof, 0, lilprof78, lilprof78, lilprof78_state, 0, "Texas Instruments", "Little Professor (1978 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1977, wizatron,  0,       0, wizatron,  wizatron,  wizatron_state,  empty_init, "Texas Instruments", "Wiz-A-Tron", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, lilprof,   0,       0, lilprof,   lilprof,   lilprof_state,   empty_init, "Texas Instruments", "Little Professor (1976 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1978, lilprof78, lilprof, 0, lilprof78, lilprof78, lilprof78_state, empty_init, "Texas Instruments", "Little Professor (1978 version)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-COMP( 1977, dataman,   0,       0, dataman,   dataman,   dataman_state,   0, "Texas Instruments", "DataMan", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1980, mathmarv,  0,       0, mathmarv,  mathmarv,  mathmarv_state,  0, "Texas Instruments", "Math Marvel", MACHINE_SUPPORTS_SAVE )
+COMP( 1977, dataman,   0,       0, dataman,   dataman,   dataman_state,   empty_init, "Texas Instruments", "DataMan", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1980, mathmarv,  0,       0, mathmarv,  mathmarv,  mathmarv_state,  empty_init, "Texas Instruments", "Math Marvel", MACHINE_SUPPORTS_SAVE )
 
-COMP( 1976, ti30,      0,       0, ti30,      ti30,      ti30_state,      0, "Texas Instruments", "TI-30", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1976, tibusan,   0,       0, ti30,      tibusan,   ti30_state,      0, "Texas Instruments", "TI Business Analyst", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
-COMP( 1977, tiprog,    0,       0, ti30,      tiprog,    ti30_state,      0, "Texas Instruments", "TI Programmer", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, ti30,      0,       0, ti30,      ti30,      ti30_state,      empty_init, "Texas Instruments", "TI-30", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1976, tibusan,   0,       0, ti30,      tibusan,   ti30_state,      empty_init, "Texas Instruments", "TI Business Analyst", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+COMP( 1977, tiprog,    0,       0, ti30,      tiprog,    ti30_state,      empty_init, "Texas Instruments", "TI Programmer", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )

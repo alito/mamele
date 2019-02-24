@@ -10,16 +10,6 @@ typedef device_delegate<void (int *code, int *color, int *priority)> k05324x_cb_
 #define K05324X_CB_MEMBER(_name)   void _name(int *code, int *color, int *priority)
 
 
-#define MCFG_K05324X_BPP(_bpp) \
-	k05324x_device::set_bpp(*device, _bpp);
-
-#define MCFG_K05324X_CB(_class, _method) \
-	k05324x_device::set_k05324x_callback(*device, k05324x_cb_delegate(&_class::_method, #_class "::" #_method, downcast<_class *>(owner)));
-
-#define MCFG_K05324X_OFFSETS(_xoffs, _yoffs) \
-	k05324x_device::set_offsets(*device, _xoffs, _yoffs);
-
-
 class k05324x_device : public device_t, public device_gfx_interface
 {
 	static const gfx_layout spritelayout;
@@ -30,14 +20,13 @@ class k05324x_device : public device_t, public device_gfx_interface
 public:
 	k05324x_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration
-	static void set_bpp(device_t &device, int bpp);
-	static void set_k05324x_callback(device_t &device, k05324x_cb_delegate callback) { downcast<k05324x_device &>(device).m_k05324x_cb = callback; }
-	static void set_offsets(device_t &device, int x_offset, int y_offset)
+	// configuration
+	void set_bpp(int bpp);
+	template <typename... T> void set_sprite_callback(T &&... args) { m_k05324x_cb = k05324x_cb_delegate(std::forward<T>(args)...); }
+	void set_offsets(int x_offset, int y_offset)
 	{
-		k05324x_device &dev = downcast<k05324x_device &>(device);
-		dev.m_dx = x_offset;
-		dev.m_dy = y_offset;
+		m_dx = x_offset;
+		m_dy = y_offset;
 	}
 
 	DECLARE_READ16_MEMBER( k053245_word_r );
@@ -78,6 +67,6 @@ private:
 
 
 DECLARE_DEVICE_TYPE(K053244, k05324x_device)
-extern device_type const K053245;
+DECLARE_DEVICE_TYPE(K053245, k05324x_device)
 
 #endif // MAME_VIDEO_K053244_K053245_H

@@ -38,6 +38,7 @@ protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+	virtual void device_post_load() override;
 
 private:
 	// internal state
@@ -50,10 +51,7 @@ private:
 	void reset_indexes();
 };
 
-extern const device_type K053251;
 DECLARE_DEVICE_TYPE(K053251, k053251_device)
 
-#define MCFG_K053251_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, K053251, 0)
 
 #endif // MAME_VIDEO_K053251_H

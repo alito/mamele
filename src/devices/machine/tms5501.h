@@ -34,24 +34,7 @@
 
 #pragma once
 
-
-
-
-//**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_TMS5501_IRQ_CALLBACK(_write) \
-	devcb = &tms5501_device::set_irq_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_TMS5501_XMT_CALLBACK(_write) \
-	devcb = &tms5501_device::set_xmt_wr_callback(*device, DEVCB_##_write);
-
-#define MCFG_TMS5501_XI_CALLBACK(_read) \
-	devcb = &tms5501_device::set_xi_rd_callback(*device, DEVCB_##_read);
-
-#define MCFG_TMS5501_XO_CALLBACK(_write) \
-	devcb = &tms5501_device::set_xo_wr_callback(*device, DEVCB_##_write);
+#include "diserial.h"
 
 
 
@@ -68,12 +51,10 @@ public:
 	// construction/destruction
 	tms5501_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	template <class Object> static devcb_base &set_irq_wr_callback(device_t &device, Object &&cb) { return downcast<tms5501_device &>(device).m_write_irq.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_xmt_wr_callback(device_t &device, Object &&cb) { return downcast<tms5501_device &>(device).m_write_xmt.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_xi_rd_callback(device_t &device, Object &&cb) { return downcast<tms5501_device &>(device).m_read_xi.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_xo_wr_callback(device_t &device, Object &&cb) { return downcast<tms5501_device &>(device).m_write_xo.set_callback(std::forward<Object>(cb)); }
-
-	virtual DECLARE_ADDRESS_MAP(io_map, 8);
+	auto int_callback() { return m_write_int.bind(); }
+	auto xmt_callback() { return m_write_xmt.bind(); }
+	auto xi_callback() { return m_read_xi.bind(); }
+	auto xo_callback() { return m_write_xo.bind(); }
 
 	DECLARE_WRITE_LINE_MEMBER( rcv_w );
 
@@ -82,16 +63,7 @@ public:
 
 	uint8_t get_vector();
 
-protected:
-	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
-
-	// device_serial_interface overrides
-	virtual void tra_callback() override;
-	virtual void tra_complete() override;
-	virtual void rcv_complete() override;
+	virtual void io_map(address_map &map);
 
 	DECLARE_READ8_MEMBER( rb_r );
 	DECLARE_READ8_MEMBER( xi_r );
@@ -103,6 +75,17 @@ protected:
 	DECLARE_WRITE8_MEMBER( xo_w );
 	DECLARE_WRITE8_MEMBER( mr_w );
 	DECLARE_WRITE8_MEMBER( tmr_w );
+
+protected:
+	// device-level overrides
+	virtual void device_start() override;
+	virtual void device_reset() override;
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
+
+	// device_serial_interface overrides
+	virtual void tra_callback() override;
+	virtual void tra_complete() override;
+	virtual void rcv_complete() override;
 
 private:
 	enum
@@ -166,7 +149,7 @@ private:
 	void set_interrupt(uint8_t mask);
 	void check_interrupt();
 
-	devcb_write_line m_write_irq;
+	devcb_write_line m_write_int;
 	devcb_write_line m_write_xmt;
 	devcb_read8 m_read_xi;
 	devcb_write8 m_write_xo;
@@ -187,7 +170,6 @@ private:
 
 
 // device type definition
-extern const device_type TMS5501;
 DECLARE_DEVICE_TYPE(TMS5501, tms5501_device)
 
 #endif // MAME_MACHINE_TMS5501_H

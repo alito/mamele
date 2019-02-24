@@ -31,6 +31,7 @@
 
 
 namespace ui {
+
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
@@ -85,14 +86,14 @@ menu::global_state::global_state(running_machine &machine, ui_options const &opt
 	, m_machine(machine)
 	, m_cleanup_callbacks()
 	, m_bgrnd_bitmap()
+	, m_bgrnd_texture(nullptr, machine.render())
 	, m_stack()
 	, m_free()
 {
 	render_manager &render(machine.render());
-	auto const texture_free([&render](render_texture *texture) { render.texture_free(texture); });
 
 	// create a texture for main menu background
-	m_bgrnd_texture = texture_ptr(render.texture_alloc(render_texture::hq_scale), texture_free);
+	m_bgrnd_texture.reset(render.texture_alloc(render_texture::hq_scale));
 	if (options.use_background_image() && (&machine.system() == &GAME_NAME(___empty)))
 	{
 		m_bgrnd_bitmap = std::make_unique<bitmap_argb32>(0, 0);
@@ -261,7 +262,7 @@ menu::~menu()
 	{
 		pool *const ppool = m_pool;
 		m_pool = m_pool->next;
-		global_free(ppool);
+		global_free_array(ppool);
 	}
 }
 
@@ -402,6 +403,22 @@ void menu::item_append(std::string &&text, std::string &&subtext, uint32_t flags
 		selected = index;
 	if (m_resetpos == (item.size() - 1))
 		selected = item.size() - 1;
+}
+
+
+//-------------------------------------------------
+//  item_append_on_off - append a new "On"/"Off"
+//  item to the end of the menu
+//-------------------------------------------------
+
+void menu::item_append_on_off(const std::string &text, bool state, uint32_t flags, void *ref, menu_item_type type)
+{
+	if (flags & FLAG_DISABLE)
+		ref = nullptr;
+	else
+		flags |= state ? FLAG_LEFT_ARROW : FLAG_RIGHT_ARROW;
+
+	item_append(std::string(text), state ? _("On") : _("Off"), flags, ref, type);
 }
 
 

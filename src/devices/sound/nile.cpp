@@ -69,6 +69,11 @@ nile_device::nile_device(const machine_config &mconfig, const char *tag, device_
 void nile_device::device_start()
 {
 	m_stream = stream_alloc(0, 2, 44100);
+	save_item(NAME(m_sound_regs));
+	save_item(NAME(m_vpos));
+	save_item(NAME(m_frac));
+	save_item(NAME(m_lponce));
+	save_item(NAME(m_ctrl));
 }
 
 
@@ -170,7 +175,7 @@ WRITE16_MEMBER( nile_device::nile_sndctrl_w )
 
 	COMBINE_DATA(&m_ctrl);
 
-//  printf("CTRL: %04x -> %04x (PC=%x)\n", ctrl, m_ctrl, space.device().safe_pc());
+//  logerror("CTRL: %04x -> %04x %s\n", ctrl, m_ctrl, machine().describe_context());
 
 	ctrl^=m_ctrl;
 }
@@ -223,5 +228,5 @@ WRITE16_MEMBER( nile_device::nile_snd_w )
 		m_vpos[v] = m_frac[v] = m_lponce[v] = 0;
 	}
 
-	//printf("v%02d: %04x to reg %02d (PC=%x)\n", v, m_sound_regs[offset], r, space.device().safe_pc());
+	//logerror("v%02d: %04x to reg %02d (PC=%x)\n", v, m_sound_regs[offset], r, machine().describe_context());
 }

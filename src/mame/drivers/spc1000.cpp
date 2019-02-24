@@ -18,7 +18,7 @@ NOTE: 2014-09-13: added code from someone's modified MESS driver for floppy
                   author is Miso Kim.
 
                   Hardware details of the fdc: Intelligent device, Z80 CPU,
-                  XTAL_8MHz, PPI 8255, FDC uPD765C, 2 RAM chips, 28 other
+                  XTAL(8'000'000), PPI 8255, FDC uPD765C, 2 RAM chips, 28 other
                   small ics. And of course, no schematic.
 
 
@@ -163,6 +163,9 @@ public:
 		, m_centronics(*this, "centronics")
 	{}
 
+	void spc1000(machine_config &config);
+
+private:
 	DECLARE_WRITE8_MEMBER(iplk_w);
 	DECLARE_READ8_MEMBER(iplk_r);
 	DECLARE_WRITE_LINE_MEMBER(irq_w);
@@ -178,7 +181,9 @@ public:
 		return m_p_videoram[0x1000 + (ch & 0x7f) * 16 + line];
 	}
 
-private:
+	void spc1000_io(address_map &map);
+	void spc1000_mem(address_map &map);
+
 	uint8_t m_IPLK;
 	uint8_t m_GMODE;
 	uint16_t m_page;
@@ -197,11 +202,12 @@ private:
 	required_device<centronics_device> m_centronics;
 };
 
-static ADDRESS_MAP_START(spc1000_mem, AS_PROGRAM, 8, spc1000_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
-	AM_RANGE(0x8000, 0xffff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank4")
-ADDRESS_MAP_END
+void spc1000_state::spc1000_mem(address_map &map)
+{
+	map.unmap_value_high();
+	map(0x0000, 0x7fff).bankr("bank1").bankw("bank2");
+	map(0x8000, 0xffff).bankr("bank3").bankw("bank4");
+}
 
 WRITE8_MEMBER(spc1000_state::iplk_w)
 {
@@ -261,17 +267,18 @@ READ8_MEMBER( spc1000_state::keyboard_r )
 }
 
 
-static ADDRESS_MAP_START( spc1000_io , AS_IO, 8, spc1000_state )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_SHARE("videoram")
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(gmode_r, gmode_w)
-	AM_RANGE(0x4000, 0x4000) AM_DEVWRITE("ay8910", ay8910_device, address_w)
-	AM_RANGE(0x4001, 0x4001) AM_DEVREADWRITE("ay8910", ay8910_device, data_r, data_w)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(cass_w)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(keyboard_r)
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE(iplk_r, iplk_w)
-	AM_RANGE(0xc000, 0xdfff) AM_DEVREADWRITE("ext1", spc1000_exp_device, read, write)
-ADDRESS_MAP_END
+void spc1000_state::spc1000_io(address_map &map)
+{
+	map.unmap_value_high();
+	map(0x0000, 0x1fff).ram().share("videoram");
+	map(0x2000, 0x3fff).rw(FUNC(spc1000_state::gmode_r), FUNC(spc1000_state::gmode_w));
+	map(0x4000, 0x4000).w("ay8910", FUNC(ay8910_device::address_w));
+	map(0x4001, 0x4001).rw("ay8910", FUNC(ay8910_device::data_r), FUNC(ay8910_device::data_w));
+	map(0x6000, 0x6000).w(FUNC(spc1000_state::cass_w));
+	map(0x8000, 0x9fff).r(FUNC(spc1000_state::keyboard_r));
+	map(0xa000, 0xa000).rw(FUNC(spc1000_state::iplk_r), FUNC(spc1000_state::iplk_w));
+	map(0xc000, 0xdfff).rw("ext1", FUNC(spc1000_exp_device::read), FUNC(spc1000_exp_device::write));
+}
 
 /* Input ports */
 static INPUT_PORTS_START( spc1000 )
@@ -453,54 +460,54 @@ WRITE_LINE_MEMBER( spc1000_state::irq_w )
 //  address maps
 //-------------------------------------------------
 
-extern SLOT_INTERFACE_START(spc1000_exp)
-	SLOT_INTERFACE("fdd", SPC1000_FDD_EXP)
-	SLOT_INTERFACE("vdp", SPC1000_VDP_EXP)
-SLOT_INTERFACE_END
+void spc1000_exp(device_slot_interface &device)
+{
+	device.option_add("fdd", SPC1000_FDD_EXP);
+	device.option_add("vdp", SPC1000_VDP_EXP);
+}
 
-static MACHINE_CONFIG_START( spc1000 )
+MACHINE_CONFIG_START(spc1000_state::spc1000)
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-	MCFG_CPU_PROGRAM_MAP(spc1000_mem)
-	MCFG_CPU_IO_MAP(spc1000_io)
+	MCFG_DEVICE_ADD("maincpu",Z80, XTAL(4'000'000))
+	MCFG_DEVICE_PROGRAM_MAP(spc1000_mem)
+	MCFG_DEVICE_IO_MAP(spc1000_io)
 
 	/* video hardware */
-	MCFG_SCREEN_MC6847_NTSC_ADD("screen", "mc6847")
+	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
 
-	MCFG_DEVICE_ADD("mc6847", MC6847_NTSC, XTAL_3_579545MHz)
-	MCFG_MC6847_FSYNC_CALLBACK(WRITELINE(spc1000_state, irq_w))
-	MCFG_MC6847_INPUT_CALLBACK(READ8(spc1000_state, mc6847_videoram_r))
-	MCFG_MC6847_CHARROM_CALLBACK(spc1000_state, get_char_rom)
-	MCFG_MC6847_FIXED_MODE(mc6847_ntsc_device::MODE_GM2)
+	MC6847_NTSC(config, m_vdg, XTAL(3'579'545));
+	m_vdg->set_screen("screen");
+	m_vdg->fsync_wr_callback().set(FUNC(spc1000_state::irq_w));
+	m_vdg->input_callback().set(FUNC(spc1000_state::mc6847_videoram_r));
+	m_vdg->set_get_char_rom(FUNC(spc1000_state::get_char_rom));
+	m_vdg->set_get_fixed_mode(mc6847_ntsc_device::MODE_GM2);
 	// other lines not connected
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ay8910", AY8910, XTAL_4MHz / 1)
-	MCFG_AY8910_PORT_A_READ_CB(READ8(spc1000_state, porta_r))
-	MCFG_AY8910_PORT_B_WRITE_CB(DEVWRITE8("cent_data_out", output_latch_device, write))
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.05)
+	SPEAKER(config, "mono").front_center();
+	ay8910_device &ay8910(AY8910(config, "ay8910", XTAL(4'000'000) / 1));
+	ay8910.port_a_read_callback().set(FUNC(spc1000_state::porta_r));
+	ay8910.port_b_write_callback().set("cent_data_out", FUNC(output_latch_device::bus_w));
+	ay8910.add_route(ALL_OUTPUTS, "mono", 1.00);
+	WAVE(config, "wave", m_cass).add_route(ALL_OUTPUTS, "mono", 0.05);
 
 	MCFG_DEVICE_ADD("ext1", SPC1000_EXP_SLOT, 0)
 	MCFG_DEVICE_SLOT_INTERFACE(spc1000_exp, nullptr, false)
 
-	MCFG_CENTRONICS_ADD("centronics", centronics_devices, "printer")
-	MCFG_CENTRONICS_BUSY_HANDLER(WRITELINE(spc1000_state, centronics_busy_w))
+	MCFG_DEVICE_ADD(m_centronics, CENTRONICS, centronics_devices, "printer")
+	MCFG_CENTRONICS_BUSY_HANDLER(WRITELINE(*this, spc1000_state, centronics_busy_w))
 	MCFG_CENTRONICS_OUTPUT_LATCH_ADD("cent_data_out", "centronics")
 	MCFG_DEVICE_ADD("cent_status_in", INPUT_BUFFER, 0)
 
-	MCFG_CASSETTE_ADD("cassette")
-	MCFG_CASSETTE_FORMATS(spc1000_cassette_formats)
-	MCFG_CASSETTE_DEFAULT_STATE(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_DISABLED)
-	MCFG_CASSETTE_INTERFACE("spc1000_cass")
+	CASSETTE(config, m_cass);
+	m_cass->set_formats(spc1000_cassette_formats);
+	m_cass->set_default_state(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_DISABLED);
+	m_cass->set_interface("spc1000_cass");
 
 	MCFG_SOFTWARE_LIST_ADD("cass_list", "spc1000_cass")
 
 	/* internal ram */
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
+	RAM(config, RAM_TAG).set_default_size("64K");
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -520,5 +527,5 @@ ROM_END
 
 /* Driver */
 
-//    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT    CLASS           INIT  COMPANY    FULLNAME    FLAGS
-COMP( 1982, spc1000,  0,      0,       spc1000,   spc1000, spc1000_state,  0,    "Samsung", "SPC-1000", 0 )
+//    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT    CLASS          INIT        COMPANY    FULLNAME    FLAGS
+COMP( 1982, spc1000, 0,      0,      spc1000, spc1000, spc1000_state, empty_init, "Samsung", "SPC-1000", 0 )

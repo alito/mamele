@@ -87,7 +87,7 @@ READ16_MEMBER(pgm_asic3_state::pgm_asic3_r)
 		case 0x34: return 0x32;
 
 	//  default:
-	//       logerror("ASIC3 R: CMD %2.2X PC: %6.6x\n", m_asic3_reg, space.device().safe_pc());
+	//       logerror("ASIC3 R: CMD %2.2X %s\n", m_asic3_reg, machine().describe_context());
 	}
 
 	return 0;
@@ -155,13 +155,13 @@ WRITE16_MEMBER(pgm_asic3_state::pgm_asic3_w)
 		break;
 
 		default:
-				logerror("ASIC3 W: CMD %2.2X DATA: %4.4x, PC: %6.6x\n", m_asic3_reg, data, space.device().safe_pc());
+			logerror("ASIC3 W: CMD %2.2X DATA: %4.4x %s\n", m_asic3_reg, data, machine().describe_context());
 	}
 }
 
 /* Oriental Legend INIT */
 
-DRIVER_INIT_MEMBER(pgm_asic3_state,orlegend)
+void pgm_asic3_state::init_orlegend()
 {
 	pgm_basic_init();
 
@@ -220,6 +220,6 @@ INPUT_PORTS_START( orlegendk )
 INPUT_PORTS_END
 
 
-MACHINE_CONFIG_START( pgm_asic3 )
-	MCFG_FRAGMENT_ADD(pgmbase)
+MACHINE_CONFIG_START(pgm_asic3_state::pgm_asic3)
+	pgmbase(config);
 MACHINE_CONFIG_END

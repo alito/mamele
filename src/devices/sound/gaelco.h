@@ -7,20 +7,8 @@
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_GAELCO_SND_DATA(_tag) \
-	gaelco_gae1_device::set_snd_data_tag(*device, "^" _tag);
-
-#define MCFG_GAELCO_BANKS(_offs1, _offs2, _offs3, _offs4) \
-	gaelco_gae1_device::set_bank_offsets(*device, _offs1, _offs2, _offs3, _offs4);
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
-
 
 // ======================> gaelco_gae1_device
 
@@ -28,16 +16,15 @@ class gaelco_gae1_device : public device_t,
 							public device_sound_interface
 {
 public:
-	gaelco_gae1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	gaelco_gae1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	static void set_snd_data_tag(device_t &device, const char *tag) { downcast<gaelco_gae1_device &>(device).m_snd_data.set_tag(tag); }
-	static void set_bank_offsets(device_t &device, int offs1, int offs2, int offs3, int offs4)
+	void set_snd_data_tag(const char *tag) { m_snd_data.set_tag(tag); }
+	void set_bank_offsets(int offs1, int offs2, int offs3, int offs4)
 	{
-		gaelco_gae1_device &dev = downcast<gaelco_gae1_device &>(device);
-		dev.m_banks[0] = offs1;
-		dev.m_banks[1] = offs2;
-		dev.m_banks[2] = offs3;
-		dev.m_banks[3] = offs4;
+		m_banks[0] = offs1;
+		m_banks[1] = offs2;
+		m_banks[2] = offs3;
+		m_banks[3] = offs4;
 	}
 
 	DECLARE_WRITE16_MEMBER( gaelcosnd_w );
@@ -84,7 +71,7 @@ DECLARE_DEVICE_TYPE(GAELCO_GAE1, gaelco_gae1_device)
 class gaelco_cg1v_device : public gaelco_gae1_device
 {
 public:
-	gaelco_cg1v_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	gaelco_cg1v_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 };
 
 DECLARE_DEVICE_TYPE(GAELCO_CG1V, gaelco_cg1v_device)

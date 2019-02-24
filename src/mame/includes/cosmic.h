@@ -5,21 +5,26 @@
     Cosmic Guerilla & other Universal boards (in cosmic.c)
 
 *************************************************************************/
+#ifndef MAME_INCLUDES_COSMIC_H
+#define MAME_INCLUDES_COSMIC_H
+
+#pragma once
 
 #include "machine/timer.h"
 #include "sound/samples.h"
 #include "sound/dac.h"
+#include "emupal.h"
 #include "screen.h"
 
-#define COSMICG_MASTER_CLOCK     XTAL_9_828MHz
-#define Z80_MASTER_CLOCK         XTAL_10_816MHz
+#define COSMICG_MASTER_CLOCK     XTAL(9'828'000)
+#define Z80_MASTER_CLOCK         XTAL(10'816'000)
 
 
 class cosmic_state : public driver_device
 {
 public:
-	cosmic_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	cosmic_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_videoram(*this, "videoram"),
 		m_spriteram(*this, "spriteram"),
 		m_in_ports(*this, "IN%u", 0),
@@ -29,7 +34,8 @@ public:
 		m_dac(*this, "dac"),
 		m_gfxdecode(*this, "gfxdecode"),
 		m_screen(*this, "screen"),
-		m_palette(*this, "palette") { }
+		m_palette(*this, "palette")
+	{ }
 
 	/* memory pointers */
 	required_shared_ptr<uint8_t> m_videoram;
@@ -79,19 +85,19 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(cosmicg_coin_inserted);
 	DECLARE_INPUT_CHANGED_MEMBER(coin_inserted_irq0);
 	DECLARE_INPUT_CHANGED_MEMBER(coin_inserted_nmi);
-	DECLARE_DRIVER_INIT(devzone);
-	DECLARE_DRIVER_INIT(cosmicg);
-	DECLARE_DRIVER_INIT(nomnlnd);
-	DECLARE_DRIVER_INIT(cosmica);
-	DECLARE_DRIVER_INIT(panic);
+	void init_devzone();
+	void init_cosmicg();
+	void init_nomnlnd();
+	void init_cosmica();
+	void init_panic();
 	DECLARE_MACHINE_START(cosmic);
 	DECLARE_MACHINE_RESET(cosmic);
 	DECLARE_MACHINE_RESET(cosmicg);
-	DECLARE_PALETTE_INIT(cosmicg);
-	DECLARE_PALETTE_INIT(panic);
-	DECLARE_PALETTE_INIT(cosmica);
-	DECLARE_PALETTE_INIT(magspot);
-	DECLARE_PALETTE_INIT(nomnlnd);
+	void panic_palette(palette_device &palette);
+	void cosmica_palette(palette_device &palette);
+	void cosmicg_palette(palette_device &palette);
+	void magspot_palette(palette_device &palette);
+	void nomnlnd_palette(palette_device &palette);
 	uint32_t screen_update_cosmicg(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_panic(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_cosmica(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -108,4 +114,18 @@ public:
 	pen_t cosmica_map_color(uint8_t x, uint8_t y);
 	pen_t cosmicg_map_color(uint8_t x, uint8_t y);
 	pen_t magspot_map_color(uint8_t x, uint8_t y);
+	void cosmic(machine_config &config);
+	void cosmica(machine_config &config);
+	void cosmicg(machine_config &config);
+	void nomnlnd(machine_config &config);
+	void devzone(machine_config &config);
+	void panic(machine_config &config);
+	void magspot(machine_config &config);
+	void cosmica_map(address_map &map);
+	void cosmicg_io_map(address_map &map);
+	void cosmicg_map(address_map &map);
+	void magspot_map(address_map &map);
+	void panic_map(address_map &map);
 };
+
+#endif // MAME_INCLUDES_COSMIC_H

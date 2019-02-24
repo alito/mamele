@@ -224,7 +224,27 @@ newoption {
 
 newoption {
 	trigger = "ARCHOPTS",
-	description = "ARCHOPTS.",
+	description = "Additional options for target C/C++/Objective-C/Objective-C++ compilers and linker.",
+}
+
+newoption {
+	trigger = "ARCHOPTS_C",
+	description = "Additional options for target C++ compiler.",
+}
+
+newoption {
+	trigger = "ARCHOPTS_CXX",
+	description = "Additional options for target C++ compiler.",
+}
+
+newoption {
+	trigger = "ARCHOPTS_OBJC",
+	description = "Additional options for target Objective-C compiler.",
+}
+
+newoption {
+	trigger = "ARCHOPTS_OBJCXX",
+	description = "Additional options for target Objective-C++ compiler.",
 }
 
 newoption {
@@ -392,6 +412,11 @@ newoption {
 }
 
 newoption {
+	trigger = "SANITIZE",
+	description = "Specifies the santizer(s) to use."
+}
+
+newoption {
 	trigger = "PROJECT",
 	description = "Select projects to be built. Will look into project folder for files.",
 }
@@ -412,14 +437,6 @@ end
 
 if not _OPTIONS["BIGENDIAN"] then
 	_OPTIONS["BIGENDIAN"] = "0"
-end
-
-if not _OPTIONS["NOASM"] then
-	if _OPTIONS["targetos"]=="emscripten" then
-		_OPTIONS["NOASM"] = "1"
-	else
-		_OPTIONS["NOASM"] = "0"
-	end
 end
 
 if _OPTIONS["NOASM"]=="1" and not _OPTIONS["FORCE_DRC_C_BACKEND"] then
@@ -469,14 +486,13 @@ flags {
 	"StaticRuntime",
 }
 
-configuration { "vs*" }
+configuration { "vs20*" }
 	buildoptions {
 		"/bigobj",
 	}
 	flags {
 		"NoPCH",
 		"ExtraWarnings",
-		"NoEditAndContinue",
 	}
 	if not _OPTIONS["NOWERROR"] then
 		flags{
@@ -485,15 +501,17 @@ configuration { "vs*" }
 	end
 
 
-configuration { "Debug", "vs*" }
+configuration { "Debug", "vs20*" }
 	flags {
 		"Symbols",
-		"NoIncrementalLink",
+		"NoMultiProcessorCompilation",
 	}
 
-configuration { "Release", "vs*" }
+configuration { "Release", "vs20*" }
 	flags {
 		"Optimize",
+		"NoEditAndContinue",
+		"NoIncrementalLink",
 	}
 
 -- Force VS2015/17 targets to use bundled SDL2
@@ -575,7 +593,8 @@ configuration { "Debug" }
 
 if _OPTIONS["FASTDEBUG"]=="1" then
 	defines {
-		"MAME_DEBUG_FAST"
+		"MAME_DEBUG_FAST",
+		"NDEBUG",
 	}
 end
 
@@ -671,6 +690,16 @@ if not _OPTIONS["with-system-flac"]~=nil then
 	}
 end
 
+if not _OPTIONS["with-system-pugixml"] then
+	defines {
+		"PUGIXML_HEADER_ONLY",
+	}
+else
+	links {
+		ext_lib("pugixml"),
+	}
+end
+
 if _OPTIONS["NOASM"]=="1" then
 	defines {
 		"MAME_NOASM"
@@ -763,7 +792,7 @@ if (_OPTIONS["SHADOW_CHECK"]=="1") then
 end
 
 -- only show deprecation warnings when enabled
-if _OPTIONS["DEPRECATED"]~="1" then
+if _OPTIONS["DEPRECATED"]=="0" then
 	buildoptions {
 		"-Wno-deprecated-declarations"
 	}
@@ -852,7 +881,7 @@ end
 
 configuration { "mingw-clang" }
 	buildoptions {
-		"-O1", -- without this executable crash often
+		"-Xclang -flto-visibility-public-std", -- workround for __imp___ link errors
 	}
 configuration {  }
 
@@ -862,6 +891,30 @@ if _OPTIONS["ARCHOPTS"] then
 	}
 	linkoptions {
 		_OPTIONS["ARCHOPTS"]
+	}
+end
+
+if _OPTIONS["ARCHOPTS_C"] then
+	buildoptions_c {
+		_OPTIONS["ARCHOPTS_C"]
+	}
+end
+
+if _OPTIONS["ARCHOPTS_CXX"] then
+	buildoptions_cpp {
+		_OPTIONS["ARCHOPTS_CXX"]
+	}
+end
+
+if _OPTIONS["ARCHOPTS_OBJC"] then
+	buildoptions_objc {
+		_OPTIONS["ARCHOPTS_OBJC"]
+	}
+end
+
+if _OPTIONS["ARCHOPTS_OBJCXX"] then
+	buildoptions_objcpp {
+		_OPTIONS["ARCHOPTS_OBJCXX"]
 	}
 end
 
@@ -933,6 +986,7 @@ end
 		"-Wwrite-strings",
 		"-Wno-sign-compare",
 		"-Wno-conversion",
+		"-Wno-error=deprecated-declarations",
 	}
 -- warnings only applicable to C compiles
 	buildoptions_c {
@@ -956,12 +1010,37 @@ end
 		"-Woverloaded-virtual",
 	}
 
---ifdef SANITIZE
---CCOMFLAGS += -fsanitize=$(SANITIZE)
+if _OPTIONS["SANITIZE"] then
+	buildoptions {
+		"-fsanitize=".. _OPTIONS["SANITIZE"]
+	}
+	linkoptions {
+		"-fsanitize=".. _OPTIONS["SANITIZE"]
+	}
+	if string.find(_OPTIONS["SANITIZE"], "address") then
+		buildoptions {
+			"-fsanitize-address-use-after-scope"
+		}
+		linkoptions {
+			"-fsanitize-address-use-after-scope"
+		}
+	end
+	if string.find(_OPTIONS["SANITIZE"], "undefined") then
+		-- 'function' produces errors without delegates by design
+		-- 'alignment' produces a lot of errors which we are not interested in
+		buildoptions {
+			"-fno-sanitize=function",
+			"-fno-sanitize=alignment"
+		}
+		linkoptions {
+			"-fno-sanitize=function",
+			"-fno-sanitize=alignment"
+		}
+	end
+end
 
 --ifneq (,$(findstring thread,$(SANITIZE)))
 --CCOMFLAGS += -fPIE
---endif
 --endif
 
 
@@ -988,6 +1067,11 @@ end
 					"-Wno-ignored-qualifiers"
 				}
 			end
+			if (version >= 60000) then
+				buildoptions {
+					"-Wno-pragma-pack" -- clang 6.0 complains when the packing change lifetime is not contained within a header file.
+				}
+			end
 		else
 			if (version < 50000) then
 				print("GCC version 5.0 or later needed")
@@ -998,6 +1082,16 @@ end
 					-- array bounds checking seems to be buggy in 4.8.1 (try it on video/stvvdp1.c and video/model1.c without -Wno-array-bounds)
 					"-Wno-array-bounds",
 				}
+			if (version >= 80000) then
+				buildoptions {
+					"-Wno-format-overflow", -- try machine/bfm_sc45_helper.cpp in GCC 8.0.1, among others
+					"-Wno-stringop-truncation", -- ImGui again
+					"-Wno-stringop-overflow",   -- formats/victor9k_dsk.cpp bugs the compiler
+				}
+				buildoptions_cpp {
+					"-Wno-class-memaccess", -- many instances in ImGui and BGFX
+				}
+			end
 		end
 	end
 
@@ -1017,6 +1111,12 @@ if (_OPTIONS["PLATFORM"]=="arm64") then
 	buildoptions {
 		"-Wno-cast-align",
 	}
+	defines {
+		"PTR64=1",
+	}
+end
+
+if (_OPTIONS["PLATFORM"]=="riscv64") then
 	defines {
 		"PTR64=1",
 	}
@@ -1048,6 +1148,9 @@ configuration { "asmjs" }
 	buildoptions_cpp {
 		"-x c++",
 		"-std=c++14",
+	}
+	linkoptions {
+		"-Wl,--start-group",
 	}
 	archivesplit_size "20"
 
@@ -1138,8 +1241,7 @@ configuration { "osx* or xcode4" }
 		}
 
 configuration { "mingw*" }
-		local version = str_to_version(_OPTIONS["gcc_version"])
-		if not (_OPTIONS["gcc"]~=nil and string.find(_OPTIONS["gcc"], "clang")) or version < 40000
+		if _OPTIONS["osd"]~="sdl"
 		then
 			linkoptions {
 				"-static",
@@ -1170,7 +1272,7 @@ configuration { "mingw-clang" }
 	end
 
 
-configuration { "vs*" }
+configuration { "vs20*" }
 		defines {
 			"XML_STATIC",
 			"WIN32",
@@ -1225,6 +1327,7 @@ end
 			"/wd4510", -- warning C4510: 'xxx' : default constructor could not be generated
 			"/wd4512", -- warning C4512: 'xxx' : assignment operator could not be generated
 			"/wd4514", -- warning C4514: 'xxx' : unreferenced inline function has been removed
+			"/wd4521", -- warning C4521: 'xxx' : multiple copy constructors specified
 			"/wd4571", -- warning C4611: interaction between '_setjmp' and C++ object destruction is non-portable
 			"/wd4610", -- warning C4619: #pragma warning : there is no warning number 'xxx'
 			"/wd4611", -- warning C4571: Informational: catch(...) semantics changed since Visual C++ 7.1; structured exceptions (SEH) are no longer caught

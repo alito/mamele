@@ -8,14 +8,14 @@
 
 ***************************************************************************/
 
+#ifndef MAME_FRONTEND_MAME_LUAENGINE_H
+#define MAME_FRONTEND_MAME_LUAENGINE_H
+
 #pragma once
 
 #ifndef __EMU_H__
 #error Dont include this file directly; include emu.h instead.
 #endif
-
-#ifndef __LUA_ENGINE_H__
-#define __LUA_ENGINE_H__
 
 #if defined(__GNUC__) && (__GNUC__ > 6)
 #pragma GCC diagnostic ignored "-Wnoexcept-type"
@@ -132,13 +132,12 @@ private:
 	struct addr_space {
 		addr_space(address_space &space, device_memory_interface &dev) :
 			space(space), dev(dev) {}
-		template<typename T> T mem_read(offs_t address, sol::object shift);
-		template<typename T> void mem_write(offs_t address, T val, sol::object shift);
+		template<typename T> T mem_read(offs_t address);
+		template<typename T> void mem_write(offs_t address, T val);
 		template<typename T> T log_mem_read(offs_t address);
 		template<typename T> void log_mem_write(offs_t address, T val);
 		template<typename T> T direct_mem_read(offs_t address);
 		template<typename T> void direct_mem_write(offs_t address, T val);
-		const char *name() const { return space.name(); }
 
 		address_space &space;
 		device_memory_interface &dev;
@@ -169,4 +168,4 @@ private:
 	};
 };
 
-#endif  /* __LUA_ENGINE_H__ */
+#endif // MAME_FRONTEND_MAME_LUAENGINE_H

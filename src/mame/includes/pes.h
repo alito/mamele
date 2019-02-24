@@ -8,14 +8,13 @@
 
 #pragma once
 
-#ifndef _PES_H_
-#define _PES_H_
+#ifndef MAME_INCLUDES_PES_H
+#define MAME_INCLUDES_PES_H
 
 #include "machine/terminal.h"
 #include "sound/tms5220.h"
 #include "cpu/mcs51/mcs51.h"
 
-#define TERMINAL_TAG "terminal"
 
 class pes_state : public driver_device
 {
@@ -23,7 +22,7 @@ public:
 	pes_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
-		m_terminal(*this, TERMINAL_TAG),
+		m_terminal(*this, "terminal"),
 		m_speech(*this, "tms5220")
 	{
 	}
@@ -48,7 +47,10 @@ public:
 	void pes_kbd_input(u8 data);
 	DECLARE_READ8_MEMBER(data_to_i8031);
 	DECLARE_WRITE8_MEMBER(data_from_i8031);
+	void pes(machine_config &config);
+	void i80c31_io(address_map &map);
+	void i80c31_mem(address_map &map);
 };
 
 
-#endif  // _PES_H_
+#endif // MAME_INCLUDES_PES_H

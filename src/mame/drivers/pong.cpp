@@ -181,6 +181,9 @@ public:
 
 	DECLARE_INPUT_CHANGED_MEMBER(input_changed);
 
+	void pongd(machine_config &config);
+	void pong(machine_config &config);
+	void pongf(machine_config &config);
 protected:
 
 	// driver_device overrides
@@ -245,6 +248,7 @@ public:
 		m_sw1_4->write((newval>>3) & 1);
 	}
 
+	void breakout(machine_config &config);
 protected:
 
 	// driver_device overrides
@@ -371,7 +375,7 @@ static INPUT_PORTS_START( breakout )
 
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( pong )
+MACHINE_CONFIG_START(pong_state::pong)
 
 	/* basic machine hardware */
 	MCFG_DEVICE_ADD("maincpu", NETLIST_CPU, NETLIST_CLOCK)
@@ -389,24 +393,25 @@ static MACHINE_CONFIG_START( pong )
 	MCFG_NETLIST_LOGIC_INPUT("maincpu", "antenna", "antenna.IN", 0)
 
 	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "snd0", "sound", pong_state, sound_cb, "")
-	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_vid, "fixfreq")
+	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_composite_monochrome, "fixfreq")
 
 	/* video hardware */
-	MCFG_FIXFREQ_ADD("fixfreq", "screen")
-	MCFG_FIXFREQ_MONITOR_CLOCK(MASTER_CLOCK)
-	MCFG_FIXFREQ_HORZ_PARAMS(H_TOTAL_PONG-67,H_TOTAL_PONG-40,H_TOTAL_PONG-8,H_TOTAL_PONG)
-	MCFG_FIXFREQ_VERT_PARAMS(V_TOTAL_PONG-22,V_TOTAL_PONG-19,V_TOTAL_PONG-12,V_TOTAL_PONG)
-	MCFG_FIXFREQ_FIELDCOUNT(1)
-	MCFG_FIXFREQ_SYNC_THRESHOLD(0.11)
+	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
+	FIXFREQ(config, m_video).set_screen("screen");
+	m_video->set_monitor_clock(MASTER_CLOCK);
+	m_video->set_horz_params(H_TOTAL_PONG-67,H_TOTAL_PONG-40,H_TOTAL_PONG-8,H_TOTAL_PONG);
+	m_video->set_vert_params(V_TOTAL_PONG-22,V_TOTAL_PONG-19,V_TOTAL_PONG-12,V_TOTAL_PONG);
+	m_video->set_fieldcount(1);
+	m_video->set_threshold(0.11);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("speaker")
-	MCFG_SOUND_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
+	SPEAKER(config, "speaker").front_center();
+	MCFG_DEVICE_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
 	MCFG_DEVICE_ADD("vref", VOLTAGE_REGULATOR, 0) MCFG_VOLTAGE_REGULATOR_OUTPUT(5.0)
-	MCFG_SOUND_ROUTE_EX(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
+	MCFG_SOUND_ROUTE(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( breakout )
+MACHINE_CONFIG_START(breakout_state::breakout)
 
 	/* basic machine hardware */
 	MCFG_DEVICE_ADD("maincpu", NETLIST_CPU, NETLIST_CLOCK)
@@ -431,7 +436,7 @@ static MACHINE_CONFIG_START( breakout )
 	MCFG_NETLIST_LOGIC_INPUT("maincpu", "antenna", "antenna.IN", 0)
 
 	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "snd0", "sound", breakout_state, sound_cb, "")
-	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_vid, "fixfreq")
+	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_composite_monochrome, "fixfreq")
 
 	// Leds and lamps
 
@@ -441,25 +446,27 @@ static MACHINE_CONFIG_START( breakout )
 	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "coin_counter", "CON_T", breakout_state, coin_counter_cb, "")
 
 	/* video hardware */
-	MCFG_FIXFREQ_ADD("fixfreq", "screen")
+	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
+	FIXFREQ(config, m_video).set_screen("screen");
 	/* The Pixel width is a 2,1,2,1,2,1,1,1 repeating pattern
 	 * Thus we must use double resolution horizontally
 	 */
-	MCFG_FIXFREQ_MONITOR_CLOCK(MASTER_CLOCK_BREAKOUT*2)
-	MCFG_FIXFREQ_HORZ_PARAMS((H_TOTAL_BREAKOUT-104)*2,(H_TOTAL_BREAKOUT-72)*2,(H_TOTAL_BREAKOUT-8)*2,  (H_TOTAL_BREAKOUT)*2)
-	MCFG_FIXFREQ_VERT_PARAMS(V_TOTAL_BREAKOUT-22,V_TOTAL_BREAKOUT-23,V_TOTAL_BREAKOUT-4, V_TOTAL_BREAKOUT)
-	MCFG_FIXFREQ_FIELDCOUNT(1)
-	MCFG_FIXFREQ_SYNC_THRESHOLD(1.0)
-	MCFG_FIXFREQ_GAIN(1.5)
+	m_video->set_monitor_clock(MASTER_CLOCK_BREAKOUT*2);
+	m_video->set_horz_params((H_TOTAL_BREAKOUT-104)*2,(H_TOTAL_BREAKOUT-72)*2,(H_TOTAL_BREAKOUT-8)*2,  (H_TOTAL_BREAKOUT)*2);
+	m_video->set_vert_params(V_TOTAL_BREAKOUT-22,V_TOTAL_BREAKOUT-23,V_TOTAL_BREAKOUT-4, V_TOTAL_BREAKOUT);
+	m_video->set_fieldcount(1);
+	m_video->set_threshold(1.0);
+	m_video->set_gain(1.5);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("speaker")
-	MCFG_SOUND_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
+	SPEAKER(config, "speaker").front_center();
+	MCFG_DEVICE_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
 	MCFG_DEVICE_ADD("vref", VOLTAGE_REGULATOR, 0) MCFG_VOLTAGE_REGULATOR_OUTPUT(5.0)
-	MCFG_SOUND_ROUTE_EX(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
+	MCFG_SOUND_ROUTE(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( pongf, pong )
+MACHINE_CONFIG_START(pong_state::pongf)
+	pong(config);
 
 	/* basic machine hardware */
 	MCFG_DEVICE_MODIFY("maincpu")
@@ -467,7 +474,7 @@ static MACHINE_CONFIG_DERIVED( pongf, pong )
 
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( pongd )
+MACHINE_CONFIG_START(pong_state::pongd)
 
 	/* basic machine hardware */
 	MCFG_DEVICE_ADD("maincpu", NETLIST_CPU, NETLIST_CLOCK)
@@ -486,21 +493,22 @@ static MACHINE_CONFIG_START( pongd )
 #endif
 
 	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "snd0", "AUDIO", pong_state, sound_cb, "")
-	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_vid, "fixfreq")
+	MCFG_NETLIST_ANALOG_OUTPUT("maincpu", "vid0", "videomix", fixedfreq_device, update_composite_monochrome, "fixfreq")
 
 	/* video hardware */
-	MCFG_FIXFREQ_ADD("fixfreq", "screen")
-	MCFG_FIXFREQ_MONITOR_CLOCK(MASTER_CLOCK)
-	MCFG_FIXFREQ_HORZ_PARAMS(H_TOTAL_PONG-67,H_TOTAL_PONG-52,H_TOTAL_PONG-8,H_TOTAL_PONG)
-	MCFG_FIXFREQ_VERT_PARAMS(V_TOTAL_PONG-22,V_TOTAL_PONG-19,V_TOTAL_PONG-12,V_TOTAL_PONG)
-	MCFG_FIXFREQ_FIELDCOUNT(1)
-	MCFG_FIXFREQ_SYNC_THRESHOLD(0.11)
+	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
+	FIXFREQ(config, m_video).set_screen("screen");
+	m_video->set_monitor_clock(MASTER_CLOCK);
+	m_video->set_horz_params(H_TOTAL_PONG-67,H_TOTAL_PONG-52,H_TOTAL_PONG-8,H_TOTAL_PONG);
+	m_video->set_vert_params(V_TOTAL_PONG-22,V_TOTAL_PONG-19,V_TOTAL_PONG-12,V_TOTAL_PONG);
+	m_video->set_fieldcount(1);
+	m_video->set_threshold(0.11);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("speaker")
-	MCFG_SOUND_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
+	SPEAKER(config, "speaker").front_center();
+	MCFG_DEVICE_ADD("dac", DAC_16BIT_R2R_TWOS_COMPLEMENT, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "speaker", 0.5) // unknown DAC
 	MCFG_DEVICE_ADD("vref", VOLTAGE_REGULATOR, 0) MCFG_VOLTAGE_REGULATOR_OUTPUT(5.0)
-	MCFG_SOUND_ROUTE_EX(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
+	MCFG_SOUND_ROUTE(0, "dac", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE(0, "dac", -1.0, DAC_VREF_NEG_INPUT)
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -565,18 +573,18 @@ ROM_START( consolet ) // dummy to satisfy game entry
 ROM_END
 */
 
-GAME( 1972, pong,       0, pong,     pong,      pong_state,      0, ROT0,  "Atari", "Pong (Rev E) external [TTL]", MACHINE_SUPPORTS_SAVE)
-GAME( 1972, pongf,      0, pongf,    pong,      pong_state,      0, ROT0,  "Atari", "Pong (Rev E) [TTL]", MACHINE_SUPPORTS_SAVE)
-GAME( 1973, pongd,      0, pongd,    pongd,     pong_state,      0, ROT0,  "Atari", "Pong Doubles [TTL]", MACHINE_SUPPORTS_SAVE)
-GAMEL( 1976, breakout,  0, breakout, breakout,  breakout_state,  0, ROT90, "Atari", "Breakout [TTL]", MACHINE_SUPPORTS_SAVE, layout_breakout)
+GAME(  1972, pong,      0, pong,     pong,      pong_state,     empty_init, ROT0,  "Atari", "Pong (Rev E) external [TTL]", MACHINE_SUPPORTS_SAVE)
+GAME(  1972, pongf,     0, pongf,    pong,      pong_state,     empty_init, ROT0,  "Atari", "Pong (Rev E) [TTL]", MACHINE_SUPPORTS_SAVE)
+GAME(  1973, pongd,     0, pongd,    pongd,     pong_state,     empty_init, ROT0,  "Atari", "Pong Doubles [TTL]", MACHINE_SUPPORTS_SAVE)
+GAMEL( 1976, breakout,  0, breakout, breakout,  breakout_state, empty_init, ROT90, "Atari", "Breakout [TTL]", MACHINE_SUPPORTS_SAVE, layout_breakout)
 
 // 100% TTL
-//GAME( 1973, coupedav,   pongd,    pongd,    pongd,     driver_device,  0, ROT0,  "Atari France", "Coupe Davis [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1973, pongbarl,   pong,     pong,     pong,      driver_device,  0, ROT0,  "Atari", "Pong In-A-Barrel [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1974, cktpong,    pong,     pong,     pong,      driver_device,  0, ROT0,  "Atari / National Entertainment Co.", "Cocktail Pong [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1974, drpong,     pong,     pong,     pong,      driver_device,  0, ROT0,  "Atari", "Dr. Pong [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1974, pupppong,   pong,     pong,     pong,      driver_device,  0, ROT0,  "Atari", "Puppy Pong [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1974, snoopong,   pong,     pong,     pong,      driver_device,  0, ROT0,  "Atari", "Snoopy Pong [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAME( 1974, suprpong,   0,        suprpong, pong,      driver_device,  0, ROT0,  "Atari", "Superpong [TTL]", MACHINE_SUPPORTS_SAVE)
-//GAMEL( 1976, breakckt,  breakout, breakout, breakout,  driver_device,  0, ROT90, "Atari", "Breakout Cocktail [TTL]", MACHINE_SUPPORTS_SAVE, layout_breakckt)
-//GAMEL( 1976, consolet,  breakout, breakout, breakout,  driver_device,  0, ROT90, "Atari Europe", "Consolette [TTL]", MACHINE_SUPPORTS_SAVE, layout_consolet)
+//GAME( 1973, coupedav,   pongd,    pongd,    pongd,     driver_device, empty_init, ROT0,  "Atari France", "Coupe Davis [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1973, pongbarl,   pong,     pong,     pong,      driver_device, empty_init, ROT0,  "Atari", "Pong In-A-Barrel [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1974, cktpong,    pong,     pong,     pong,      driver_device, empty_init, ROT0,  "Atari / National Entertainment Co.", "Cocktail Pong [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1974, drpong,     pong,     pong,     pong,      driver_device, empty_init, ROT0,  "Atari", "Dr. Pong [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1974, pupppong,   pong,     pong,     pong,      driver_device, empty_init, ROT0,  "Atari", "Puppy Pong [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1974, snoopong,   pong,     pong,     pong,      driver_device, empty_init, ROT0,  "Atari", "Snoopy Pong [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAME( 1974, suprpong,   0,        suprpong, pong,      driver_device, empty_init, ROT0,  "Atari", "Superpong [TTL]", MACHINE_SUPPORTS_SAVE)
+//GAMEL( 1976, breakckt,  breakout, breakout, breakout,  driver_device, empty_init, ROT90, "Atari", "Breakout Cocktail [TTL]", MACHINE_SUPPORTS_SAVE, layout_breakckt)
+//GAMEL( 1976, consolet,  breakout, breakout, breakout,  driver_device, empty_init, ROT90, "Atari Europe", "Consolette [TTL]", MACHINE_SUPPORTS_SAVE, layout_consolet)

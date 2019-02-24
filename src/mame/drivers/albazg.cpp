@@ -8,7 +8,7 @@ driver by Angelo Salese
 
 Notes:
 -The name of this hardware is "Alba ZG board",a newer revision of the
- "Alba ZC board" used by Hanaroku (albazc.c driver). Test mode says clearly that this is
+ "Alba ZC board" used by Hanaroku (albazc.cpp driver). Test mode says clearly that this is
  from 1991.
 
 TODO:
@@ -41,21 +41,44 @@ PCB:
 #include "machine/watchdog.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
+#include "emupal.h"
 #include "screen.h"
 #include "speaker.h"
 
-#define MASTER_CLOCK XTAL_12MHz
+#define MASTER_CLOCK XTAL(12'000'000)
 
 class albazg_state : public driver_device
 {
 public:
-	albazg_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	albazg_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_cus_ram(*this, "cus_ram"),
 		m_videoram(*this, "videoram"),
 		m_colorram(*this, "colorram"),
 		m_maincpu(*this, "maincpu"),
-		m_gfxdecode(*this, "gfxdecode") { }
+		m_gfxdecode(*this, "gfxdecode")
+	{ }
+
+	virtual void yumefuda(machine_config &config);
+
+private:
+	virtual void machine_start() override;
+	virtual void machine_reset() override;
+	virtual void video_start() override;
+
+	DECLARE_WRITE8_MEMBER(yumefuda_vram_w);
+	DECLARE_WRITE8_MEMBER(yumefuda_cram_w);
+	DECLARE_READ8_MEMBER(custom_ram_r);
+	DECLARE_WRITE8_MEMBER(custom_ram_w);
+	DECLARE_WRITE8_MEMBER(prot_lock_w);
+	DECLARE_READ8_MEMBER(mux_r);
+	DECLARE_WRITE8_MEMBER(mux_w);
+	DECLARE_WRITE8_MEMBER(yumefuda_output_w);
+	TILE_GET_INFO_MEMBER(y_get_bg_tile_info);
+	uint32_t screen_update_yumefuda(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+
+	void main_map(address_map &map);
+	void port_map(address_map &map);
 
 	/* memory pointers */
 	required_shared_ptr<uint8_t> m_cus_ram;
@@ -69,19 +92,7 @@ public:
 	uint8_t m_mux_data;
 	int m_bank;
 	uint8_t m_prot_lock;
-	DECLARE_WRITE8_MEMBER(yumefuda_vram_w);
-	DECLARE_WRITE8_MEMBER(yumefuda_cram_w);
-	DECLARE_READ8_MEMBER(custom_ram_r);
-	DECLARE_WRITE8_MEMBER(custom_ram_w);
-	DECLARE_WRITE8_MEMBER(prot_lock_w);
-	DECLARE_READ8_MEMBER(mux_r);
-	DECLARE_WRITE8_MEMBER(mux_w);
-	DECLARE_WRITE8_MEMBER(yumefuda_output_w);
-	TILE_GET_INFO_MEMBER(y_get_bg_tile_info);
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
-	uint32_t screen_update_yumefuda(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+
 	required_device<cpu_device> m_maincpu;
 	required_device<gfxdecode_device> m_gfxdecode;
 };
@@ -122,7 +133,7 @@ static const gfx_layout charlayout =
 	8*8
 };
 
-static GFXDECODE_START( yumefuda )
+static GFXDECODE_START( gfx_yumefuda )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout,   0, 8 )
 GFXDECODE_END
 
@@ -142,13 +153,13 @@ WRITE8_MEMBER(albazg_state::yumefuda_cram_w)
 /*Custom RAM (Thrash Protection)*/
 READ8_MEMBER(albazg_state::custom_ram_r)
 {
-//  logerror("Custom RAM read at %02x PC = %x\n", offset + 0xaf80, space.device().safe_pc());
+//  logerror("Custom RAM read at %02x PC = %x\n", offset + 0xaf80, m_maincpu->space(AS_PROGRAM).pc());
 	return m_cus_ram[offset];// ^ 0x55;
 }
 
 WRITE8_MEMBER(albazg_state::custom_ram_w)
 {
-//  logerror("Custom RAM write at %02x : %02x PC = %x\n", offset + 0xaf80, data, space.device().safe_pc());
+//  logerror("Custom RAM write at %02x : %02x PC = %x\n", offset + 0xaf80, data, m_maincpu->space(AS_PROGRAM).pc());
 	if(m_prot_lock)
 		m_cus_ram[offset] = data;
 }
@@ -156,7 +167,7 @@ WRITE8_MEMBER(albazg_state::custom_ram_w)
 /*this might be used as NVRAM commands btw*/
 WRITE8_MEMBER(albazg_state::prot_lock_w)
 {
-//  logerror("PC %04x Prot lock value written %02x\n", space.device().safe_pc(), data);
+//  logerror("PC %04x Prot lock value written %02x\n", m_maincpu->space(AS_PROGRAM).pc(), data);
 	m_prot_lock = data;
 }
 
@@ -205,28 +216,30 @@ WRITE8_MEMBER(albazg_state::yumefuda_output_w)
 
 /***************************************************************************************/
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 8, albazg_state )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK("bank1")
-	AM_RANGE(0xa7fc, 0xa7fc) AM_WRITE(prot_lock_w)
-	AM_RANGE(0xa7ff, 0xa7ff) AM_WRITE_PORT("EEPROMOUT")
-	AM_RANGE(0xaf80, 0xafff) AM_READWRITE(custom_ram_r, custom_ram_w) AM_SHARE("cus_ram")
-	AM_RANGE(0xb000, 0xb07f) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE(0xb080, 0xb0ff) AM_RAM_DEVWRITE("palette", palette_device, write_ext) AM_SHARE("palette_ext")
-	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(yumefuda_vram_w) AM_SHARE("videoram")
-	AM_RANGE(0xd000, 0xd3ff) AM_RAM_WRITE(yumefuda_cram_w) AM_SHARE("colorram")
-	AM_RANGE(0xe000, 0xffff) AM_RAM
-ADDRESS_MAP_END
+void albazg_state::main_map(address_map &map)
+{
+	map(0x0000, 0x7fff).rom();
+	map(0x8000, 0x9fff).bankr("bank1");
+	map(0xa7fc, 0xa7fc).w(FUNC(albazg_state::prot_lock_w));
+	map(0xa7ff, 0xa7ff).portw("EEPROMOUT");
+	map(0xaf80, 0xafff).rw(FUNC(albazg_state::custom_ram_r), FUNC(albazg_state::custom_ram_w)).share("cus_ram");
+	map(0xb000, 0xb07f).ram().w("palette", FUNC(palette_device::write8)).share("palette");
+	map(0xb080, 0xb0ff).ram().w("palette", FUNC(palette_device::write8_ext)).share("palette_ext");
+	map(0xc000, 0xc3ff).ram().w(FUNC(albazg_state::yumefuda_vram_w)).share("videoram");
+	map(0xd000, 0xd3ff).ram().w(FUNC(albazg_state::yumefuda_cram_w)).share("colorram");
+	map(0xe000, 0xffff).ram();
+}
 
-static ADDRESS_MAP_START( port_map, AS_IO, 8, albazg_state )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_DEVWRITE("crtc", mc6845_device, address_w)
-	AM_RANGE(0x01, 0x01) AM_DEVWRITE("crtc", mc6845_device, register_w)
-	AM_RANGE(0x40, 0x40) AM_DEVREAD("aysnd", ay8910_device, data_r)
-	AM_RANGE(0x40, 0x41) AM_DEVWRITE("aysnd", ay8910_device, address_data_w)
-	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("ppi8255_0", i8255_device, read, write)
-	AM_RANGE(0xc0, 0xc0) AM_DEVWRITE("watchdog", watchdog_timer_device, reset_w)
-ADDRESS_MAP_END
+void albazg_state::port_map(address_map &map)
+{
+	map.global_mask(0xff);
+	map(0x00, 0x00).w("crtc", FUNC(mc6845_device::address_w));
+	map(0x01, 0x01).w("crtc", FUNC(mc6845_device::register_w));
+	map(0x40, 0x40).r("aysnd", FUNC(ay8910_device::data_r));
+	map(0x40, 0x41).w("aysnd", FUNC(ay8910_device::address_data_w));
+	map(0x80, 0x83).rw("ppi8255_0", FUNC(i8255_device::read), FUNC(i8255_device::write));
+	map(0xc0, 0xc0).w("watchdog", FUNC(watchdog_timer_device::reset_w));
+}
 
 /***************************************************************************************/
 
@@ -238,7 +251,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Coin Out")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Pay Out")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Init SW")
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN0")
@@ -346,23 +359,22 @@ void albazg_state::machine_reset()
 	m_prot_lock = 0;
 }
 
-static MACHINE_CONFIG_START( yumefuda )
+MACHINE_CONFIG_START(albazg_state::yumefuda)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80 , MASTER_CLOCK/2) /* xtal is 12 Mhz, unknown divider*/
-	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_IO_MAP(port_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", albazg_state,  irq0_line_hold)
+	MCFG_DEVICE_ADD("maincpu", Z80 , MASTER_CLOCK/2) /* xtal is 12 Mhz, unknown divider*/
+	MCFG_DEVICE_PROGRAM_MAP(main_map)
+	MCFG_DEVICE_IO_MAP(port_map)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", albazg_state,  irq0_line_hold)
 
-	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")
+	EEPROM_93C46_16BIT(config, "eeprom");
 
-	MCFG_WATCHDOG_ADD("watchdog")
-	MCFG_WATCHDOG_VBLANK_INIT("screen", 8) // timing is unknown
+	WATCHDOG_TIMER(config, "watchdog").set_vblank_count("screen", 8); // timing is unknown
 
-	MCFG_DEVICE_ADD("ppi8255_0", I8255A, 0)
-	MCFG_I8255_OUT_PORTA_CB(WRITE8(albazg_state, mux_w))
-	MCFG_I8255_IN_PORTB_CB(IOPORT("SYSTEM"))
-	MCFG_I8255_IN_PORTC_CB(READ8(albazg_state, mux_r))
+	i8255_device &ppi(I8255A(config, "ppi8255_0"));
+	ppi.out_pa_callback().set(FUNC(albazg_state::mux_w));
+	ppi.in_pb_callback().set_ioport("SYSTEM");
+	ppi.in_pc_callback().set(FUNC(albazg_state::mux_r));
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -373,23 +385,23 @@ static MACHINE_CONFIG_START( yumefuda )
 	MCFG_SCREEN_UPDATE_DRIVER(albazg_state, screen_update_yumefuda)
 	MCFG_SCREEN_PALETTE("palette")
 
-	MCFG_MC6845_ADD("crtc", H46505, "screen", MASTER_CLOCK/16)   /* hand tuned to get ~60 fps */
-	MCFG_MC6845_SHOW_BORDER_AREA(false)
-	MCFG_MC6845_CHAR_WIDTH(8)
+	h46505_device &crtc(H46505(config, "crtc", MASTER_CLOCK/16));   /* hand tuned to get ~60 fps */
+	crtc.set_screen("screen");
+	crtc.set_show_border_area(false);
+	crtc.set_char_width(8);
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", yumefuda )
-	MCFG_PALETTE_ADD("palette", 0x80)
-	MCFG_PALETTE_FORMAT(xRRRRRGGGGGBBBBB)
+	MCFG_DEVICE_ADD("gfxdecode", GFXDECODE, "palette", gfx_yumefuda)
+	PALETTE(config, "palette").set_format(palette_device::xRGB_555, 0x80);
 
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
+	SPEAKER(config, "mono").front_center();
 
-	MCFG_SOUND_ADD("aysnd", AY8910, MASTER_CLOCK/16) /* guessed to use the same xtal as the crtc */
-	MCFG_AY8910_PORT_A_READ_CB(IOPORT("DSW1"))
-	MCFG_AY8910_PORT_B_READ_CB(IOPORT("DSW2"))
-	MCFG_AY8910_PORT_A_WRITE_CB(WRITE8(albazg_state, yumefuda_output_w))
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	ay8910_device &aysnd(AY8910(config, "aysnd", MASTER_CLOCK/16)); /* guessed to use the same xtal as the crtc */
+	aysnd.port_a_read_callback().set_ioport("DSW1");
+	aysnd.port_b_read_callback().set_ioport("DSW2");
+	aysnd.port_a_write_callback().set(FUNC(albazg_state::yumefuda_output_w));
+	aysnd.add_route(ALL_OUTPUTS, "mono", 0.50);
 MACHINE_CONFIG_END
 
 /***************************************************************************************/
@@ -410,4 +422,4 @@ ROM_START( yumefuda )
 	ROM_LOAD("zg1-007.u13", 0x000, 0x100, NO_DUMP ) //could be either PROM or PAL
 ROM_END
 
-GAME( 1991, yumefuda, 0, yumefuda, yumefuda, albazg_state, 0, ROT0, "Alba", "Yumefuda [BET]", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )
+GAME( 1991, yumefuda, 0, yumefuda, yumefuda, albazg_state, empty_init, ROT0, "Alba", "Yumefuda [BET]", MACHINE_NO_COCKTAIL | MACHINE_SUPPORTS_SAVE )

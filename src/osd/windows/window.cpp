@@ -325,6 +325,7 @@ win_window_info::win_window_info(
 	m_non_fullscreen_bounds.right  = 0;
 	m_non_fullscreen_bounds.bottom = 0;
 	m_prescale = video_config.prescale;
+	m_index = index;
 }
 
 POINT win_window_info::s_saved_cursor_pos = { -1, -1 };
@@ -1834,7 +1835,7 @@ bool winwindow_qt_filter(void *message)
 		if(msg->hwnd) // get the machine associated with this window
 			ptr = GetWindowLongPtr(msg->hwnd, GWLP_USERDATA);
 		else // any one will have to do
-			ptr = (LONG_PTR)osd_common_t::s_window_list;
+			ptr = (LONG_PTR)osd_common_t::s_window_list.front().get();
 
 		winwindow_dispatch_message(((win_window_info *)ptr)->machine(), msg);
 		return true;

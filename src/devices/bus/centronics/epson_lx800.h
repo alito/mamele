@@ -24,17 +24,11 @@
 
 // ======================> epson_lx800_device
 
-class epson_lx800_device :  public device_t,
-						public device_centronics_peripheral_interface
+class epson_lx800_device :  public device_t, public device_centronics_peripheral_interface
 {
 public:
 	// construction/destruction
 	epson_lx800_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	DECLARE_READ8_MEMBER(centronics_data_r);
-	DECLARE_WRITE_LINE_MEMBER(centronics_pe_w);
-	DECLARE_WRITE_LINE_MEMBER(paperempty_led_w);
-	DECLARE_WRITE_LINE_MEMBER(reset_w);
 
 protected:
 	epson_lx800_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -61,6 +55,13 @@ private:
 	DECLARE_READ_LINE_MEMBER(an4_r);
 	DECLARE_READ_LINE_MEMBER(an5_r);
 
+	DECLARE_READ8_MEMBER(centronics_data_r);
+	DECLARE_WRITE_LINE_MEMBER(centronics_pe_w);
+	DECLARE_WRITE_LINE_MEMBER(paperempty_led_w);
+	DECLARE_WRITE_LINE_MEMBER(reset_w);
+
+	void lx800_mem(address_map &map);
+
 	required_device<cpu_device> m_maincpu;
 	required_device<beep_device> m_beep;
 };
@@ -69,7 +70,5 @@ private:
 
 // device type definition
 DECLARE_DEVICE_TYPE(EPSON_LX800, epson_lx800_device)
-
-
 
 #endif // MAME_BUS_CENTRONICS_EPSON_LX800_H

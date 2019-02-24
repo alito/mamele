@@ -35,6 +35,9 @@
 
 #pragma once
 
+#include "emucore.h"
+#include "xtal.h"
+
 #include <math.h>
 #undef min
 #undef max
@@ -48,13 +51,13 @@ typedef s64 attoseconds_t;
 typedef s32 seconds_t;
 
 // core definitions
-const attoseconds_t ATTOSECONDS_PER_SECOND_SQRT = 1'000'000'000;
-const attoseconds_t ATTOSECONDS_PER_SECOND = ATTOSECONDS_PER_SECOND_SQRT * ATTOSECONDS_PER_SECOND_SQRT;
-const attoseconds_t ATTOSECONDS_PER_MILLISECOND = ATTOSECONDS_PER_SECOND / 1'000;
-const attoseconds_t ATTOSECONDS_PER_MICROSECOND = ATTOSECONDS_PER_SECOND / 1'000'000;
-const attoseconds_t ATTOSECONDS_PER_NANOSECOND = ATTOSECONDS_PER_SECOND / 1'000'000'000;
+constexpr attoseconds_t ATTOSECONDS_PER_SECOND_SQRT = 1'000'000'000;
+constexpr attoseconds_t ATTOSECONDS_PER_SECOND = ATTOSECONDS_PER_SECOND_SQRT * ATTOSECONDS_PER_SECOND_SQRT;
+constexpr attoseconds_t ATTOSECONDS_PER_MILLISECOND = ATTOSECONDS_PER_SECOND / 1'000;
+constexpr attoseconds_t ATTOSECONDS_PER_MICROSECOND = ATTOSECONDS_PER_SECOND / 1'000'000;
+constexpr attoseconds_t ATTOSECONDS_PER_NANOSECOND = ATTOSECONDS_PER_SECOND / 1'000'000'000;
 
-const seconds_t ATTOTIME_MAX_SECONDS = 1'000'000'000;
+constexpr seconds_t ATTOTIME_MAX_SECONDS = 1'000'000'000;
 
 
 
@@ -69,6 +72,7 @@ inline constexpr attoseconds_t DOUBLE_TO_ATTOSECONDS(double x) { return attoseco
 // convert between hertz (as a double) and attoseconds
 inline constexpr double ATTOSECONDS_TO_HZ(attoseconds_t x) { return double(ATTOSECONDS_PER_SECOND) / double(x); }
 template <typename T> inline constexpr attoseconds_t HZ_TO_ATTOSECONDS(T &&x) { return attoseconds_t(ATTOSECONDS_PER_SECOND / x); }
+inline constexpr attoseconds_t HZ_TO_ATTOSECONDS(const XTAL &x) { return attoseconds_t(ATTOSECONDS_PER_SECOND / x); }
 
 // macros for converting other seconds types to attoseconds
 template <typename T> inline constexpr attoseconds_t ATTOSECONDS_IN_SEC(T &&x) { return attoseconds_t(x) * ATTOSECONDS_PER_SECOND; }
@@ -110,7 +114,9 @@ public:
 	// conversion to other forms
 	constexpr double as_double() const { return double(m_seconds) + ATTOSECONDS_TO_DOUBLE(m_attoseconds); }
 	constexpr attoseconds_t as_attoseconds() const;
+	constexpr double as_hz() const { return m_seconds == 0 ? ATTOSECONDS_TO_HZ(m_attoseconds) : is_never() ? 0.0 : 1.0 / as_double(); }
 	u64 as_ticks(u32 frequency) const;
+	u64 as_ticks(const XTAL &xtal) const { return as_ticks(xtal.value()); }
 	/** Convert to string using at @p precision */
 	const char *as_string(int precision = 9) const;
 
@@ -121,6 +127,7 @@ public:
 
 	static attotime from_double(double _time);
 	static attotime from_ticks(u64 ticks, u32 frequency);
+	static attotime from_ticks(u64 ticks, const XTAL &xtal) { return from_ticks(ticks, xtal.value()); }
 	/** Create an attotime from a integer count of seconds @seconds */
 	static constexpr attotime from_seconds(s32 seconds) { return attotime(seconds, 0); }
 	/** Create an attotime from a integer count of milliseconds @msec */
@@ -130,7 +137,21 @@ public:
 	/** Create an attotime from a integer count of nanoseconds @nsec */
 	static constexpr attotime from_nsec(s64 nsec) { return attotime(nsec / 1000000000, (nsec % 1000000000) * (ATTOSECONDS_PER_SECOND / 1000000000)); }
 	/** Create an attotime from at the given frequency @frequency */
-	static attotime from_hz(double frequency) { assert(frequency > 0); double d = 1 / frequency; return attotime(floor(d), modf(d, &d) * ATTOSECONDS_PER_SECOND); }
+	static attotime from_hz(u32 frequency) { return (frequency > 1) ? attotime(0, HZ_TO_ATTOSECONDS(frequency)) : (frequency == 1) ? attotime(1, 0) : attotime::never; }
+	static attotime from_hz(int frequency) { return (frequency > 0) ? from_hz(u32(frequency)) : attotime::never; }
+	static attotime from_hz(const XTAL &xtal) { return (xtal.dvalue() > 1.0) ? attotime(0, HZ_TO_ATTOSECONDS(xtal)) : from_hz(xtal.dvalue()); }
+	static attotime from_hz(double frequency)
+	{
+		if (frequency > 1.0)
+			return attotime(0, HZ_TO_ATTOSECONDS(frequency));
+		else if (frequency > 0.0)
+		{
+			double i, f = modf(1.0 / frequency, &i);
+			return attotime(i, f * ATTOSECONDS_PER_SECOND);
+		}
+		else
+			return attotime::never;
+	}
 
 	// math
 	attotime &operator+=(const attotime &right);
@@ -323,14 +344,19 @@ inline u64 attotime::as_ticks(u32 frequency) const
 /** Create an attotime from a tick count @ticks at the given frequency @frequency  */
 inline attotime attotime::from_ticks(u64 ticks, u32 frequency)
 {
-	attoseconds_t attos_per_tick = HZ_TO_ATTOSECONDS(frequency);
+	if (frequency > 0)
+	{
+		attoseconds_t attos_per_tick = HZ_TO_ATTOSECONDS(frequency);
 
-	if (ticks < frequency)
-		return attotime(0, ticks * attos_per_tick);
+		if (ticks < frequency)
+			return attotime(0, ticks * attos_per_tick);
 
-	u32 remainder;
-	s32 secs = divu_64x32_rem(ticks, frequency, &remainder);
-	return attotime(secs, u64(remainder) * attos_per_tick);
+		u32 remainder;
+		s32 secs = divu_64x32_rem(ticks, frequency, &remainder);
+		return attotime(secs, u64(remainder) * attos_per_tick);
+	}
+	else
+		return attotime::never;
 }
 
 /** Create an attotime from floating point count of seconds @p _time */

@@ -28,6 +28,7 @@ Xtals 8MHz, 21.47727MHz
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
+#include "emupal.h"
 #include "screen.h"
 #include "speaker.h"
 
@@ -36,9 +37,15 @@ class quizo_state : public driver_device
 {
 public:
 	quizo_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-		m_maincpu(*this, "maincpu") { }
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+	{ }
 
+	void quizo(machine_config &config);
+
+	void init_quizo();
+
+private:
 	required_device<cpu_device> m_maincpu;
 
 	std::unique_ptr<uint8_t[]> m_videoram;
@@ -49,10 +56,11 @@ public:
 	DECLARE_WRITE8_MEMBER(port70_w);
 	DECLARE_WRITE8_MEMBER(port60_w);
 
-	DECLARE_DRIVER_INIT(quizo);
-	DECLARE_PALETTE_INIT(quizo);
+	void quizo_palette(palette_device &palette) const;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void memmap(address_map &map);
+	void portmap(address_map &map);
 };
 
 
@@ -60,42 +68,39 @@ public:
 #define XTAL2   21477270
 
 
-static const uint8_t rombankLookup[]={ 2, 3, 4, 4, 4, 4, 4, 5, 0, 1};
+static constexpr uint8_t rombankLookup[]={ 2, 3, 4, 4, 4, 4, 4, 5, 0, 1};
 
-PALETTE_INIT_MEMBER(quizo_state, quizo)
+void quizo_state::quizo_palette(palette_device &palette) const
 {
-	const uint8_t *color_prom = memregion("proms")->base();
-	int i;
-	for (i = 0;i < 16;i++)
+	uint8_t const *const color_prom = memregion("proms")->base();
+	for (int i = 0; i < 16; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
+		int bit0, bit1, bit2;
 
 		bit0 = 0;
-		bit1 = (*color_prom >> 0) & 0x01;
-		bit2 = (*color_prom >> 1) & 0x01;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit1 = BIT(color_prom[i], 0);
+		bit2 = BIT(color_prom[i], 1);
+		int const b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		bit0 = (*color_prom >> 2) & 0x01;
-		bit1 = (*color_prom >> 3) & 0x01;
-		bit2 = (*color_prom >> 4) & 0x01;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = BIT(color_prom[i], 2);
+		bit1 = BIT(color_prom[i], 3);
+		bit2 = BIT(color_prom[i], 4);
+		int const g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		bit0 = (*color_prom >> 5) & 0x01;
-		bit1 = (*color_prom >> 6) & 0x01;
-		bit2 = (*color_prom >> 7) & 0x01;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = BIT(color_prom[i], 5);
+		bit1 = BIT(color_prom[i], 6);
+		bit2 = BIT(color_prom[i], 7);
+		int const r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette.set_pen_color(i,rgb_t(r,g,b));
-		color_prom++;
+		palette.set_pen_color(i, rgb_t(r, g, b));
 	}
 }
 
 uint32_t quizo_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	int x,y;
-	for(y=0;y<200;y++)
+	for(int y = 0; y < 200; y++)
 	{
-		for(x=0;x<80;x++)
+		for(int x = 0; x < 80; x++)
 		{
 			int data=m_videoram[y*80+x];
 			int data1=m_videoram[y*80+x+0x4000];
@@ -135,30 +140,32 @@ WRITE8_MEMBER(quizo_state::port60_w)
 {
 	if(data>9)
 	{
-		logerror("ROMBANK %x @ %x\n", data, space.device().safe_pc());
+		logerror("ROMBANK %x @ %x\n", data, m_maincpu->pc());
 		data=0;
 	}
 	m_port60=data;
 	membank("bank1")->set_entry(rombankLookup[data]);
 }
 
-static ADDRESS_MAP_START( memmap, AS_PROGRAM, 8, quizo_state )
-	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x47ff) AM_RAM
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")
-	AM_RANGE(0xc000, 0xffff) AM_WRITE(vram_w)
+void quizo_state::memmap(address_map &map)
+{
+	map(0x0000, 0x3fff).rom();
+	map(0x4000, 0x47ff).ram();
+	map(0x8000, 0xbfff).bankr("bank1");
+	map(0xc000, 0xffff).w(FUNC(quizo_state::vram_w));
 
-ADDRESS_MAP_END
+}
 
-static ADDRESS_MAP_START( portmap, AS_IO, 8, quizo_state )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
-	AM_RANGE(0x10, 0x10) AM_READ_PORT("IN1")
-	AM_RANGE(0x40, 0x40) AM_READ_PORT("IN2")
-	AM_RANGE(0x50, 0x51) AM_DEVWRITE("aysnd", ay8910_device, address_data_w)
-	AM_RANGE(0x60, 0x60) AM_WRITE(port60_w)
-	AM_RANGE(0x70, 0x70) AM_WRITE(port70_w)
-ADDRESS_MAP_END
+void quizo_state::portmap(address_map &map)
+{
+	map.global_mask(0xff);
+	map(0x00, 0x00).portr("IN0");
+	map(0x10, 0x10).portr("IN1");
+	map(0x40, 0x40).portr("IN2");
+	map(0x50, 0x51).w("aysnd", FUNC(ay8910_device::address_data_w));
+	map(0x60, 0x60).w(FUNC(quizo_state::port60_w));
+	map(0x70, 0x70).w(FUNC(quizo_state::port70_w));
+}
 
 static INPUT_PORTS_START( quizo )
 	PORT_START("IN0")
@@ -210,13 +217,13 @@ static INPUT_PORTS_START( quizo )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( quizo )
+MACHINE_CONFIG_START(quizo_state::quizo)
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80,XTAL1/2)
-	MCFG_CPU_PROGRAM_MAP(memmap)
-	MCFG_CPU_IO_MAP(portmap)
+	MCFG_DEVICE_ADD("maincpu", Z80,XTAL1/2)
+	MCFG_DEVICE_PROGRAM_MAP(memmap)
+	MCFG_DEVICE_IO_MAP(portmap)
 
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", quizo_state,  irq0_line_hold)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", quizo_state,  irq0_line_hold)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -227,13 +234,11 @@ static MACHINE_CONFIG_START( quizo )
 	MCFG_SCREEN_UPDATE_DRIVER(quizo_state, screen_update)
 	MCFG_SCREEN_PALETTE("palette")
 
-	MCFG_PALETTE_ADD("palette", 16)
-	MCFG_PALETTE_INIT_OWNER(quizo_state, quizo)
+	PALETTE(config, "palette", FUNC(quizo_state::quizo_palette), 16);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("aysnd", AY8910, XTAL2/16 )
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	SPEAKER(config, "mono").front_center();
+	AY8910(config, "aysnd", XTAL2 / 16).add_route(ALL_OUTPUTS, "mono", 1.0);
 MACHINE_CONFIG_END
 
 
@@ -268,15 +273,15 @@ ROM_START( quizoa )
 ROM_END
 
 
-DRIVER_INIT_MEMBER(quizo_state,quizo)
+void quizo_state::init_quizo()
 {
 	m_videoram=std::make_unique<uint8_t[]>(0x4000*2);
 	membank("bank1")->configure_entries(0, 6, memregion("user1")->base(), 0x4000);
 
-	save_pointer(NAME(m_videoram.get()), 0x4000*2);
+	save_pointer(NAME(m_videoram), 0x4000*2);
 	//save_item(NAME(m_port60));
 	save_item(NAME(m_port70));
 }
 
-GAME( 1985, quizo,  0,       quizo,  quizo, quizo_state,  quizo, ROT0, "Seoul Coin Corp.", "Quiz Olympic (set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1985, quizoa, quizo,   quizo,  quizo, quizo_state,  quizo, ROT0, "Seoul Coin Corp.", "Quiz Olympic (set 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 1985, quizo,  0,       quizo,  quizo, quizo_state, init_quizo, ROT0, "Seoul Coin Corp.", "Quiz Olympic (set 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1985, quizoa, quizo,   quizo,  quizo, quizo_state, init_quizo, ROT0, "Seoul Coin Corp.", "Quiz Olympic (set 2)", MACHINE_SUPPORTS_SAVE )

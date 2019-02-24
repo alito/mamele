@@ -338,8 +338,6 @@ C - uses sub board with support for player 3 and 4 controls
 #include "emu.h"
 #include "includes/namcos1.h"
 
-#include "cpu/m6809/m6809.h"
-#include "cpu/m6800/m6801.h"
 #include "machine/nvram.h"
 #include "sound/volt_reg.h"
 #include "sound/ym2151.h"
@@ -349,95 +347,106 @@ C - uses sub board with support for player 3 and 4 controls
 
 /**********************************************************************/
 
-WRITE8_MEMBER(namcos1_state::irq_ack_w)
+WRITE8_MEMBER(namcos1_state::audiocpu_irq_ack_w)
 {
-	space.device().execute().set_input_line(0, CLEAR_LINE);
+	m_audiocpu->set_input_line(M6809_IRQ_LINE, CLEAR_LINE);
+}
+
+WRITE8_MEMBER(namcos1_state::mcu_irq_ack_w)
+{
+	m_mcu->set_input_line(HD6301_IRQ_LINE, CLEAR_LINE);
 }
 
 
 READ8_MEMBER(namcos1_state::dsw_r)
 {
-	int ret = m_io_dipsw->read();
-	if (!(offset & 2)) ret >>= 4;
-	return 0xf0 | ret;
+	// 7654----  not used
+	// ----3---  ls257 dsw selector 1y
+	// -----2--  ls257 dsw selector 2y
+	// ------1-  ls257 dsw selector 3y
+	// -------0  ls257 dsw selector 4y
+
+	m_dsw_sel->write_ba(m_io_dipsw->read());
+	m_dsw_sel->select_w(BIT(offset, 1));
+
+	return 0xf0 | bitswap<4>(m_dsw_sel->output_r(space, 0), 0, 1, 2, 3);
 }
 
 WRITE8_MEMBER(namcos1_state::coin_w)
 {
-	machine().bookkeeping().coin_lockout_global_w(~data & 1);
-	machine().bookkeeping().coin_counter_w(0, data & 2);
-	machine().bookkeeping().coin_counter_w(1, data & 4);
+	machine().bookkeeping().coin_lockout_global_w(BIT(~data, 0));
+	machine().bookkeeping().coin_counter_w(0, BIT(data, 1));
+	machine().bookkeeping().coin_counter_w(1, BIT(data, 2));
 }
 
 WRITE8_MEMBER(namcos1_state::dac_gain_w)
 {
 	/* DAC0 (GAIN0 = bit0, GAIN1 = bit2) */
 	int dac0_gain = (BIT(data, 2) << 1) | BIT(data, 0);
-	m_dac0->set_output_gain(ALL_OUTPUTS, (dac0_gain + 1) / 4.0f);
+	m_dac[0]->set_output_gain(ALL_OUTPUTS, (dac0_gain + 1) / 4.0f);
 
 	/* DAC1 (GAIN2 = bit3, GAIN3 = bit4) */
 	int dac1_gain = (BIT(data, 4) << 1) | BIT(data, 3);
-	m_dac1->set_output_gain(ALL_OUTPUTS, (dac1_gain + 1) / 4.0f);
+	m_dac[1]->set_output_gain(ALL_OUTPUTS, (dac1_gain + 1) / 4.0f);
 }
 
 
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 8, namcos1_state )
-	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE("c117", namco_c117_device, main_r, main_w)
-ADDRESS_MAP_END
+void namcos1_state::main_map(address_map &map)
+{
+	map(0x0000, 0xffff).rw(m_c117, FUNC(namco_c117_device::main_r), FUNC(namco_c117_device::main_w));
+}
 
-static ADDRESS_MAP_START( sub_map, AS_PROGRAM, 8, namcos1_state )
-	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE("c117", namco_c117_device, sub_r, sub_w)
-ADDRESS_MAP_END
+void namcos1_state::sub_map(address_map &map)
+{
+	map(0x0000, 0xffff).rw(m_c117, FUNC(namco_c117_device::sub_r), FUNC(namco_c117_device::sub_w));
+}
 
-static ADDRESS_MAP_START( virtual_map, AS_PROGRAM, 8, namcos1_state )
-	AM_RANGE(0x2c0000, 0x2c1fff) AM_WRITE(_3dcs_w)
-	AM_RANGE(0x2e0000, 0x2e7fff) AM_DEVREADWRITE("c116", namco_c116_device, read, write)
-	AM_RANGE(0x2f0000, 0x2f7fff) AM_RAM_WRITE(videoram_w) AM_SHARE("videoram")
-	AM_RANGE(0x2f8000, 0x2f9fff) AM_READWRITE(no_key_r, no_key_w)
-	AM_RANGE(0x2fc000, 0x2fcfff) AM_RAM_WRITE(spriteram_w) AM_SHARE("spriteram")
-	AM_RANGE(0x2fd000, 0x2fd01f) AM_RAM AM_SHARE("pfcontrol") AM_MIRROR(0xfe0)
-	AM_RANGE(0x2fe000, 0x2fe3ff) AM_DEVREADWRITE("namco", namco_cus30_device, namcos1_cus30_r, namcos1_cus30_w) AM_MIRROR(0xc00) /* PSG ( Shared ) */
-	AM_RANGE(0x2ff000, 0x2ff7ff) AM_RAM AM_SHARE("triram") AM_MIRROR(0x800)
-	AM_RANGE(0x300000, 0x307fff) AM_RAM
-	AM_RANGE(0x400000, 0x7fffff) AM_ROM AM_REGION("user1", 0)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( sound_map, AS_PROGRAM, 8, namcos1_state )
-	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK("soundbank")   /* Banked ROMs */
-	AM_RANGE(0x4000, 0x4001) AM_DEVREAD("ymsnd", ym2151_device, status_r)
-	AM_RANGE(0x4000, 0x4001) AM_DEVREADWRITE("ymsnd", ym2151_device, read, write)
-	AM_RANGE(0x5000, 0x53ff) AM_DEVREADWRITE("namco", namco_cus30_device, namcos1_cus30_r, namcos1_cus30_w) AM_MIRROR(0x400) /* PSG ( Shared ) */
-	AM_RANGE(0x7000, 0x77ff) AM_RAM AM_SHARE("triram")
-	AM_RANGE(0x8000, 0x9fff) AM_RAM /* Sound RAM 3 */
-	AM_RANGE(0xc000, 0xc001) AM_WRITE(sound_bankswitch_w) /* ROM bank selector */
-	AM_RANGE(0xd001, 0xd001) AM_DEVWRITE("c117", namco_c117_device, sound_watchdog_w)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(irq_ack_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("audiocpu", 0)
-ADDRESS_MAP_END
+void namcos1_state::virtual_map(address_map &map)
+{
+	map(0x2c0000, 0x2c1fff).w(FUNC(namcos1_state::_3dcs_w));
+	map(0x2e0000, 0x2e7fff).rw(m_c116, FUNC(namco_c116_device::read), FUNC(namco_c116_device::write));
+	map(0x2f0000, 0x2f7fff).rw(m_c123tmap, FUNC(namco_c123tmap_device::videoram8_r), FUNC(namco_c123tmap_device::videoram8_w));
+	map(0x2f8000, 0x2f9fff).rw(FUNC(namcos1_state::no_key_r), FUNC(namcos1_state::no_key_w));
+	map(0x2fc000, 0x2fcfff).ram().w(FUNC(namcos1_state::spriteram_w)).share("spriteram");
+	map(0x2fd000, 0x2fd01f).rw(m_c123tmap, FUNC(namco_c123tmap_device::control8_r), FUNC(namco_c123tmap_device::control8_w)).mirror(0xfe0);
+	map(0x2fe000, 0x2fe3ff).rw("namco", FUNC(namco_cus30_device::namcos1_cus30_r), FUNC(namco_cus30_device::namcos1_cus30_w)).mirror(0xc00); /* PSG ( Shared ) */
+	map(0x2ff000, 0x2ff7ff).ram().share("triram").mirror(0x800);
+	map(0x300000, 0x307fff).ram();
+	map(0x400000, 0x7fffff).rom().region("user1", 0);
+}
 
 
-static ADDRESS_MAP_START( mcu_map, AS_PROGRAM, 8, namcos1_state )
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE("mcu", hd63701_cpu_device, m6801_io_r, m6801_io_w)
-	AM_RANGE(0x0080, 0x00ff) AM_RAM /* built in RAM */
-	AM_RANGE(0x1000, 0x1003) AM_READ(dsw_r)
-	AM_RANGE(0x1400, 0x1400) AM_READ_PORT("CONTROL0")
-	AM_RANGE(0x1401, 0x1401) AM_READ_PORT("CONTROL1")
-	AM_RANGE(0x4000, 0xbfff) AM_ROMBANK("mcubank") /* banked external ROM */
-	AM_RANGE(0xc000, 0xc7ff) AM_RAM AM_SHARE("triram")
-	AM_RANGE(0xc800, 0xcfff) AM_RAM AM_SHARE("nvram") /* EEPROM */
-	AM_RANGE(0xd000, 0xd000) AM_DEVWRITE("dac0", dac_byte_interface, write)
-	AM_RANGE(0xd400, 0xd400) AM_DEVWRITE("dac1", dac_byte_interface, write)
-	AM_RANGE(0xd800, 0xd800) AM_WRITE(mcu_bankswitch_w) /* ROM bank selector */
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(irq_ack_w)
-	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION("mcu", 0) /* internal ROM */
-ADDRESS_MAP_END
+void namcos1_state::sound_map(address_map &map)
+{
+	map(0x0000, 0x3fff).bankr("soundbank");   /* Banked ROMs */
+	map(0x4000, 0x4001).rw("ymsnd", FUNC(ym2151_device::status_r), FUNC(ym2151_device::write));
+	map(0x5000, 0x53ff).rw("namco", FUNC(namco_cus30_device::namcos1_cus30_r), FUNC(namco_cus30_device::namcos1_cus30_w)).mirror(0x400); /* PSG ( Shared ) */
+	map(0x7000, 0x77ff).ram().share("triram");
+	map(0x8000, 0x9fff).ram(); /* Sound RAM 3 */
+	map(0xc000, 0xc001).w(FUNC(namcos1_state::sound_bankswitch_w)); /* ROM bank selector */
+	map(0xd001, 0xd001).w(m_c117, FUNC(namco_c117_device::sound_watchdog_w));
+	map(0xe000, 0xe000).w(FUNC(namcos1_state::audiocpu_irq_ack_w));
+	map(0xc000, 0xffff).rom().region("audiocpu", 0);
+}
 
-static ADDRESS_MAP_START( mcu_port_map, AS_IO, 8, namcos1_state )
-	AM_RANGE(M6801_PORT1, M6801_PORT1) AM_READ_PORT("COIN") AM_WRITE(coin_w)
-	AM_RANGE(M6801_PORT2, M6801_PORT2) AM_READNOP AM_WRITE(dac_gain_w)
-ADDRESS_MAP_END
+
+void namcos1_state::mcu_map(address_map &map)
+{
+	map(0x0000, 0x001f).rw(m_mcu, FUNC(hd63701_cpu_device::m6801_io_r), FUNC(hd63701_cpu_device::m6801_io_w));
+	map(0x0080, 0x00ff).ram(); /* built in RAM */
+	map(0x1000, 0x1003).r(FUNC(namcos1_state::dsw_r));
+	map(0x1400, 0x1400).portr("CONTROL0");
+	map(0x1401, 0x1401).portr("CONTROL1");
+	map(0x4000, 0xbfff).bankr("mcubank"); /* banked external ROM */
+	map(0xc000, 0xc7ff).ram().share("triram");
+	map(0xc800, 0xcfff).ram().share("nvram"); /* EEPROM */
+	map(0xd000, 0xd000).w(m_dac[0], FUNC(dac_byte_interface::data_w));
+	map(0xd400, 0xd400).w(m_dac[1], FUNC(dac_byte_interface::data_w));
+	map(0xd800, 0xd800).w(FUNC(namcos1_state::mcu_bankswitch_w)); /* ROM bank selector */
+	map(0xf000, 0xf000).w(FUNC(namcos1_state::mcu_irq_ack_w));
+	map(0xf000, 0xffff).rom().region("mcu", 0); /* internal ROM */
+}
 
 
 // #define PRIORITY_EASINESS_TO_PLAY
@@ -465,19 +474,19 @@ static INPUT_PORTS_START( ns1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
 	PORT_START( "DIPSW" )
-	PORT_SERVICE_DIPLOC( 0x80, IP_ACTIVE_LOW, "SW:1" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x40, "SW:2" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x20, 0x20, "SW:3" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x10, "SW:4" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x08, 0x08, "SW:5" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x04, "SW:6" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x02, 0x02, "SW:7" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x01, 0x01, "SW:8" )
+	PORT_SERVICE_DIPLOC(    0x01, IP_ACTIVE_LOW, "SW:1" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x02, IP_ACTIVE_LOW, "SW:2" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x04, IP_ACTIVE_LOW, "SW:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x08, IP_ACTIVE_LOW, "SW:4" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x10, IP_ACTIVE_LOW, "SW:5" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x20, IP_ACTIVE_LOW, "SW:6" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x40, IP_ACTIVE_LOW, "SW:7" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x80, IP_ACTIVE_LOW, "SW:8" )
 
 	PORT_START( "COIN" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )   /* OUT:coin lockout */
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL )   /* OUT:coin counter 1 */
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL )   /* OUT:coin counter 2 */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM )   /* OUT:coin lockout */
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_CUSTOM )   /* OUT:coin counter 1 */
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_CUSTOM )   /* OUT:coin counter 2 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_F1)  // service switch from the edge connector
@@ -491,11 +500,11 @@ static INPUT_PORTS_START( shadowld )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Freeze" ) PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Freeze" ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, "Alternate sound effects" ) PORT_DIPLOCATION("SW:3")  // e.g. the red bird
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x04, 0x04, "Alternate sound effects" ) PORT_DIPLOCATION("SW:3")  // e.g. the red bird
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -505,30 +514,30 @@ static INPUT_PORTS_START( dspirit )
 
 	PORT_MODIFY( "DIPSW" )
 	#ifdef PRIORITY_EASINESS_TO_PLAY
-		PORT_DIPNAME( 0x7f, 0x7f, "Life" ) PORT_DIPLOCATION("SW:8,7,6,5,4,3,2")
-		PORT_DIPSETTING(    0x7f, "2" )
-		PORT_DIPSETTING(    0x16, "3" )
+		PORT_DIPNAME( 0xfe, 0xfe, "Life" ) PORT_DIPLOCATION("SW:2,3,4,5,6,7,8")
+		PORT_DIPSETTING(    0xfe, "2" )
+		PORT_DIPSETTING(    0x68, "3" )
 	#else
-		PORT_DIPNAME( 0x40, 0x40, "Open 3rd Life (step1of7)" ) PORT_DIPLOCATION("SW:2")
-		PORT_DIPSETTING(    0x40, "No (off)" )
+		PORT_DIPNAME( 0x02, 0x02, "Open 3rd Life (step1of7)" ) PORT_DIPLOCATION("SW:2")
+		PORT_DIPSETTING(    0x02, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
-		PORT_DIPNAME( 0x20, 0x20, "Open 3rd Life (step2of7)" ) PORT_DIPLOCATION("SW:3")
-		PORT_DIPSETTING(    0x20, "No (off)" )
+		PORT_DIPNAME( 0x04, 0x04, "Open 3rd Life (step2of7)" ) PORT_DIPLOCATION("SW:3")
+		PORT_DIPSETTING(    0x04, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
-		PORT_DIPNAME( 0x10, 0x10, "Open 3rd Life (step3of7)" ) PORT_DIPLOCATION("SW:4")
-		PORT_DIPSETTING(    0x10, "Yes (off)" )
+		PORT_DIPNAME( 0x08, 0x08, "Open 3rd Life (step3of7)" ) PORT_DIPLOCATION("SW:4")
+		PORT_DIPSETTING(    0x08, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x08, 0x08, "Open 3rd Life (step4of7)" ) PORT_DIPLOCATION("SW:5")
-		PORT_DIPSETTING(    0x08, "No (off)" )
+		PORT_DIPNAME( 0x10, 0x10, "Open 3rd Life (step4of7)" ) PORT_DIPLOCATION("SW:5")
+		PORT_DIPSETTING(    0x10, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
-		PORT_DIPNAME( 0x04, 0x04, "Open 3rd Life (step5of7)" ) PORT_DIPLOCATION("SW:6")
-		PORT_DIPSETTING(    0x04, "Yes (off)" )
+		PORT_DIPNAME( 0x20, 0x20, "Open 3rd Life (step5of7)" ) PORT_DIPLOCATION("SW:6")
+		PORT_DIPSETTING(    0x20, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x02, 0x02, "Open 3rd Life (step6of7)" ) PORT_DIPLOCATION("SW:7")
-		PORT_DIPSETTING(    0x02, "Yes (off)" )
+		PORT_DIPNAME( 0x40, 0x40, "Open 3rd Life (step6of7)" ) PORT_DIPLOCATION("SW:7")
+		PORT_DIPSETTING(    0x40, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x01, 0x01, "Open 3rd Life (step7of7)" ) PORT_DIPLOCATION("SW:8")
-		PORT_DIPSETTING(    0x01, "No (off)" )
+		PORT_DIPNAME( 0x80, 0x80, "Open 3rd Life (step7of7)" ) PORT_DIPLOCATION("SW:8")
+		PORT_DIPSETTING(    0x80, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
 		//  Allow "Open 3rd Life" = _ooxoxxo
 		//                          12345678
@@ -540,31 +549,31 @@ static INPUT_PORTS_START( quester )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "CONTROL0" )
-	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle */
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle strobe */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle strobe */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle strobe */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle strobe */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_MODIFY( "CONTROL1" )
-	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle */
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle strobe */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SPECIAL )     /* paddle strobe */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle strobe */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM )     /* paddle strobe */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Unk 1" ) PORT_DIPLOCATION("SW:2")    // read @ fac7
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Unk 1" ) PORT_DIPLOCATION("SW:2")    // read @ fac7
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Freeze" ) PORT_DIPLOCATION("SW:4")
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x08, 0x08, "Freeze" ) PORT_DIPLOCATION("SW:4")
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Brightness" ) PORT_DIPLOCATION("SW:6")
-	PORT_DIPSETTING(    0x04, DEF_STR( Low ) )
+	PORT_DIPNAME( 0x20, 0x00, "Brightness" ) PORT_DIPLOCATION("SW:6")
+	PORT_DIPSETTING(    0x20, DEF_STR( Low ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Level_Select ) ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Level_Select ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START( "PADDLE0" ) /* fake input port for player 1 paddle */
@@ -579,11 +588,11 @@ static INPUT_PORTS_START( tankfrc4 )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "CONTROL0" )
-	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_SPECIAL ) /* multiplexed inputs */
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_CUSTOM ) /* multiplexed inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
 
 	PORT_MODIFY( "CONTROL1" )
-	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_SPECIAL ) /* multiplexed inputs */
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_CUSTOM ) /* multiplexed inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 )
 
 	PORT_START( "IN0" )
@@ -635,16 +644,16 @@ static INPUT_PORTS_START( pacmania )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Freeze" ) PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Freeze" ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	/* this doesn't seem to have much use... */
-	PORT_DIPNAME( 0x20, 0x20, "Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:3")
-	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
+	PORT_DIPNAME( 0x04, 0x04, "Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	/* to enter the A.D.S. menu, set the dip switch and reset with service coin pressed */
-	PORT_DIPNAME( 0x08, 0x08, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:5")
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x10, 0x10, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:5")
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -658,11 +667,11 @@ static INPUT_PORTS_START( galaga88 )
 		PORT_DIPSETTING(    0x28, DEF_STR( Off ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	#else
-		PORT_DIPNAME( 0x20, 0x20, "Auto Data Sampling (step1of2)" ) PORT_DIPLOCATION("SW:3")
-		PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+		PORT_DIPNAME( 0x04, 0x04, "Auto Data Sampling (step1of2)" ) PORT_DIPLOCATION("SW:3")
+		PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-		PORT_DIPNAME( 0x08, 0x08, "Auto Data Sampling (step2of2)" ) PORT_DIPLOCATION("SW:5")
-		PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+		PORT_DIPNAME( 0x10, 0x10, "Auto Data Sampling (step2of2)" ) PORT_DIPLOCATION("SW:5")
+		PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 		//  Allow "Auto Data Sampling" = __o_o___
 		//                               12345678
@@ -674,17 +683,17 @@ static INPUT_PORTS_START( berabohm )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "CONTROL0" )
-	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_SPECIAL )
+	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_CUSTOM )
 
 	PORT_MODIFY( "CONTROL1" )
-	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_SPECIAL )    /* timing from the buttons interface */
+	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_CUSTOM )    /* timing from the buttons interface */
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x20, 0x20, "Invulnerability" ) PORT_DIPLOCATION("SW:3")
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x04, 0x04, "Invulnerability" ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, "Freeze" ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 #ifdef PRESSURE_SENSITIVE
@@ -699,22 +708,22 @@ static INPUT_PORTS_START( berabohm )
 	      switch
 	*/
 	PORT_START( "IN0" )
-	PORT_BIT( 0x3f, 0x00, IPT_SPECIAL )
+	PORT_BIT( 0x3f, 0x00, IPT_CUSTOM )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON4 )
 
 	PORT_START( "IN1" )
-	PORT_BIT( 0x3f, 0x00, IPT_SPECIAL )
+	PORT_BIT( 0x3f, 0x00, IPT_CUSTOM )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 )
 
 	PORT_START( "IN2" )
-	PORT_BIT( 0x3f, 0x00, IPT_SPECIAL )
+	PORT_BIT( 0x3f, 0x00, IPT_CUSTOM )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(2)
 
 	PORT_START( "IN3" )
-	PORT_BIT( 0x3f, 0x00, IPT_SPECIAL )
+	PORT_BIT( 0x3f, 0x00, IPT_CUSTOM )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 #else
@@ -745,11 +754,11 @@ static INPUT_PORTS_START( mmaze )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x10, 0x10, "Freeze" ) PORT_DIPLOCATION("SW:4")
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x08, 0x08, "Freeze" ) PORT_DIPLOCATION("SW:4")
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Level_Select ) ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Level_Select ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -758,20 +767,20 @@ static INPUT_PORTS_START( bakutotu )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Invincibility (Cheat)") PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Invincibility (Cheat)") PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, "Show Coordinates" ) PORT_DIPLOCATION("SW:3")
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x04, 0x04, "Show Coordinates" ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Level Selection" ) PORT_DIPLOCATION("SW:4")
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, "Sprite Viewer" ) PORT_DIPLOCATION("SW:5")
+	PORT_DIPNAME( 0x08, 0x08, "Level Selection" ) PORT_DIPLOCATION("SW:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, "Freeze" ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x10, 0x10, "Sprite Viewer" ) PORT_DIPLOCATION("SW:5")
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -782,33 +791,33 @@ static INPUT_PORTS_START( wldcourt )
 	PORT_MODIFY( "DIPSW" )
 	#ifdef PRIORITY_EASINESS_TO_PLAY
 		/* see code @ e331. The lines this draws can't even be seen because they are erased afterwards */
-		PORT_DIPNAME( 0x7e, 0x7e, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:7,6,5,4,3,2")
+		PORT_DIPNAME( 0x7e, 0x7e, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:2,3,4,5,6,7")
 		PORT_DIPSETTING(    0x7e, DEF_STR( Off ) )
-		PORT_DIPSETTING(    0x5c, DEF_STR( On ) )
+		PORT_DIPSETTING(    0x3a, DEF_STR( On ) )
 	#else
-		PORT_DIPNAME( 0x40, 0x40, "Draw Debug Lines (step1of6)" ) PORT_DIPLOCATION("SW:2")
-		PORT_DIPSETTING(    0x40, "Yes (off)" )
+		PORT_DIPNAME( 0x02, 0x02, "Draw Debug Lines (step1of6)" ) PORT_DIPLOCATION("SW:2")
+		PORT_DIPSETTING(    0x02, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x20, 0x20, "Draw Debug Lines (step2of6)" ) PORT_DIPLOCATION("SW:3")
-		PORT_DIPSETTING(    0x20, "No (off)" )
+		PORT_DIPNAME( 0x04, 0x04, "Draw Debug Lines (step2of6)" ) PORT_DIPLOCATION("SW:3")
+		PORT_DIPSETTING(    0x04, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
-		PORT_DIPNAME( 0x10, 0x10, "Draw Debug Lines (step3of6)" ) PORT_DIPLOCATION("SW:4")
-		PORT_DIPSETTING(    0x10, "Yes (off)" )
-		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x08, 0x08, "Draw Debug Lines (step4of6)" ) PORT_DIPLOCATION("SW:5")
+		PORT_DIPNAME( 0x08, 0x08, "Draw Debug Lines (step3of6)" ) PORT_DIPLOCATION("SW:4")
 		PORT_DIPSETTING(    0x08, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x04, 0x04, "Draw Debug Lines (step5of6)" ) PORT_DIPLOCATION("SW:6")
-		PORT_DIPSETTING(    0x04, "Yes (off)" )
+		PORT_DIPNAME( 0x10, 0x10, "Draw Debug Lines (step4of6)" ) PORT_DIPLOCATION("SW:5")
+		PORT_DIPSETTING(    0x10, "Yes (off)" )
 		PORT_DIPSETTING(    0x00, "No (on)" )
-		PORT_DIPNAME( 0x02, 0x02, "Draw Debug Lines (step6of6)" ) PORT_DIPLOCATION("SW:7")
-		PORT_DIPSETTING(    0x02, "No (off)" )
+		PORT_DIPNAME( 0x20, 0x20, "Draw Debug Lines (step5of6)" ) PORT_DIPLOCATION("SW:6")
+		PORT_DIPSETTING(    0x20, "Yes (off)" )
+		PORT_DIPSETTING(    0x00, "No (on)" )
+		PORT_DIPNAME( 0x40, 0x40, "Draw Debug Lines (step6of6)" ) PORT_DIPLOCATION("SW:7")
+		PORT_DIPSETTING(    0x40, "No (off)" )
 		PORT_DIPSETTING(    0x00, "Yes (on)" )
 		//  Allow "Draw Debug Lines" = _xxoxxo_
 		//                             12345678
 	#endif
-	PORT_DIPNAME( 0x01, 0x01, "Freeze" ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -819,29 +828,29 @@ static INPUT_PORTS_START( splatter )
 	PORT_MODIFY( "DIPSW" )
 	/* these two don't seem to have much use... */
 	#ifdef PRIORITY_EASINESS_TO_PLAY
-		PORT_DIPNAME( 0x11, 0x11, "CPU #0 Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:8,4")
-		PORT_DIPSETTING(    0x11, DEF_STR( No ) )
+		PORT_DIPNAME( 0x88, 0x88, "CPU #0 Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:4,8")
+		PORT_DIPSETTING(    0x88, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	#else
-		PORT_DIPNAME( 0x10, 0x10, "CPU #0 Kick Watchdog in IRQ (step1of2)" ) PORT_DIPLOCATION("SW:4")
-		PORT_DIPSETTING(    0x10, DEF_STR( No ) )
+		PORT_DIPNAME( 0x08, 0x08, "CPU #0 Kick Watchdog in IRQ (step1of2)" ) PORT_DIPLOCATION("SW:4")
+		PORT_DIPSETTING(    0x08, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-		PORT_DIPNAME( 0x01, 0x01, "CPU #0 Kick Watchdog in IRQ (step2of2)" ) PORT_DIPLOCATION("SW:8")
-		PORT_DIPSETTING(    0x01, DEF_STR( No ) )
+		PORT_DIPNAME( 0x80, 0x80, "CPU #0 Kick Watchdog in IRQ (step2of2)" ) PORT_DIPLOCATION("SW:8")
+		PORT_DIPSETTING(    0x80, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 		//  Allow "CPU #0 Kick Watchdog in IRQ" = ___o___o
 		//                                        12345678
 	#endif
 	#ifdef PRIORITY_EASINESS_TO_PLAY
-		PORT_DIPNAME( 0x06, 0x06, "CPU #0&1 Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:7,6")
-		PORT_DIPSETTING(    0x06, DEF_STR( No ) )
+		PORT_DIPNAME( 0x60, 0x60, "CPU #0&1 Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:6,7")
+		PORT_DIPSETTING(    0x60, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	#else
-		PORT_DIPNAME( 0x04, 0x04, "CPU #0&1 Kick Watchdog in IRQ (step1of2)" ) PORT_DIPLOCATION("SW:6")
-		PORT_DIPSETTING(    0x04, DEF_STR( No ) )
+		PORT_DIPNAME( 0x20, 0x20, "CPU #0&1 Kick Watchdog in IRQ (step1of2)" ) PORT_DIPLOCATION("SW:6")
+		PORT_DIPSETTING(    0x20, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-		PORT_DIPNAME( 0x02, 0x02, "CPU #0&1 Kick Watchdog in IRQ (step2of2)" ) PORT_DIPLOCATION("SW:7")
-		PORT_DIPSETTING(    0x02, DEF_STR( No ) )
+		PORT_DIPNAME( 0x40, 0x40, "CPU #0&1 Kick Watchdog in IRQ (step2of2)" ) PORT_DIPLOCATION("SW:7")
+		PORT_DIPSETTING(    0x40, DEF_STR( No ) )
 		PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 		//  Allow "CPU #0&1 Kick Watchdog in IRQ" = _____oo_
 		//                                          12345678
@@ -853,8 +862,8 @@ static INPUT_PORTS_START( splatter3 )
 	PORT_INCLUDE( splatter )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x20, 0x20, "Stage Select" ) PORT_DIPLOCATION("SW:3")
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x04, 0x04, "Stage Select" ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -863,11 +872,11 @@ static INPUT_PORTS_START( faceoff )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "CONTROL0" )
-	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_SPECIAL ) /* multiplexed inputs */
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_CUSTOM ) /* multiplexed inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_MODIFY( "CONTROL1" )
-	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_SPECIAL ) /* multiplexed inputs */
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_CUSTOM ) /* multiplexed inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
 	PORT_START( "IN0" )
@@ -909,11 +918,11 @@ static INPUT_PORTS_START( ws89 )
 
 	PORT_MODIFY( "DIPSW" )
 	/* see code @ e90c. The lines this draws can't even be seen because they are erased afterwards */
-	PORT_DIPNAME( 0x02, 0x02, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:7")
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x40, 0x40, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, "Freeze" ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -922,16 +931,16 @@ static INPUT_PORTS_START( dangseed )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Freeze" ) PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Freeze" ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	/* this doesn't seem to have much use... */
-	PORT_DIPNAME( 0x20, 0x20, "Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:3")
-	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
+	PORT_DIPNAME( 0x04, 0x04, "Kick Watchdog in IRQ" ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	/* to enter the A.D.S. menu, set the dip switch, keep 1p start pressed and press service coin */
-	PORT_DIPNAME( 0x04, 0x04, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:6")
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x20, 0x20, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:6")
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -941,11 +950,11 @@ static INPUT_PORTS_START( ws90 )
 
 	PORT_MODIFY( "DIPSW" )
 	/* see code @ e8ff. The lines this draws can't even be seen because they are erased afterwards */
-	PORT_DIPNAME( 0x02, 0x02, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:7")
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x40, 0x40, "Draw Debug Lines" ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, "Freeze" ) PORT_DIPLOCATION("SW:8")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x80, 0x80, "Freeze" ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -954,8 +963,8 @@ static INPUT_PORTS_START( boxyboy )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Freeze" ) PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Freeze" ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
@@ -964,44 +973,26 @@ static INPUT_PORTS_START( puzlclub )
 	PORT_INCLUDE( ns1 )
 
 	PORT_MODIFY( "DIPSW" )
-	PORT_DIPNAME( 0x40, 0x40, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:2")
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, "Auto Data Sampling" ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 
-
-static const gfx_layout tilelayout =
-{
-	8,8,
-	RGN_FRAC(1,1),
-	8,
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
-	64*8
-};
 
 static const gfx_layout spritelayout =
 {
 	32,32,
 	RGN_FRAC(1,1),
 	4,
-	{ 0, 1, 2, 3 },
-	{  0*4,  1*4,  2*4,  3*4,  4*4,  5*4,  6*4,  7*4,
-		8*4,  9*4, 10*4, 11*4, 12*4, 13*4, 14*4, 15*4,
-		256*4,257*4,258*4,259*4,260*4,261*4,262*4,263*4,
-		264*4,265*4,266*4,267*4,268*4,269*4,270*4,271*4},
-	{ 0*64, 1*64,  2*64,  3*64,  4*64,  5*64,  6*64,  7*64,
-		8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64,
-		32*64,33*64, 34*64, 35*64, 36*64, 37*64, 38*64, 39*64,
-		40*64,41*64, 42*64, 43*64, 44*64, 45*64, 46*64, 47*64 },
+	{ STEP4(0,1) },
+	{ STEP16(0,4), STEP16(4*16*16,4)},
+	{ STEP16(0,4*16), STEP16(4*16*16*2,4*16) },
 	32*32*4
 };
 
-static GFXDECODE_START( namcos1 )
-	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,   0x0800,   8 )  /* characters */
-	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 0x0000, 128 )  /* sprites 32/16/8/4 dots */
+static GFXDECODE_START( gfx_namcos1 )
+	GFXDECODE_ENTRY( "sprite", 0, spritelayout, 0x0000, 128 )  /* sprites 32/16/8/4 dots */
 GFXDECODE_END
 
 
@@ -1012,71 +1003,85 @@ GFXDECODE_END
     LPF info : Fco = 3.3KHz , g = -12dB/oct
 */
 
-static MACHINE_CONFIG_START( ns1 )
-
+void namcos1_state::ns1(machine_config &config)
+{
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", MC6809E, XTAL_49_152MHz/32)
-	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos1_state,  irq0_line_assert)
+	MC6809E(config, m_maincpu, XTAL(49'152'000)/32);
+	m_maincpu->set_addrmap(AS_PROGRAM, &namcos1_state::main_map);
 
-	MCFG_CPU_ADD("subcpu", MC6809E, XTAL_49_152MHz/32)
-	MCFG_CPU_PROGRAM_MAP(sub_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos1_state,  irq0_line_assert)
+	MC6809E(config, m_subcpu, XTAL(49'152'000)/32);
+	m_subcpu->set_addrmap(AS_PROGRAM, &namcos1_state::sub_map);
 
-	MCFG_CPU_ADD("audiocpu", MC6809E, XTAL_49_152MHz/32)
-	MCFG_CPU_PROGRAM_MAP(sound_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos1_state,  irq0_line_assert)
+	MC6809E(config, m_audiocpu, XTAL(49'152'000)/32);
+	m_audiocpu->set_addrmap(AS_PROGRAM, &namcos1_state::sound_map);
 
-	MCFG_CPU_ADD("mcu", HD63701, XTAL_49_152MHz/8)
-	MCFG_CPU_PROGRAM_MAP(mcu_map)
-	MCFG_CPU_IO_MAP(mcu_port_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos1_state,  irq0_line_assert)
+	HD63701(config, m_mcu, XTAL(49'152'000)/8);
+	m_mcu->set_addrmap(AS_PROGRAM, &namcos1_state::mcu_map);
+	m_mcu->in_p1_cb().set_ioport("COIN");
+	m_mcu->out_p1_cb().set(FUNC(namcos1_state::coin_w));
+	m_mcu->out_p2_cb().set(FUNC(namcos1_state::dac_gain_w));
 
-	MCFG_DEVICE_ADD("c117", NAMCO_C117, 0)
-	MCFG_DEVICE_PROGRAM_MAP(virtual_map)
-	MCFG_CUS117_CPUS("maincpu", "subcpu")
-	MCFG_CUS117_SUBRES_CB(WRITELINE(namcos1_state, subres_w))
+	NAMCO_C117(config, m_c117, 0);
+	m_c117->set_addrmap(AS_PROGRAM, &namcos1_state::virtual_map);
+	m_c117->set_cpu_tags("maincpu", "subcpu");
+	m_c117->subres_cb().set(FUNC(namcos1_state::subres_w));
 
 	// heavy sync required to prevent CPUs from fighting for video RAM access and going into deadlocks
-	MCFG_QUANTUM_TIME(attotime::from_hz(38400))
+	config.m_minimum_quantum = attotime::from_hz(38400);
 
-	MCFG_NVRAM_ADD_0FILL("nvram")
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
+
+	LS157(config, m_dsw_sel, 0); // LS257 'A3'
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_RAW_PARAMS(XTAL_49_152MHz/8, 384, 9+8*8, 9+44*8, 264, 2*8, 30*8)
-	MCFG_SCREEN_UPDATE_DRIVER(namcos1_state, screen_update)
-	MCFG_SCREEN_VBLANK_CALLBACK(WRITELINE(namcos1_state, screen_vblank))
-	MCFG_SCREEN_PALETTE("palette")
+	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+	screen.set_raw(XTAL(49'152'000)/8, 384, 9+8*8, 9+44*8, 264, 2*8, 30*8);
+	screen.set_screen_update(FUNC(namcos1_state::screen_update));
+	screen.screen_vblank().set(FUNC(namcos1_state::screen_vblank));
+	screen.set_palette(m_c116);
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", namcos1)
+	GFXDECODE(config, m_gfxdecode, m_c116, gfx_namcos1);
 
-	MCFG_PALETTE_ADD("palette", 0x2000)
-	MCFG_PALETTE_ENABLE_SHADOWS()
+	NAMCO_C116(config, m_c116, 0);
+	m_c116->enable_shadows();
 
-	MCFG_DEVICE_ADD("c116", NAMCO_C116, 0)
-	MCFG_GFX_PALETTE("palette")
+	NAMCO_C123TMAP(config, m_c123tmap, 0);
+	m_c123tmap->set_palette(m_c116);
+	m_c123tmap->set_tile_callback(namco_c123tmap_device::c123_tilemap_delegate(&namcos1_state::TilemapCB, this));
+	m_c123tmap->set_color_base(0x0800);
+	m_c123tmap->set_offset(73, 16);
+	m_c123tmap->set_tmap3_half_height();
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	SPEAKER(config, "lspeaker").front_left();
+	SPEAKER(config, "rspeaker").front_right();
 
-	MCFG_YM2151_ADD("ymsnd", 3579580)
-	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", M6809_FIRQ_LINE))
-	MCFG_SOUND_ROUTE(0, "lspeaker", 0.50)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 0.50)
+	ym2151_device &ymsnd(YM2151(config, "ymsnd", XTAL(3'579'545)));
+	ymsnd.irq_handler().set_inputline(m_audiocpu, M6809_FIRQ_LINE);
+	ymsnd.add_route(0, "lspeaker", 0.50);
+	ymsnd.add_route(1, "rspeaker", 0.50);
 
-	MCFG_SOUND_ADD("namco", NAMCO_CUS30, XTAL_49_152MHz/2048/2)
-	MCFG_NAMCO_AUDIO_VOICES(8)
-	MCFG_NAMCO_AUDIO_STEREO(1)
-	MCFG_SOUND_ROUTE(0, "lspeaker", 0.50)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 0.50)
+	namco_cus30_device &cus30(NAMCO_CUS30(config, "namco", XTAL(49'152'000)/2048/2));
+	cus30.set_voices(8);
+	cus30.set_stereo(1);
+	cus30.add_route(0, "lspeaker", 0.50);
+	cus30.add_route(1, "rspeaker", 0.50);
 
-	MCFG_SOUND_ADD("dac0", DAC_8BIT_R2R, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.5) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.5) // 10-pin 1Kx8R SIP with HC374 latch
-	MCFG_SOUND_ADD("dac1", DAC_8BIT_R2R, 0) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.5) MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.5) // 10-pin 1Kx8R SIP with HC374 latch
-	MCFG_DEVICE_ADD("vref", VOLTAGE_REGULATOR, 0) MCFG_VOLTAGE_REGULATOR_OUTPUT(5.0)
-	MCFG_SOUND_ROUTE_EX(0, "dac0", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac0", -1.0, DAC_VREF_NEG_INPUT)
-	MCFG_SOUND_ROUTE_EX(0, "dac1", 1.0, DAC_VREF_POS_INPUT) MCFG_SOUND_ROUTE_EX(0, "dac1", -1.0, DAC_VREF_NEG_INPUT)
-MACHINE_CONFIG_END
+	DAC_8BIT_R2R(config, m_dac[0], 0); // 10-pin 1Kx8R SIP with HC374 latch
+	m_dac[0]->add_route(ALL_OUTPUTS, "lspeaker", 0.5);
+	m_dac[0]->add_route(ALL_OUTPUTS, "rspeaker", 0.5);
+
+	DAC_8BIT_R2R(config, m_dac[1], 0); // 10-pin 1Kx8R SIP with HC374 latch
+	m_dac[1]->add_route(ALL_OUTPUTS, "lspeaker", 0.5);
+	m_dac[1]->add_route(ALL_OUTPUTS, "rspeaker", 0.5);
+
+	voltage_regulator_device &vref(VOLTAGE_REGULATOR(config, "vref", 0));
+	vref.set_output(5.0);
+	vref.add_route(0, "dac0", 1.0, DAC_VREF_POS_INPUT);
+	vref.add_route(0, "dac0", -1.0, DAC_VREF_NEG_INPUT);
+	vref.add_route(0, "dac1", 1.0, DAC_VREF_POS_INPUT);
+	vref.add_route(0, "dac1", -1.0, DAC_VREF_NEG_INPUT);
+}
 
 
 
@@ -1129,10 +1134,10 @@ ROM_START( shadowld )
 	ROM_LOAD( "yd_voi-1.bin",       0x20000, 0x20000, CRC(7809035c) SHA1(d1d12db8f1d2c25545ccb92c0a2f2af2d0267161) ) // yd1.v1 + yd1.v4
 	ROM_LOAD( "yd_voi-2.bin",       0x40000, 0x20000, CRC(73bffc16) SHA1(a927e503bf8650e6b638d5c357cb48586cfa025b) ) // yd1.v2 + yd1.v5
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "yd_chr-8.bin",       0x00000, 0x20000, CRC(0c8e69d0) SHA1(cedf12db2d9b14396cc8a15ccb025b96c92e190d) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "yd_chr-0.bin",       0x00000, 0x20000, CRC(717441dd) SHA1(eb4d7e8293c4e404422bec79813a782c3373ef76) )
 	ROM_LOAD( "yd_chr-1.bin",       0x20000, 0x20000, CRC(c1be6e35) SHA1(910fa2bbb708811413758a07ba472ce8dc772ee4) )
 	ROM_LOAD( "yd_chr-2.bin",       0x40000, 0x20000, CRC(2df8d8cc) SHA1(44b7fef479a726cad6908d33e27999d7ad679c6f) )
@@ -1142,7 +1147,7 @@ ROM_START( shadowld )
 	ROM_LOAD( "yd_chr-6.bin",       0xc0000, 0x20000, CRC(3ac6a90e) SHA1(7cf13b1998976c4f73d7c36c57afde1d1a6c71ec) )
 	ROM_LOAD( "yd_chr-7.bin",       0xe0000, 0x20000, CRC(8d2cffa5) SHA1(2b293ed35bb3d9a81b5dc8cb06ec3aa9260dcf27) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "yd_obj-0.bin",       0x00000, 0x20000, CRC(efb8efe3) SHA1(fad3ca72932c4318e8062708739dd80cacd2e019) )
 	ROM_LOAD( "yd_obj-1.bin",       0x20000, 0x20000, CRC(bf4ee682) SHA1(45aa98737f898a0ef105c9525c2edc9a1b425da1) )
 	ROM_LOAD( "yd_obj-2.bin",       0x40000, 0x20000, CRC(cb721682) SHA1(2305e5950cefe8d6b569d966728c9c5c8b4299a1) )
@@ -1175,10 +1180,10 @@ ROM_START( youkaidk2 )
 	ROM_LOAD( "yd_voi-1.bin",       0x20000, 0x20000, CRC(7809035c) SHA1(d1d12db8f1d2c25545ccb92c0a2f2af2d0267161) ) // yd1.v1 + yd1.v4
 	ROM_LOAD( "yd_voi-2.bin",       0x40000, 0x20000, CRC(73bffc16) SHA1(a927e503bf8650e6b638d5c357cb48586cfa025b) ) // yd1.v2 + yd1.v5
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "yd_chr-8.bin",       0x00000, 0x20000, CRC(0c8e69d0) SHA1(cedf12db2d9b14396cc8a15ccb025b96c92e190d) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "yd_chr-0.bin",       0x00000, 0x20000, CRC(717441dd) SHA1(eb4d7e8293c4e404422bec79813a782c3373ef76) )
 	ROM_LOAD( "yd_chr-1.bin",       0x20000, 0x20000, CRC(c1be6e35) SHA1(910fa2bbb708811413758a07ba472ce8dc772ee4) )
 	ROM_LOAD( "yd_chr-2.bin",       0x40000, 0x20000, CRC(2df8d8cc) SHA1(44b7fef479a726cad6908d33e27999d7ad679c6f) )
@@ -1188,7 +1193,7 @@ ROM_START( youkaidk2 )
 	ROM_LOAD( "yd_chr-6.bin",       0xc0000, 0x20000, CRC(3ac6a90e) SHA1(7cf13b1998976c4f73d7c36c57afde1d1a6c71ec) )
 	ROM_LOAD( "yd_chr-7.bin",       0xe0000, 0x20000, CRC(8d2cffa5) SHA1(2b293ed35bb3d9a81b5dc8cb06ec3aa9260dcf27) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "yd_obj-0.bin",       0x00000, 0x20000, CRC(efb8efe3) SHA1(fad3ca72932c4318e8062708739dd80cacd2e019) )
 	ROM_LOAD( "yd_obj-1.bin",       0x20000, 0x20000, CRC(bf4ee682) SHA1(45aa98737f898a0ef105c9525c2edc9a1b425da1) )
 	ROM_LOAD( "yd_obj-2.bin",       0x40000, 0x20000, CRC(cb721682) SHA1(2305e5950cefe8d6b569d966728c9c5c8b4299a1) )
@@ -1220,10 +1225,10 @@ ROM_START( youkaidk1 )
 	ROM_LOAD( "yd_voi-1.bin",       0x20000, 0x20000, CRC(7809035c) SHA1(d1d12db8f1d2c25545ccb92c0a2f2af2d0267161) ) // yd1.v1 + yd1.v4
 	ROM_LOAD( "yd_voi-2.bin",       0x40000, 0x20000, CRC(73bffc16) SHA1(a927e503bf8650e6b638d5c357cb48586cfa025b) ) // yd1.v2 + yd1.v5
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "yd_chr-8.bin",       0x00000, 0x20000, CRC(0c8e69d0) SHA1(cedf12db2d9b14396cc8a15ccb025b96c92e190d) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "yd_chr-0.bin",       0x00000, 0x20000, CRC(717441dd) SHA1(eb4d7e8293c4e404422bec79813a782c3373ef76) )
 	ROM_LOAD( "yd_chr-1.bin",       0x20000, 0x20000, CRC(c1be6e35) SHA1(910fa2bbb708811413758a07ba472ce8dc772ee4) )
 	ROM_LOAD( "yd_chr-2.bin",       0x40000, 0x20000, CRC(2df8d8cc) SHA1(44b7fef479a726cad6908d33e27999d7ad679c6f) )
@@ -1233,7 +1238,7 @@ ROM_START( youkaidk1 )
 	ROM_LOAD( "yd_chr-6.bin",       0xc0000, 0x20000, CRC(3ac6a90e) SHA1(7cf13b1998976c4f73d7c36c57afde1d1a6c71ec) )
 	ROM_LOAD( "yd_chr-7.bin",       0xe0000, 0x20000, CRC(8d2cffa5) SHA1(2b293ed35bb3d9a81b5dc8cb06ec3aa9260dcf27) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "yd_obj-0.bin",       0x00000, 0x20000, CRC(efb8efe3) SHA1(fad3ca72932c4318e8062708739dd80cacd2e019) )
 	ROM_LOAD( "yd_obj-1.bin",       0x20000, 0x20000, CRC(bf4ee682) SHA1(45aa98737f898a0ef105c9525c2edc9a1b425da1) )
 	ROM_LOAD( "yd_obj-2.bin",       0x40000, 0x20000, CRC(cb721682) SHA1(2305e5950cefe8d6b569d966728c9c5c8b4299a1) )
@@ -1267,10 +1272,10 @@ ROM_START( dspirit )
 	ROM_LOAD( "ds_voi-3.bin",       0x60000, 0x20000, CRC(13e84c7e) SHA1(6ad0eb50eb3312f614a891ae8d66faca6b48d204) )
 	ROM_LOAD( "ds_voi-4.bin",       0x80000, 0x20000, CRC(34fbb8cd) SHA1(3f56f136e9d54d45924802f7149bfbc319e0933a) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ds_chr-8.bin",       0x00000, 0x20000, CRC(946eb242) SHA1(6964fff430fe306c575ff07e4c054c70aa7d96ca) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ds_chr-0.bin",       0x00000, 0x20000, CRC(7bf28ac3) SHA1(af42b568be0c3919dbbc0e0c7a9d5ea39f84481a) )
 	ROM_LOAD( "ds_chr-1.bin",       0x20000, 0x20000, CRC(03582fea) SHA1(c6705702bdb55ec6f993fc2582f116a8729c14d0) )
 	ROM_LOAD( "ds_chr-2.bin",       0x40000, 0x20000, CRC(5e05f4f9) SHA1(ededa62c261ca75fc5e79c80840fc15b27cb3989) )
@@ -1280,7 +1285,7 @@ ROM_START( dspirit )
 	ROM_LOAD( "ds_chr-6.bin",       0xc0000, 0x20000, CRC(a799665a) SHA1(70cd630e63714b544f3f61a6663a41e3439639d5) )
 	ROM_LOAD( "ds_chr-7.bin",       0xe0000, 0x20000, CRC(a51724af) SHA1(85728add3f773c4d814202208bee3d9a053e50de) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ds_obj-0.bin",       0x00000, 0x20000, CRC(03ec3076) SHA1(9926ec974ba3472d765531f6add4a8d6e398c46e) )
 	ROM_LOAD( "ds_obj-1.bin",       0x20000, 0x20000, CRC(e67a8fa4) SHA1(c45070b929f3e4df0e3809cf33cb4538b0067464) )
 	ROM_LOAD( "ds_obj-2.bin",       0x40000, 0x20000, CRC(061cd763) SHA1(df079052fddb60ea5618ed5a6c41fb4db0e313af) )
@@ -1314,10 +1319,10 @@ ROM_START( dspirit2 )
 	ROM_LOAD( "ds_voi-3.bin",       0x60000, 0x20000, CRC(13e84c7e) SHA1(6ad0eb50eb3312f614a891ae8d66faca6b48d204) )
 	ROM_LOAD( "ds_voi-4.bin",       0x80000, 0x20000, CRC(34fbb8cd) SHA1(3f56f136e9d54d45924802f7149bfbc319e0933a) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ds_chr-8.bin",       0x00000, 0x20000, CRC(946eb242) SHA1(6964fff430fe306c575ff07e4c054c70aa7d96ca) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ds_chr-0.bin",       0x00000, 0x20000, CRC(7bf28ac3) SHA1(af42b568be0c3919dbbc0e0c7a9d5ea39f84481a) )
 	ROM_LOAD( "ds_chr-1.bin",       0x20000, 0x20000, CRC(03582fea) SHA1(c6705702bdb55ec6f993fc2582f116a8729c14d0) )
 	ROM_LOAD( "ds_chr-2.bin",       0x40000, 0x20000, CRC(5e05f4f9) SHA1(ededa62c261ca75fc5e79c80840fc15b27cb3989) )
@@ -1327,7 +1332,7 @@ ROM_START( dspirit2 )
 	ROM_LOAD( "ds_chr-6.bin",       0xc0000, 0x20000, CRC(a799665a) SHA1(70cd630e63714b544f3f61a6663a41e3439639d5) )
 	ROM_LOAD( "ds_chr-7.bin",       0xe0000, 0x20000, CRC(a51724af) SHA1(85728add3f773c4d814202208bee3d9a053e50de) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ds_obj-0.bin",       0x00000, 0x20000, CRC(03ec3076) SHA1(9926ec974ba3472d765531f6add4a8d6e398c46e) )
 	ROM_LOAD( "ds_obj-1.bin",       0x20000, 0x20000, CRC(e67a8fa4) SHA1(c45070b929f3e4df0e3809cf33cb4538b0067464) )
 	ROM_LOAD( "ds_obj-2.bin",       0x40000, 0x20000, CRC(061cd763) SHA1(df079052fddb60ea5618ed5a6c41fb4db0e313af) )
@@ -1361,10 +1366,10 @@ ROM_START( dspirit1 )
 	ROM_LOAD( "ds_voi-3.bin",       0x60000, 0x20000, CRC(13e84c7e) SHA1(6ad0eb50eb3312f614a891ae8d66faca6b48d204) )
 	ROM_LOAD( "ds_voi-4.bin",       0x80000, 0x20000, CRC(34fbb8cd) SHA1(3f56f136e9d54d45924802f7149bfbc319e0933a) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ds_chr-8.bin",       0x00000, 0x20000, CRC(946eb242) SHA1(6964fff430fe306c575ff07e4c054c70aa7d96ca) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ds_chr-0.bin",       0x00000, 0x20000, CRC(7bf28ac3) SHA1(af42b568be0c3919dbbc0e0c7a9d5ea39f84481a) )
 	ROM_LOAD( "ds_chr-1.bin",       0x20000, 0x20000, CRC(03582fea) SHA1(c6705702bdb55ec6f993fc2582f116a8729c14d0) )
 	ROM_LOAD( "ds_chr-2.bin",       0x40000, 0x20000, CRC(5e05f4f9) SHA1(ededa62c261ca75fc5e79c80840fc15b27cb3989) )
@@ -1374,7 +1379,7 @@ ROM_START( dspirit1 )
 	ROM_LOAD( "ds_chr-6.bin",       0xc0000, 0x20000, CRC(a799665a) SHA1(70cd630e63714b544f3f61a6663a41e3439639d5) )
 	ROM_LOAD( "ds_chr-7.bin",       0xe0000, 0x20000, CRC(a51724af) SHA1(85728add3f773c4d814202208bee3d9a053e50de) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ds_obj-0.bin",       0x00000, 0x20000, CRC(03ec3076) SHA1(9926ec974ba3472d765531f6add4a8d6e398c46e) )
 	ROM_LOAD( "ds_obj-1.bin",       0x20000, 0x20000, CRC(e67a8fa4) SHA1(c45070b929f3e4df0e3809cf33cb4538b0067464) )
 	ROM_LOAD( "ds_obj-2.bin",       0x40000, 0x20000, CRC(061cd763) SHA1(df079052fddb60ea5618ed5a6c41fb4db0e313af) )
@@ -1407,10 +1412,10 @@ ROM_START( blazer )
 	ROM_LOAD( "bz_voi-3.bin",       0x60000, 0x20000, CRC(26cfc510) SHA1(749680eaf3072db5331cc76a21cd022c50f95647) )
 	ROM_LOAD( "bz_voi-4.bin",       0x80000, 0x20000, CRC(d206b1bd) SHA1(32702fa67339ab337a2a70946e3861420a07b11b) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "bz_chr-8.bin",       0x00000, 0x20000, CRC(db28bfca) SHA1(510dd204da389db7eb5d9ce34dc0daf60bad1219) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "bz_chr-0.bin",       0x00000, 0x20000, CRC(d346ba61) SHA1(eaae8557e77574a7692319b8819bd5078855ddc0) )
 	ROM_LOAD( "bz_chr-1.bin",       0x20000, 0x20000, CRC(e45eb2ea) SHA1(b3a7b7df93544c6b76b4000d55e178b52f46c5c8) )
 	ROM_LOAD( "bz_chr-2.bin",       0x40000, 0x20000, CRC(599079ee) SHA1(ceb57e5f352a740fc2a90175a73ef318cd3ffb6f) )
@@ -1420,7 +1425,7 @@ ROM_START( blazer )
 	ROM_LOAD( "bz_chr-6.bin",       0xc0000, 0x20000, CRC(0312e2ba) SHA1(c7332dddca71d819987d0c723bad35a39ed54d42) )
 	ROM_LOAD( "bz_chr-7.bin",       0xe0000, 0x20000, CRC(d9d9a90f) SHA1(f62ea399afa38b2c44f6aa51bcf9a49151ccf70a) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "bz_obj-0.bin",       0x00000, 0x20000, CRC(22aee927) SHA1(f8cc0ea6469c2dec9c853269c3bf40e90c32d806) )
 	ROM_LOAD( "bz_obj-1.bin",       0x20000, 0x20000, CRC(7cb10112) SHA1(83bc9af6d72b2d7894ac632ea486c2f603f8d08f) )
 	ROM_LOAD( "bz_obj-2.bin",       0x40000, 0x20000, CRC(34b23bb7) SHA1(fb288d089270b0e41fccd0da03e019eb9e8cad0c) )
@@ -1449,15 +1454,15 @@ ROM_START( quester )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "qs1_v0.bin",      0x00000, 0x10000, CRC(6a2f3038) SHA1(00870da9b7f65536ff052c32da2d553f8c6b994b) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "qs1_c8.bin",         0x00000, 0x10000, CRC(06730d54) SHA1(53d79c27e2f1b192b1de781b6b5024eb1e8126ad) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "qs1_c0.bin",         0x00000, 0x20000, CRC(ca69bd7a) SHA1(98130f06e3d7b480b76bf28a4e252b4aaa1e1b3e) )
 	ROM_LOAD( "qs1_c1.bin",         0x20000, 0x20000, CRC(d660ba71) SHA1(738d225c0e2b91c785fde0c33a0520a672933659) )
 	ROM_LOAD( "qs1_c2.bin",         0x40000, 0x20000, CRC(4686f656) SHA1(8628a18bf7154b8edaf7cfbee2d8881a28690bff) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "qs1_o0.bin",         0x00000, 0x10000, CRC(e24f0bf1) SHA1(31f37f853fe27c24cfeaa059f8959dfea37911cb) )
 	ROM_LOAD( "qs1_o1.bin",         0x20000, 0x10000, CRC(e4aab0ca) SHA1(e4765dd369b02492dbb9955cc082f24665a01635) )
 ROM_END
@@ -1482,15 +1487,15 @@ ROM_START( questers )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "qs1_v0.bin",      0x00000, 0x10000, CRC(6a2f3038) SHA1(00870da9b7f65536ff052c32da2d553f8c6b994b) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "qs1_c8.bin",         0x00000, 0x10000, CRC(06730d54) SHA1(53d79c27e2f1b192b1de781b6b5024eb1e8126ad) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "qs1_c0.bin",         0x00000, 0x20000, CRC(ca69bd7a) SHA1(98130f06e3d7b480b76bf28a4e252b4aaa1e1b3e) )
 	ROM_LOAD( "qs1_c1.bin",         0x20000, 0x20000, CRC(d660ba71) SHA1(738d225c0e2b91c785fde0c33a0520a672933659) )
 	ROM_LOAD( "qs1_c2.bin",         0x40000, 0x20000, CRC(4686f656) SHA1(8628a18bf7154b8edaf7cfbee2d8881a28690bff) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "qs1_o0.bin",         0x00000, 0x10000, CRC(e24f0bf1) SHA1(31f37f853fe27c24cfeaa059f8959dfea37911cb) )
 	ROM_LOAD( "qs1_o1.bin",         0x20000, 0x10000, CRC(e4aab0ca) SHA1(e4765dd369b02492dbb9955cc082f24665a01635) )
 ROM_END
@@ -1516,16 +1521,16 @@ ROM_START( pacmania )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "pn2_v0.bin",      0x00000, 0x10000, CRC(1ad5788f) SHA1(f6b1ccdcc3db11c0ab83e3ff24e772cd2b491468) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "pn2_c8.bin",         0x00000, 0x10000, CRC(f3afd65d) SHA1(51daefd8685b49c464130b9e7d93e31cfdda724e) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "pn_chr-0.bin",       0x00000, 0x20000, CRC(7c57644c) SHA1(77d9cc9ffbed47a941e4c5e5645d7d1126f6c302) )
 	ROM_LOAD( "pn_chr-1.bin",       0x20000, 0x20000, CRC(7eaa67ed) SHA1(4ad6cfa31d781fa7169663bbc319fc79d8965290) )
 	ROM_LOAD( "pn_chr-2.bin",       0x40000, 0x20000, CRC(27e739ac) SHA1(be9dbd22d988b76f7044328e2056c3f26b703401) )
 	ROM_LOAD( "pn_chr-3.bin",       0x60000, 0x20000, CRC(1dfda293) SHA1(fa01b0b8a820c1d24ff0f84b857d2784f0dac1cf) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "pn_obj-0.bin",       0x00000, 0x20000, CRC(fda57e8b) SHA1(16a72585268159d24f881dbb1aa6ae82bcc4bde7) )
 	ROM_LOAD( "pnx_obj1.bin",       0x20000, 0x20000, CRC(4c08affe) SHA1(f8f60fdc31779e2abe496e36ba0e4f27546cbc54) )
 ROM_END
@@ -1552,16 +1557,16 @@ ROM_START( pacmaniao )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "pac-mania_111187.voice0",      0x00000, 0x10000, CRC(1ad5788f) SHA1(f6b1ccdcc3db11c0ab83e3ff24e772cd2b491468) ) // identical to world version
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "pn1_c8.bin",         0x00000, 0x10000, CRC(f3afd65d) SHA1(51daefd8685b49c464130b9e7d93e31cfdda724e) ) // same as the Japanese version
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "pn_chr-0.bin",       0x00000, 0x20000, CRC(7c57644c) SHA1(77d9cc9ffbed47a941e4c5e5645d7d1126f6c302) )
 	ROM_LOAD( "pn_chr-1.bin",       0x20000, 0x20000, CRC(7eaa67ed) SHA1(4ad6cfa31d781fa7169663bbc319fc79d8965290) )
 	ROM_LOAD( "pn_chr-2.bin",       0x40000, 0x20000, CRC(27e739ac) SHA1(be9dbd22d988b76f7044328e2056c3f26b703401) )
 	ROM_LOAD( "pn_chr-3.bin",       0x60000, 0x20000, CRC(1dfda293) SHA1(fa01b0b8a820c1d24ff0f84b857d2784f0dac1cf) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "pn_obj-0.bin",       0x00000, 0x20000, CRC(fda57e8b) SHA1(16a72585268159d24f881dbb1aa6ae82bcc4bde7) )
 	ROM_LOAD( "pnx_obj1.bin",       0x20000, 0x20000, CRC(4c08affe) SHA1(f8f60fdc31779e2abe496e36ba0e4f27546cbc54) )
 ROM_END
@@ -1588,16 +1593,16 @@ ROM_START( pacmaniaj )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "pn1_v0.bin",      0x00000, 0x10000, CRC(e2689f79) SHA1(b88e3435f2932901cc0a3b379b31a764bb9b2e2b) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "pn1_c8.bin",         0x00000, 0x10000, CRC(f3afd65d) SHA1(51daefd8685b49c464130b9e7d93e31cfdda724e) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "pn_chr-0.bin",       0x00000, 0x20000, CRC(7c57644c) SHA1(77d9cc9ffbed47a941e4c5e5645d7d1126f6c302) )
 	ROM_LOAD( "pn_chr-1.bin",       0x20000, 0x20000, CRC(7eaa67ed) SHA1(4ad6cfa31d781fa7169663bbc319fc79d8965290) )
 	ROM_LOAD( "pn_chr-2.bin",       0x40000, 0x20000, CRC(27e739ac) SHA1(be9dbd22d988b76f7044328e2056c3f26b703401) )
 	ROM_LOAD( "pn_chr-3.bin",       0x60000, 0x20000, CRC(1dfda293) SHA1(fa01b0b8a820c1d24ff0f84b857d2784f0dac1cf) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "pn_obj-0.bin",       0x00000, 0x20000, CRC(fda57e8b) SHA1(16a72585268159d24f881dbb1aa6ae82bcc4bde7) )
 	ROM_LOAD( "pn_obj-1.bin",       0x20000, 0x20000, CRC(27bdf440) SHA1(0be16dc73590eb71090e6a0e6ddd6e7f4f3dbfba) )
 ROM_END
@@ -1629,16 +1634,16 @@ ROM_START( galaga88 )
 	ROM_LOAD_HS( "g81_v4.bin",      0x80000, 0x10000, CRC(ac0279a7) SHA1(8d25292eec9953516fc5d25a94e30acc8159b360) )
 	ROM_LOAD_HS( "g81_v5.bin",      0xa0000, 0x10000, CRC(014ddba1) SHA1(26590b77a0c386dc076a8f8eccf6244c7e5a1e10) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "g8_chr-8.bin",       0x00000, 0x20000, CRC(3862ed0a) SHA1(4cae42bbfa434c7dce63fdceaa569fcb28768420) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "g8_chr-0.bin",       0x00000, 0x20000, CRC(68559c78) SHA1(28f6284acbf1fc263c2d38ae464ee77f367b0af5) )
 	ROM_LOAD( "g8_chr-1.bin",       0x20000, 0x20000, CRC(3dc0f93f) SHA1(0db9f37cf6e06013b402df23e615b0ab0d32b9ee) )
 	ROM_LOAD( "g8_chr-2.bin",       0x40000, 0x20000, CRC(dbf26f1f) SHA1(e52723647a8fe6db0b9c5e11c02486b20a549506) )
 	ROM_LOAD( "g8_chr-3.bin",       0x60000, 0x20000, CRC(f5d6cac5) SHA1(3d098b8219de4a7729ec95547eebff17c9b505b9) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "g8_obj-0.bin",       0x00000, 0x20000, CRC(d7112e3f) SHA1(476f9e1b636b257e517fc789508dac923d05ef67) )
 	ROM_LOAD( "g8_obj-1.bin",       0x20000, 0x20000, CRC(680db8e7) SHA1(84a68c27aaae27c0540f68f9c7d490a416c8f027) )
 	ROM_LOAD( "g8_obj-2.bin",       0x40000, 0x20000, CRC(13c97512) SHA1(9c5f39bcfe28abe1faa67bbe829a61fbcec98ec8) )
@@ -1674,16 +1679,16 @@ ROM_START( galaga88j )
 	ROM_LOAD_HS( "g81_v4.bin",      0x80000, 0x10000, CRC(ac0279a7) SHA1(8d25292eec9953516fc5d25a94e30acc8159b360) )
 	ROM_LOAD_HS( "g81_v5.bin",      0xa0000, 0x10000, CRC(014ddba1) SHA1(26590b77a0c386dc076a8f8eccf6244c7e5a1e10) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "g8_chr-8.bin",       0x00000, 0x20000, CRC(3862ed0a) SHA1(4cae42bbfa434c7dce63fdceaa569fcb28768420) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "g8_chr-0.bin",       0x00000, 0x20000, CRC(68559c78) SHA1(28f6284acbf1fc263c2d38ae464ee77f367b0af5) )
 	ROM_LOAD( "g8_chr-1.bin",       0x20000, 0x20000, CRC(3dc0f93f) SHA1(0db9f37cf6e06013b402df23e615b0ab0d32b9ee) )
 	ROM_LOAD( "g8_chr-2.bin",       0x40000, 0x20000, CRC(dbf26f1f) SHA1(e52723647a8fe6db0b9c5e11c02486b20a549506) )
 	ROM_LOAD( "g8_chr-3.bin",       0x60000, 0x20000, CRC(f5d6cac5) SHA1(3d098b8219de4a7729ec95547eebff17c9b505b9) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "g8_obj-0.bin",       0x00000, 0x20000, CRC(d7112e3f) SHA1(476f9e1b636b257e517fc789508dac923d05ef67) )
 	ROM_LOAD( "g8_obj-1.bin",       0x20000, 0x20000, CRC(680db8e7) SHA1(84a68c27aaae27c0540f68f9c7d490a416c8f027) )
 	ROM_LOAD( "g8_obj-2.bin",       0x40000, 0x20000, CRC(13c97512) SHA1(9c5f39bcfe28abe1faa67bbe829a61fbcec98ec8) )
@@ -1719,17 +1724,17 @@ ROM_START( galaga88a )
 	ROM_LOAD_HS( "g81_v4.bin",      0x80000, 0x10000, CRC(ac0279a7) SHA1(8d25292eec9953516fc5d25a94e30acc8159b360) ) // 12-11-87
 	ROM_LOAD_HS( "g81_v5.bin",      0xa0000, 0x10000, CRC(014ddba1) SHA1(26590b77a0c386dc076a8f8eccf6244c7e5a1e10) ) // 12-11-87
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "g8_chr-8.bin",       0x00000, 0x20000, CRC(3862ed0a) SHA1(4cae42bbfa434c7dce63fdceaa569fcb28768420) ) // 12-11-87
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "g8_chr-0.bin",       0x00000, 0x20000, CRC(68559c78) SHA1(28f6284acbf1fc263c2d38ae464ee77f367b0af5) ) // 12-11-87
 	ROM_LOAD( "g8_chr-1.bin",       0x20000, 0x20000, CRC(3dc0f93f) SHA1(0db9f37cf6e06013b402df23e615b0ab0d32b9ee) ) // 12-11-87
 	ROM_LOAD( "g8_chr-2.bin",       0x40000, 0x20000, CRC(dbf26f1f) SHA1(e52723647a8fe6db0b9c5e11c02486b20a549506) ) // 12-11-87
 	ROM_LOAD( "g8_chr-3.bin",       0x60000, 0x20000, CRC(f5d6cac5) SHA1(3d098b8219de4a7729ec95547eebff17c9b505b9) ) // 12-11-87
-	ROM_LOAD( "g8chr-7.m8",       0xe0000, 0x20000, CRC(5f655016) SHA1(f6f1fa26dad363f1b50995fd1c52db0671365d83) ) // 10-27-87 (present, but not used by this version? possibly leftover from earlier development)
+	ROM_LOAD( "g8chr-7.m8",         0xe0000, 0x20000, CRC(5f655016) SHA1(f6f1fa26dad363f1b50995fd1c52db0671365d83) ) // 10-27-87 (present, but not used by this version? possibly leftover from earlier development)
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "g8_obj-0.bin",       0x00000, 0x20000, CRC(d7112e3f) SHA1(476f9e1b636b257e517fc789508dac923d05ef67) ) // 12-11-87
 	ROM_LOAD( "g8_obj-1.bin",       0x20000, 0x20000, CRC(680db8e7) SHA1(84a68c27aaae27c0540f68f9c7d490a416c8f027) ) // 12-11-87
 	ROM_LOAD( "g8_obj-2.bin",       0x40000, 0x20000, CRC(13c97512) SHA1(9c5f39bcfe28abe1faa67bbe829a61fbcec98ec8) ) // 12-11-87
@@ -1762,10 +1767,10 @@ ROM_START( ws )
 	ROM_LOAD_HS( "ws1_voi0.bin",    0x00000, 0x10000, CRC(f6949199) SHA1(ef596b02060f8e58eac37765663dd16377244391) )
 	ROM_LOAD( "ws_voi-1.bin",       0x20000, 0x20000, CRC(210e2af9) SHA1(f8a1f8c6b9fbb8a9b3f298674600c1fbb9c5840e) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ws_chr-8.bin",       0x00000, 0x20000, CRC(d1897b9b) SHA1(29906614b879e5623b49bc925e80006aee3997b9) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ws_chr-0.bin",       0x00000, 0x20000, CRC(3e3e96b4) SHA1(7b5f72e7e2aab9c78f452171ac6ebe8c634a88c4) )
 	ROM_LOAD( "ws_chr-1.bin",       0x20000, 0x20000, CRC(897dfbc1) SHA1(3e7425a456bada77591abcf1567ec75a99440334) )
 	ROM_LOAD( "ws_chr-2.bin",       0x40000, 0x20000, CRC(e142527c) SHA1(606206b7b9916e3f456595344b70c17d44731fbb) )
@@ -1773,7 +1778,7 @@ ROM_START( ws )
 	ROM_LOAD( "ws_chr-4.bin",       0x80000, 0x20000, CRC(afb11e17) SHA1(cf4aa124f0d4fe737686ccda72c55c199189ca49) )
 	ROM_LOAD( "ws_chr-6.bin",       0xc0000, 0x20000, CRC(a16a17c2) SHA1(52917165d50a03db8ad6783a95731e0b438c2a6c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ws_obj-0.bin",       0x00000, 0x20000, CRC(12dc83a6) SHA1(f3d0ebda14af81ff99642ceaa7b9c0e4a4bfbbcb) )
 	ROM_LOAD( "ws_obj-1.bin",       0x20000, 0x20000, CRC(68290a46) SHA1(c05f31e1c2332cba5d5b8cafc0e9f616aadee5b7) )
 	ROM_LOAD( "ws_obj-2.bin",       0x40000, 0x20000, CRC(cd5ba55d) SHA1(9b5a655909457bcffdaaa95842740a6f0f8f6cec) )
@@ -1803,10 +1808,10 @@ ROM_START( berabohm )
 	ROM_LOAD(    "bm_voi-1.bin",    0x20000, 0x20000, CRC(be9ce0a8) SHA1(a211216125615cb14e515317f56976c4ebe13f5f) )
 	ROM_LOAD_HS( "bm1_v2.bin",      0x40000, 0x10000, CRC(41225d04) SHA1(a670c5ce63ff1d2ed94aa5ea17cb2c91eb768f14) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "bm_chr-8.bin",       0x00000, 0x20000, CRC(92860e95) SHA1(d8c8d5aed956c876809f287700f33bc70a1b58a3) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "bm_chr-0.bin",       0x00000, 0x20000, CRC(eda1d92e) SHA1(b9423a9feafb08c0f3d1f359783d8e4fb17bde98) )
 	ROM_LOAD( "bm_chr-1.bin",       0x20000, 0x20000, CRC(8ae1891e) SHA1(95308defaf564680028abc3a0fd406cf35e461ce) )
 	ROM_LOAD( "bm_chr-2.bin",       0x40000, 0x20000, CRC(774cdf4e) SHA1(a4663dec7bfb43bee4e6aaacb3b203d71e3e3c9e) )
@@ -1815,7 +1820,7 @@ ROM_START( berabohm )
 	ROM_LOAD( "bm_chr-5.bin",       0xa0000, 0x20000, CRC(0e0abde0) SHA1(1e17767ccf55bebf681b078b405bedd47fe502d5) )
 	ROM_LOAD( "bm_chr-6.bin",       0xc0000, 0x20000, CRC(4a61f08c) SHA1(1136819780e1f3ed150663d4853b6caf835e1c3e) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "bm_obj-0.bin",       0x00000, 0x20000, CRC(15724b94) SHA1(2f40425138c574a51e742ff610ce88c8a47c0c16) )
 	ROM_LOAD( "bm_obj-1.bin",       0x20000, 0x20000, CRC(5d21f962) SHA1(2cfeda30dd7e10bcb66fe8858470a9db7577a59d) )
 	ROM_LOAD( "bm_obj-2.bin",       0x40000, 0x20000, CRC(5d48e924) SHA1(6642b9cc632bba216f341a37325a826808aa3f34) )
@@ -1847,10 +1852,10 @@ ROM_START( berabohmb )
 	ROM_LOAD(    "bm_voi-1.bin",    0x20000, 0x20000, CRC(be9ce0a8) SHA1(a211216125615cb14e515317f56976c4ebe13f5f) )
 	ROM_LOAD_HS( "bm1_v2.bin",      0x40000, 0x10000, CRC(41225d04) SHA1(a670c5ce63ff1d2ed94aa5ea17cb2c91eb768f14) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "bm_chr-8.bin",       0x00000, 0x20000, CRC(92860e95) SHA1(d8c8d5aed956c876809f287700f33bc70a1b58a3) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "bm_chr-0.bin",       0x00000, 0x20000, CRC(eda1d92e) SHA1(b9423a9feafb08c0f3d1f359783d8e4fb17bde98) )
 	ROM_LOAD( "bm_chr-1.bin",       0x20000, 0x20000, CRC(8ae1891e) SHA1(95308defaf564680028abc3a0fd406cf35e461ce) )
 	ROM_LOAD( "bm_chr-2.bin",       0x40000, 0x20000, CRC(774cdf4e) SHA1(a4663dec7bfb43bee4e6aaacb3b203d71e3e3c9e) )
@@ -1859,7 +1864,7 @@ ROM_START( berabohmb )
 	ROM_LOAD( "bm_chr-5.bin",       0xa0000, 0x20000, CRC(0e0abde0) SHA1(1e17767ccf55bebf681b078b405bedd47fe502d5) )
 	ROM_LOAD( "bm_chr-6.bin",       0xc0000, 0x20000, CRC(4a61f08c) SHA1(1136819780e1f3ed150663d4853b6caf835e1c3e) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "bm_obj-0.bin",       0x00000, 0x20000, CRC(15724b94) SHA1(2f40425138c574a51e742ff610ce88c8a47c0c16) )
 	ROM_LOAD( "bm_obj-1.bin",       0x20000, 0x20000, CRC(5d21f962) SHA1(2cfeda30dd7e10bcb66fe8858470a9db7577a59d) )
 	ROM_LOAD( "bm_obj-2.bin",       0x40000, 0x20000, CRC(5d48e924) SHA1(6642b9cc632bba216f341a37325a826808aa3f34) )
@@ -1892,10 +1897,10 @@ ROM_START( mmaze )
 	ROM_LOAD( "mm_voi-0.bin",       0x00000, 0x20000, CRC(ee974cff) SHA1(f211c461a36dae9ce5ee614aaaabf92556181a85) )
 	ROM_LOAD( "mm_voi-1.bin",       0x20000, 0x20000, CRC(d09b5830) SHA1(954be797e30f7d126b4fc2b04f190bfd7dc23bff) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "mm_chr-8.bin",       0x00000, 0x20000, CRC(a3784dfe) SHA1(7bcd71e0c675cd16587b61c23b470abb8ba434d3) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "mm_chr-0.bin",       0x00000, 0x20000, CRC(43ff2dfc) SHA1(4cf6834071f408eac5a7a67570bd11cb61a83b54) )
 	ROM_LOAD( "mm_chr-1.bin",       0x20000, 0x20000, CRC(b9b4b72d) SHA1(cc11496a27cd94503eb3a16c95c49d60ed092e62) )
 	ROM_LOAD( "mm_chr-2.bin",       0x40000, 0x20000, CRC(bee28425) SHA1(90e8aaf4bcb1af6239404bc05b9e6a1b25f61754) )
@@ -1903,7 +1908,7 @@ ROM_START( mmaze )
 	ROM_LOAD( "mm_chr-4.bin",       0x80000, 0x20000, CRC(3484f4ae) SHA1(0cc177637e3fc8ef26bcde0f15ab507143745ff9) )
 	ROM_LOAD( "mm_chr-5.bin",       0xa0000, 0x20000, CRC(c863deba) SHA1(cc2b8cd156cf11ee289c68b0a583e7bb4250414b) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "mm_obj-0.bin",       0x00000, 0x20000, CRC(d4b7e698) SHA1(c73ef73574a52d06e12e21047529b09854e1ba21) )
 	ROM_LOAD( "mm_obj-1.bin",       0x20000, 0x20000, CRC(1ce49e04) SHA1(fc30a03e443bece11bd86771ebd1fcb40d15b0b9) )
 	ROM_LOAD( "mm_obj-2.bin",       0x40000, 0x20000, CRC(3d3d5de3) SHA1(aa8032f1d99af1d92b0afaa11933548e0d39f03b) )
@@ -1935,10 +1940,10 @@ ROM_START( mmaze2 )
 	ROM_LOAD( "mm_voi-0.bin",       0x00000, 0x20000, CRC(ee974cff) SHA1(f211c461a36dae9ce5ee614aaaabf92556181a85) )
 	ROM_LOAD( "mm_voi-1.bin",       0x20000, 0x20000, CRC(d09b5830) SHA1(954be797e30f7d126b4fc2b04f190bfd7dc23bff) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "mm_chr-8.bin",       0x00000, 0x20000, CRC(a3784dfe) SHA1(7bcd71e0c675cd16587b61c23b470abb8ba434d3) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "mm_chr-0.bin",       0x00000, 0x20000, CRC(43ff2dfc) SHA1(4cf6834071f408eac5a7a67570bd11cb61a83b54) )
 	ROM_LOAD( "mm_chr-1.bin",       0x20000, 0x20000, CRC(b9b4b72d) SHA1(cc11496a27cd94503eb3a16c95c49d60ed092e62) )
 	ROM_LOAD( "mm_chr-2.bin",       0x40000, 0x20000, CRC(bee28425) SHA1(90e8aaf4bcb1af6239404bc05b9e6a1b25f61754) )
@@ -1946,7 +1951,7 @@ ROM_START( mmaze2 )
 	ROM_LOAD( "mm_chr-4.bin",       0x80000, 0x20000, CRC(3484f4ae) SHA1(0cc177637e3fc8ef26bcde0f15ab507143745ff9) )
 	ROM_LOAD( "mm_chr-5.bin",       0xa0000, 0x20000, CRC(c863deba) SHA1(cc2b8cd156cf11ee289c68b0a583e7bb4250414b) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "mm_obj-0.bin",       0x00000, 0x20000, CRC(d4b7e698) SHA1(c73ef73574a52d06e12e21047529b09854e1ba21) )
 	ROM_LOAD( "mm_obj-1.bin",       0x20000, 0x20000, CRC(1ce49e04) SHA1(fc30a03e443bece11bd86771ebd1fcb40d15b0b9) )
 	ROM_LOAD( "mm_obj-2.bin",       0x40000, 0x20000, CRC(3d3d5de3) SHA1(aa8032f1d99af1d92b0afaa11933548e0d39f03b) )
@@ -1977,16 +1982,16 @@ ROM_START( bakutotu )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "bk1_v0.bin",      0x00000, 0x10000, CRC(008e290e) SHA1(87ac7291088f0d6a7179b1a5f3567a72dc92177c) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "bk_chr-8.bin",       0x00000, 0x20000, CRC(6c8d4029) SHA1(2eb6fd89ffaecfa53f9adcdebbe8f550199d067f) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "bk_chr-0.bin",       0x00000, 0x20000, CRC(4e011058) SHA1(bcefa12c1ca2486065ad648239704bed7f48dcfd) )
 	ROM_LOAD( "bk_chr-1.bin",       0x20000, 0x20000, CRC(496fcb9b) SHA1(0321bbc6957a34533d85008adbe1315a22f9292b) )
 	ROM_LOAD( "bk_chr-2.bin",       0x40000, 0x20000, CRC(dc812e28) SHA1(42c71a840f3f885f1d53285156c098d00a202ab1) )
 	ROM_LOAD( "bk_chr-3.bin",       0x60000, 0x20000, CRC(2b6120f4) SHA1(2cd52ed82556f4177ad427a063b6a0867ad3d3ad) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "bk_obj-0.bin",       0x00000, 0x20000, CRC(88c627c1) SHA1(10b331d8eec2cba327a8fa6f3213880e8e50a38d) )
 
 	// obj1 and 2 may not exist on the real board
@@ -2022,16 +2027,16 @@ ROM_START( wldcourt )
 	ROM_LOAD_HS( "wc1_voi0.bin",    0x00000, 0x10000, CRC(b57919f7) SHA1(5305c479513943a5d92988a63ad1671744e944b5) )
 	ROM_LOAD( "wc1_voi1.bin",       0x20000, 0x20000, CRC(97974b4b) SHA1(1e4d10ce28cabc01f1f233a0edc05e20874e0285) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "wc1_chr8.bin",       0x00000, 0x20000, CRC(23e1c399) SHA1(2d22da5c68c0924767f18fb19576cb76a016ae8e) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "wc1_chr0.bin",       0x00000, 0x20000, CRC(9fb07b9b) SHA1(5e98da8a4800be264d219e7b47433531ae2bbb79) )
 	ROM_LOAD( "wc1_chr1.bin",       0x20000, 0x20000, CRC(01bfbf60) SHA1(648bdabd0e9b5e98f20863335177ad2df455c022) )
 	ROM_LOAD( "wc1_chr2.bin",       0x40000, 0x20000, CRC(7e8acf45) SHA1(0bc5206be76a8f44881a1bc5f559412c9a8ff57f) )
 	ROM_LOAD( "wc1_chr3.bin",       0x60000, 0x20000, CRC(924e9c81) SHA1(4b5eb94c8da9e8397c5f1d03f338a5fa8895931c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "wc1_obj0.bin",       0x00000, 0x20000, CRC(70d562f8) SHA1(4445e2dd3eeaef79803d2b06e5b32782f6c4acbc) )
 	ROM_LOAD( "wc1_obj1.bin",       0x20000, 0x20000, CRC(ba8b034a) SHA1(024a4dd4497c17792648f90b59da9bc3da884f13) )
 	ROM_LOAD( "wc1_obj2.bin",       0x40000, 0x20000, CRC(c2bd5f0f) SHA1(9c29144fb77290a4d2aaa43c4c0b2f6757ed1f8c) )
@@ -2040,7 +2045,7 @@ ROM_END
 
 /*
 Splatter House
-Namco, 198x
+Namco, 1988
 
 This game runs on Namco System 1 hardware
 
@@ -2185,10 +2190,10 @@ ROM_START( splatter )
 	ROM_LOAD( "sh_voi-2.bin",       0x40000, 0x20000, CRC(25ea75b6) SHA1(aafebbdddf4a2924d9e5a850ffb6861cb5c4a769) )
 	ROM_LOAD( "sh_voi-3.bin",       0x60000, 0x20000, CRC(5eebcdb4) SHA1(973e95a49cb1dda14e4c61580501c997fc7bc015) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "sh_chr-8.bin",       0x00000, 0x20000, CRC(321f483b) SHA1(84d75367d2e3ae210ecd17c163b336f609628a91) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "sh_chr-0.bin",       0x00000, 0x20000, CRC(4dd2ef05) SHA1(c756c0986db9e61cf44379fafb00295f0d434667) )
 	ROM_LOAD( "sh_chr-1.bin",       0x20000, 0x20000, CRC(7a764999) SHA1(836aee2c9abe2a8e3806b53e051f76dcf4266212) )
 	ROM_LOAD( "sh_chr-2.bin",       0x40000, 0x20000, CRC(6e6526ee) SHA1(f96a672b4293657398cfc6c1cf4ab4e4b223f7f9) )
@@ -2196,7 +2201,7 @@ ROM_START( splatter )
 	ROM_LOAD( "sh_chr-4.bin",       0x80000, 0x20000, CRC(1e1f8488) SHA1(3649564746516260b8b2df404e0ccf874d3441f9) )
 	ROM_LOAD( "sh_chr-5.bin",       0xa0000, 0x20000, CRC(684cf554) SHA1(77d3b6f03c8a96bd6e8bb7d2264fbfeb43bcde3d) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "sh_obj-0.bin",       0x00000, 0x20000, CRC(1cedbbae) SHA1(22811a9376195794f18ee8d377b2548d27fc868e) )
 	ROM_LOAD( "sh_obj-1.bin",       0x20000, 0x20000, CRC(e56e91ee) SHA1(12b823ca92fb518d84c0432925ae8a4b33a1354d) )
 	ROM_LOAD( "sh_obj-2.bin",       0x40000, 0x20000, CRC(3dfb0230) SHA1(bf68a20544931b9673ce1f9e81b5f82e99f50bd0) )
@@ -2231,10 +2236,10 @@ ROM_START( splatter2 )
 	ROM_LOAD( "sh_voi-2.bin",       0x40000, 0x20000, CRC(25ea75b6) SHA1(aafebbdddf4a2924d9e5a850ffb6861cb5c4a769) )
 	ROM_LOAD( "sh_voi-3.bin",       0x60000, 0x20000, CRC(5eebcdb4) SHA1(973e95a49cb1dda14e4c61580501c997fc7bc015) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "sh_chr-8.bin",       0x00000, 0x20000, CRC(321f483b) SHA1(84d75367d2e3ae210ecd17c163b336f609628a91) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "sh_chr-0.bin",       0x00000, 0x20000, CRC(4dd2ef05) SHA1(c756c0986db9e61cf44379fafb00295f0d434667) )
 	ROM_LOAD( "sh_chr-1.bin",       0x20000, 0x20000, CRC(7a764999) SHA1(836aee2c9abe2a8e3806b53e051f76dcf4266212) )
 	ROM_LOAD( "sh_chr-2.bin",       0x40000, 0x20000, CRC(6e6526ee) SHA1(f96a672b4293657398cfc6c1cf4ab4e4b223f7f9) )
@@ -2242,7 +2247,7 @@ ROM_START( splatter2 )
 	ROM_LOAD( "sh_chr-4.bin",       0x80000, 0x20000, CRC(1e1f8488) SHA1(3649564746516260b8b2df404e0ccf874d3441f9) )
 	ROM_LOAD( "sh_chr-5.bin",       0xa0000, 0x20000, CRC(684cf554) SHA1(77d3b6f03c8a96bd6e8bb7d2264fbfeb43bcde3d) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "sh_obj-0.bin",       0x00000, 0x20000, CRC(1cedbbae) SHA1(22811a9376195794f18ee8d377b2548d27fc868e) )
 	ROM_LOAD( "sh_obj-1.bin",       0x20000, 0x20000, CRC(e56e91ee) SHA1(12b823ca92fb518d84c0432925ae8a4b33a1354d) )
 	ROM_LOAD( "sh_obj-2.bin",       0x40000, 0x20000, CRC(3dfb0230) SHA1(bf68a20544931b9673ce1f9e81b5f82e99f50bd0) )
@@ -2277,10 +2282,10 @@ ROM_START( splatterj )
 	ROM_LOAD( "sh_voi-2.bin",       0x40000, 0x20000, CRC(25ea75b6) SHA1(aafebbdddf4a2924d9e5a850ffb6861cb5c4a769) )
 	ROM_LOAD( "sh_voi-3.bin",       0x60000, 0x20000, CRC(5eebcdb4) SHA1(973e95a49cb1dda14e4c61580501c997fc7bc015) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "sh_chr-8.bin",       0x00000, 0x20000, CRC(321f483b) SHA1(84d75367d2e3ae210ecd17c163b336f609628a91) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "sh_chr-0.bin",       0x00000, 0x20000, CRC(4dd2ef05) SHA1(c756c0986db9e61cf44379fafb00295f0d434667) )
 	ROM_LOAD( "sh_chr-1.bin",       0x20000, 0x20000, CRC(7a764999) SHA1(836aee2c9abe2a8e3806b53e051f76dcf4266212) )
 	ROM_LOAD( "sh_chr-2.bin",       0x40000, 0x20000, CRC(6e6526ee) SHA1(f96a672b4293657398cfc6c1cf4ab4e4b223f7f9) )
@@ -2288,7 +2293,7 @@ ROM_START( splatterj )
 	ROM_LOAD( "sh_chr-4.bin",       0x80000, 0x20000, CRC(1e1f8488) SHA1(3649564746516260b8b2df404e0ccf874d3441f9) )
 	ROM_LOAD( "sh_chr-5.bin",       0xa0000, 0x20000, CRC(684cf554) SHA1(77d3b6f03c8a96bd6e8bb7d2264fbfeb43bcde3d) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "sh_obj-0.bin",       0x00000, 0x20000, CRC(1cedbbae) SHA1(22811a9376195794f18ee8d377b2548d27fc868e) )
 	ROM_LOAD( "sh_obj-1.bin",       0x20000, 0x20000, CRC(e56e91ee) SHA1(12b823ca92fb518d84c0432925ae8a4b33a1354d) )
 	ROM_LOAD( "sh_obj-2.bin",       0x40000, 0x20000, CRC(3dfb0230) SHA1(bf68a20544931b9673ce1f9e81b5f82e99f50bd0) )
@@ -2321,16 +2326,16 @@ ROM_START( faceoff )
 	ROM_LOAD_HS( "fo1_v0.bin",      0x00000, 0x10000, CRC(e6edf63e) SHA1(095f7fa93233e4b4f25e728868c212170be48550) )
 	ROM_LOAD_HS( "fo1_v1.bin",      0x20000, 0x10000, CRC(132a5d90) SHA1(d5ceae68d7aea7cdde43600453f9724f35834519) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "fo1_c8.bin",         0x00000, 0x10000, CRC(d397216c) SHA1(baa3747bf3e12246e2629eaf0abdb3df05e423bd) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "fo1_c0.bin",         0x00000, 0x20000, CRC(27884ac0) SHA1(b80444553e87d9dc0e3fdccee00ac9424a686a2a) )
 	ROM_LOAD( "fo1_c1.bin",         0x20000, 0x20000, CRC(4d423499) SHA1(9c06f468562e7c2dced3514b8a94db4146a16989) )
 	ROM_LOAD( "fo1_c2.bin",         0x40000, 0x20000, CRC(d62d86f1) SHA1(db526b9e5c701bb6264549581a00aabf6c95e7be) )
 	ROM_LOAD( "fo1_c3.bin",         0x60000, 0x20000, CRC(c2a08694) SHA1(8a78956a7e9f43c93aa63d80bb8b984c0ab22ef9) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "fo1_o0.bin",         0x00000, 0x20000, CRC(41af669d) SHA1(299563252d1340fd6745d9c04d7193ab29290b27) )
 	ROM_LOAD( "fo1_o1.bin",         0x20000, 0x20000, CRC(ad5fbaa7) SHA1(aebfd451e7666cfd49b9875b711a317356a0ea87) )
 	ROM_LOAD( "fo1_o2.bin",         0x40000, 0x20000, CRC(c1f7eb52) SHA1(f87a59afa19bbc7a9b876f50a787df8148b63738) )
@@ -2359,16 +2364,16 @@ ROM_START( rompers )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD( "rp_voi-0.bin",       0x00000, 0x20000, CRC(11caef7e) SHA1(c6470cbbc6402872794e0a4e822a5d08ca2448ef) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "rp1_chr8.bin",       0x00000, 0x10000, CRC(69cfe46a) SHA1(01c5af1b7fc337ec06a5afabd87b9a6a7dcf3503) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "rp_chr-0.bin",       0x00000, 0x20000, CRC(41b10ef3) SHA1(b1230ef55db91bc92d251332434ca7d5c9e7f879) )
 	ROM_LOAD( "rp_chr-1.bin",       0x20000, 0x20000, CRC(c18cd24e) SHA1(cfcf7ff4810ce18aaf188fbb552c926db9577c00) )
 	ROM_LOAD( "rp_chr-2.bin",       0x40000, 0x20000, CRC(6c9a3c79) SHA1(7d70a87b411ebafd372eb3f46bb09c6bfbfafb04) )
 	ROM_LOAD( "rp_chr-3.bin",       0x60000, 0x20000, CRC(473aa788) SHA1(8b3fcc7511bdc5ab443ac67a6bd0c05fb3463f8c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "rp_obj-0.bin",       0x00000, 0x20000, CRC(1dcbf8bb) SHA1(aec5d43b1a8c4af9a3002c815662179fa6324e2d) )
 	ROM_LOAD( "rp_obj-1.bin",       0x20000, 0x20000, CRC(cb98e273) SHA1(f13fe6f19ff812a2dcb614343f040fb9c4131b56) )
 	ROM_LOAD( "rp_obj-2.bin",       0x40000, 0x20000, CRC(6ebd191e) SHA1(e7ff23ac2586f4c38f3c5107b789e313a35e054e) )
@@ -2399,16 +2404,16 @@ ROM_START( romperso )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD( "rp_voi-0.bin",       0x00000, 0x20000, CRC(11caef7e) SHA1(c6470cbbc6402872794e0a4e822a5d08ca2448ef) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "rp1_chr8.bin",       0x00000, 0x10000, CRC(69cfe46a) SHA1(01c5af1b7fc337ec06a5afabd87b9a6a7dcf3503) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "rp_chr-0.bin",       0x00000, 0x20000, CRC(41b10ef3) SHA1(b1230ef55db91bc92d251332434ca7d5c9e7f879) )
 	ROM_LOAD( "rp_chr-1.bin",       0x20000, 0x20000, CRC(c18cd24e) SHA1(cfcf7ff4810ce18aaf188fbb552c926db9577c00) )
 	ROM_LOAD( "rp_chr-2.bin",       0x40000, 0x20000, CRC(6c9a3c79) SHA1(7d70a87b411ebafd372eb3f46bb09c6bfbfafb04) )
 	ROM_LOAD( "rp_chr-3.bin",       0x60000, 0x20000, CRC(473aa788) SHA1(8b3fcc7511bdc5ab443ac67a6bd0c05fb3463f8c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "rp_obj-0.bin",       0x00000, 0x20000, CRC(1dcbf8bb) SHA1(aec5d43b1a8c4af9a3002c815662179fa6324e2d) )
 	ROM_LOAD( "rp_obj-1.bin",       0x20000, 0x20000, CRC(cb98e273) SHA1(f13fe6f19ff812a2dcb614343f040fb9c4131b56) )
 	ROM_LOAD( "rp_obj-2.bin",       0x40000, 0x20000, CRC(6ebd191e) SHA1(e7ff23ac2586f4c38f3c5107b789e313a35e054e) )
@@ -2442,10 +2447,10 @@ ROM_START( blastoff )
 	ROM_LOAD( "bo_voi-1.bin",       0x20000, 0x20000, CRC(0308b18e) SHA1(7196abdf36d660089d739e3f3a362648768a6127) )
 	ROM_LOAD( "bo_voi-2.bin",       0x40000, 0x20000, CRC(88cab230) SHA1(659c4efeb8aa24f8b32509ee563407ed1e17d564) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "bo_chr-8.bin",       0x00000, 0x20000, CRC(e8b5f2d4) SHA1(70dd2898dcfed5f43f6c50f852660f24a9d7ec9d) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "bo_chr-0.bin",       0x00000, 0x20000, CRC(bdc0afb5) SHA1(09d01640bd0ff8d9d96282411ec9176e5fc57cae) )
 	ROM_LOAD( "bo_chr-1.bin",       0x20000, 0x20000, CRC(963d2639) SHA1(1bb936631c17e7695e087c95a72f1871fabb6647) )
 	ROM_LOAD( "bo_chr-2.bin",       0x40000, 0x20000, CRC(acdb6894) SHA1(a0d712e4883cda7068aa678d698abbe9c910363b) )
@@ -2454,7 +2459,7 @@ ROM_START( blastoff )
 	ROM_LOAD( "bo_chr-5.bin",       0xa0000, 0x20000, CRC(20402429) SHA1(a84760f693ec15f8f8238653d1761a34e2499da9) )
 	ROM_LOAD( "bo_chr-7.bin",       0xe0000, 0x20000, CRC(4c5c4603) SHA1(aa0c4f651ae38513f0a2b685dcc62c1897d0f310) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "bo_obj-0.bin",       0x00000, 0x20000, CRC(b3308ae7) SHA1(543ce5b41d922e0299ea691437d7d1a1741c1e0f) )
 	ROM_LOAD( "bo_obj-1.bin",       0x20000, 0x20000, CRC(c9c93c47) SHA1(ed3e0e54a5602e2ec6d4e0ee9f7632bc0d4b99fe) )
 	ROM_LOAD( "bo_obj-2.bin",       0x40000, 0x20000, CRC(eef77527) SHA1(ba1931a37e4ad06e57e73d61f985bf6267f92d76) )
@@ -2485,10 +2490,10 @@ ROM_START( ws89 )
 	ROM_LOAD_HS( "ws1_voi0.bin",    0x00000, 0x10000, CRC(f6949199) SHA1(ef596b02060f8e58eac37765663dd16377244391) )
 	ROM_LOAD( "ws_voi-1.bin",       0x20000, 0x20000, CRC(210e2af9) SHA1(f8a1f8c6b9fbb8a9b3f298674600c1fbb9c5840e) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ws_chr-8.bin",       0x00000, 0x20000, CRC(d1897b9b) SHA1(29906614b879e5623b49bc925e80006aee3997b9) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ws_chr-0.bin",       0x00000, 0x20000, CRC(3e3e96b4) SHA1(7b5f72e7e2aab9c78f452171ac6ebe8c634a88c4) )
 	ROM_LOAD( "ws_chr-1.bin",       0x20000, 0x20000, CRC(897dfbc1) SHA1(3e7425a456bada77591abcf1567ec75a99440334) )
 	ROM_LOAD( "ws_chr-2.bin",       0x40000, 0x20000, CRC(e142527c) SHA1(606206b7b9916e3f456595344b70c17d44731fbb) )
@@ -2496,7 +2501,7 @@ ROM_START( ws89 )
 	ROM_LOAD( "ws_chr-4.bin",       0x80000, 0x20000, CRC(afb11e17) SHA1(cf4aa124f0d4fe737686ccda72c55c199189ca49) )
 	ROM_LOAD( "ws_chr-6.bin",       0xc0000, 0x20000, CRC(a16a17c2) SHA1(52917165d50a03db8ad6783a95731e0b438c2a6c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ws_obj-0.bin",       0x00000, 0x20000, CRC(12dc83a6) SHA1(f3d0ebda14af81ff99642ceaa7b9c0e4a4bfbbcb) )
 	ROM_LOAD( "ws_obj-1.bin",       0x20000, 0x20000, CRC(68290a46) SHA1(c05f31e1c2332cba5d5b8cafc0e9f616aadee5b7) )
 	ROM_LOAD( "ws_obj-2.bin",       0x40000, 0x20000, CRC(cd5ba55d) SHA1(9b5a655909457bcffdaaa95842740a6f0f8f6cec) )
@@ -2524,10 +2529,10 @@ ROM_START( dangseed )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD( "dr_voi-0.bin",       0x00000, 0x20000, CRC(de4fdc0e) SHA1(b5e952aaf5a81a2b4ff1c7cae141d50360545770) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "dr_chr-8.bin",       0x00000, 0x20000, CRC(0fbaa10e) SHA1(18ea77544678d889aded927a96a11bc04ad42fa6) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "dr_chr-0.bin",       0x00000, 0x20000, CRC(419bacc7) SHA1(a89c48caa4df66eeaf76dca33c1fc34f789ac36f) )
 	ROM_LOAD( "dr_chr-1.bin",       0x20000, 0x20000, CRC(55ce77e1) SHA1(159027e45a298b65b0608852d666cc88ef834d2b) )
 	ROM_LOAD( "dr_chr-2.bin",       0x40000, 0x20000, CRC(6f913419) SHA1(91906bad859f254b3aa3700bc62d71faccd48ad5) )
@@ -2536,7 +2541,7 @@ ROM_START( dangseed )
 	ROM_LOAD( "dr_chr-5.bin",       0xa0000, 0x20000, CRC(715c0720) SHA1(65484358ff090fbe8e7925d97b6a39105ef00018) )
 	ROM_LOAD( "dr_chr-6.bin",       0xc0000, 0x20000, CRC(5c1b71fa) SHA1(e6e75bce2d2564bf95c5911e208ec4d1705beeef) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "dr_obj-0.bin",       0x00000, 0x20000, CRC(abb95644) SHA1(f96f7aa3d1f6742f2460e3fc6aebc3b5ac4cdad7) )
 	ROM_LOAD( "dr_obj-1.bin",       0x20000, 0x20000, CRC(24d6db51) SHA1(6ca66548cca53019dc242e39584b987f45e139f7) )
 	ROM_LOAD( "dr_obj-2.bin",       0x40000, 0x20000, CRC(7e3a78c0) SHA1(d0026f70c05ef84dd9fc0588869ad7920949624a) )
@@ -2565,10 +2570,10 @@ ROM_START( ws90 )
 	ROM_LOAD_HS( "ws1_voi0.bin",    0x00000, 0x10000, CRC(f6949199) SHA1(ef596b02060f8e58eac37765663dd16377244391) )
 	ROM_LOAD( "ws_voi-1.bin",       0x20000, 0x20000, CRC(210e2af9) SHA1(f8a1f8c6b9fbb8a9b3f298674600c1fbb9c5840e) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "ws_chr-8.bin",       0x00000, 0x20000, CRC(d1897b9b) SHA1(29906614b879e5623b49bc925e80006aee3997b9) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "ws_chr-0.bin",       0x00000, 0x20000, CRC(3e3e96b4) SHA1(7b5f72e7e2aab9c78f452171ac6ebe8c634a88c4) )
 	ROM_LOAD( "ws_chr-1.bin",       0x20000, 0x20000, CRC(897dfbc1) SHA1(3e7425a456bada77591abcf1567ec75a99440334) )
 	ROM_LOAD( "ws_chr-2.bin",       0x40000, 0x20000, CRC(e142527c) SHA1(606206b7b9916e3f456595344b70c17d44731fbb) )
@@ -2576,7 +2581,7 @@ ROM_START( ws90 )
 	ROM_LOAD( "ws_chr-4.bin",       0x80000, 0x20000, CRC(afb11e17) SHA1(cf4aa124f0d4fe737686ccda72c55c199189ca49) )
 	ROM_LOAD( "ws_chr-6.bin",       0xc0000, 0x20000, CRC(a16a17c2) SHA1(52917165d50a03db8ad6783a95731e0b438c2a6c) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "ws_obj-0.bin",       0x00000, 0x20000, CRC(12dc83a6) SHA1(f3d0ebda14af81ff99642ceaa7b9c0e4a4bfbbcb) )
 	ROM_LOAD( "ws_obj-1.bin",       0x20000, 0x20000, CRC(68290a46) SHA1(c05f31e1c2332cba5d5b8cafc0e9f616aadee5b7) )
 	ROM_LOAD( "ws_obj-2.bin",       0x40000, 0x20000, CRC(cd5ba55d) SHA1(9b5a655909457bcffdaaa95842740a6f0f8f6cec) )
@@ -2606,16 +2611,16 @@ ROM_START( pistoldm )
 	ROM_LOAD( "pd_voi-1.bin",       0x20000, 0x20000, CRC(2871c494) SHA1(9ac0dc559c22ac5083025c32f28e353b04348155) )
 	ROM_LOAD( "pd_voi-2.bin",       0x40000, 0x20000, CRC(e783f0c4) SHA1(6a43f22226d1637d507c8194244058e8d96f8692) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "pd_chr-8.bin",       0x00000, 0x20000, CRC(a5f516db) SHA1(262c3a99cfa3061b58331d8ed254b49a06bfdd9f) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "pd_chr-0.bin",       0x00000, 0x20000, CRC(adbbaf5c) SHA1(89d39be53f4d2584f28ffd12391d91af2d54652b) )
 	ROM_LOAD( "pd_chr-1.bin",       0x20000, 0x20000, CRC(b4e4f554) SHA1(2102ea8f4d5b8ce84f100dd6a18bdc95287f9c81) )
 	ROM_LOAD( "pd_chr-2.bin",       0x40000, 0x20000, CRC(84592540) SHA1(c54cac48a103d35f002f934107f09c1c8e58d0e7) )
 	ROM_LOAD( "pd_chr-3.bin",       0x60000, 0x20000, CRC(450bdaa9) SHA1(ca9f749e4a1f44e92b01a860b7903c89ceaa1d1a) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "pd_obj-0.bin",       0x00000, 0x20000, CRC(7269821d) SHA1(0f2e24540a2deae0d36a8a23a67f81fec26141b5) )
 	ROM_LOAD( "pd_obj-1.bin",       0x20000, 0x20000, CRC(4f9738e5) SHA1(d15a9bfe0bfabbce4fe131cdbaeb3cf0ea239f22) )
 	ROM_LOAD( "pd_obj-2.bin",       0x40000, 0x20000, CRC(33208776) SHA1(c98d78cdc34e27b798768132a77df8c554fa85c9) )
@@ -2647,16 +2652,16 @@ ROM_START( boxyboy )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "sb1_voi0.bin",    0x00000, 0x10000, CRC(63d9cedf) SHA1(117767c6b25325bf3005756d74196da56008498c) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "sb1_chr8.bin",       0x00000, 0x10000, CRC(5692b297) SHA1(ed20a0f4ce80674d01cd2a30571ffeff9f9066fd) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "sb1_chr0.bin",       0x00000, 0x20000, CRC(267f1331) SHA1(46a41ee3553cc7c73a47a339365e27b814067674) )
 	ROM_LOAD( "sb1_chr1.bin",       0x20000, 0x20000, CRC(e5ff61ad) SHA1(30aff224dd5c5a85b057aa648677747b1b0e14a8) )
 	ROM_LOAD( "sb1_chr2.bin",       0x40000, 0x20000, CRC(099b746b) SHA1(11125ee9cb988b23e9192dc37444fb59b60ab3ce) )
 	ROM_LOAD( "sb1_chr3.bin",       0x60000, 0x20000, CRC(1551bb7c) SHA1(eaebc333e0bb8fddd6f48ab157eb492631e5e959) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "sb1_obj0.bin",       0x00000, 0x10000, CRC(ed810da4) SHA1(b3172b50b15d0e2fd40d38d32abf4de22b6f7a85) )
 ROM_END
 
@@ -2680,16 +2685,16 @@ ROM_START( soukobdx )
 	ROM_REGION( 0xc0000, "voice", 0 )  /* MCU external ROM */
 	ROM_LOAD_HS( "sb1_voi0.bin",    0x00000, 0x10000, CRC(63d9cedf) SHA1(117767c6b25325bf3005756d74196da56008498c) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "sb1_chr8.bin",       0x00000, 0x10000, CRC(5692b297) SHA1(ed20a0f4ce80674d01cd2a30571ffeff9f9066fd) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "sb1_chr0.bin",       0x00000, 0x20000, CRC(267f1331) SHA1(46a41ee3553cc7c73a47a339365e27b814067674) )
 	ROM_LOAD( "sb1_chr1.bin",       0x20000, 0x20000, CRC(e5ff61ad) SHA1(30aff224dd5c5a85b057aa648677747b1b0e14a8) )
 	ROM_LOAD( "sb1_chr2.bin",       0x40000, 0x20000, CRC(099b746b) SHA1(11125ee9cb988b23e9192dc37444fb59b60ab3ce) )
 	ROM_LOAD( "sb1_chr3.bin",       0x60000, 0x20000, CRC(1551bb7c) SHA1(eaebc333e0bb8fddd6f48ab157eb492631e5e959) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "sb1_obj0.bin",       0x00000, 0x10000, CRC(ed810da4) SHA1(b3172b50b15d0e2fd40d38d32abf4de22b6f7a85) )
 ROM_END
 
@@ -2713,10 +2718,10 @@ ROM_START( puzlclub )
 	ROM_REGION( 0xc0000, "voice", ROMREGION_ERASEFF )  /* MCU external ROM */
 	/* no voices */
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "pc1-c8.bin",         0x00000, 0x20000, CRC(4e196bcd) SHA1(2e27538bbbebeda32353c0c02f98d52f0d1994f9) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "pc1-c0.bin",         0x00000, 0x20000, CRC(ad7b134e) SHA1(e9b16cdbc990f3e1ab1eed87db61819683d45864) )
 	ROM_LOAD( "pc1-c1.bin",         0x20000, 0x20000, CRC(10cb3207) SHA1(ecd62744eba88a3a0c40d943888ec3497ef8bb04) )
 	ROM_LOAD( "pc1-c2.bin",         0x40000, 0x20000, CRC(d98d2c8f) SHA1(c626cae84e712b0c8b66cf6923e77c75c137dd52) )
@@ -2727,7 +2732,7 @@ ROM_START( puzlclub )
 	ROM_LOAD( "pc1-c7.bin",         0xe0000, 0x20000, NO_DUMP ) // title screen gfxs are here, might not exist.
 	ROM_FILL(                       0xe0000, 0x20000, 0xff)
 
-	ROM_REGION( 0x100000, "gfx3", ROMREGION_ERASEFF ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", ROMREGION_ERASEFF ) /* sprites */
 	/* no sprites */
 ROM_END
 
@@ -2753,10 +2758,10 @@ ROM_START( tankfrce )
 	ROM_LOAD( "tf1_voi0.bin",       0x00000, 0x20000, CRC(f542676a) SHA1(38d54db0807c58152bd120c393bf63b68754e8ff) )
 	ROM_LOAD( "tf1_voi1.bin",       0x20000, 0x20000, CRC(615d09cd) SHA1(0aecf7ca6b65ddfcdcf74f8d412169ec800ba3a3) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "tf1_chr8.bin",       0x00000, 0x20000, CRC(7d53b31e) SHA1(7e4b5fc92f7956477392f1e14c6edfc0cada2be0) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "tf1_chr0.bin",       0x00000, 0x20000, CRC(9e91794e) SHA1(e873ed31fafae02a3c3d9127801a13f67cbdb5f4) )
 	ROM_LOAD( "tf1_chr1.bin",       0x20000, 0x20000, CRC(76e1bc56) SHA1(f95e4100cad29a8972e4f435b4f9ee3cdc4f4504) )
 	ROM_LOAD( "tf1_chr2.bin",       0x40000, 0x20000, CRC(fcb645d9) SHA1(afedb4c6c1b02444ddb1757ac9808df1b94de2d8) )
@@ -2764,7 +2769,7 @@ ROM_START( tankfrce )
 	ROM_LOAD( "tf1_chr4.bin",       0x80000, 0x20000, CRC(51fedc8c) SHA1(4a0c337fe614ebf66ee0fc3cfb05cad51a048fcf) )
 	ROM_LOAD( "tf1_chr5.bin",       0xa0000, 0x20000, CRC(e6c6609a) SHA1(0c05cdd6b1dc4f082b9ac0e4de252c3d72392bb0) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "tf1_obj0.bin",       0x00000, 0x20000, CRC(4bedd51a) SHA1(fedb972986efe5ff3bd6c75fa16f22f8267ee0b7) )
 	ROM_LOAD( "tf1_obj1.bin",       0x20000, 0x20000, CRC(df674d6d) SHA1(65935c2d6072228fcb2fbca8808fc921db9e0ddd) )
 ROM_END
@@ -2791,10 +2796,10 @@ ROM_START( tankfrce4 )
 	ROM_LOAD( "tf1_voi0.bin",       0x00000, 0x20000, CRC(f542676a) SHA1(38d54db0807c58152bd120c393bf63b68754e8ff) )
 	ROM_LOAD( "tf1_voi1.bin",       0x20000, 0x20000, CRC(615d09cd) SHA1(0aecf7ca6b65ddfcdcf74f8d412169ec800ba3a3) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "tf1_chr8.bin",       0x00000, 0x20000, CRC(7d53b31e) SHA1(7e4b5fc92f7956477392f1e14c6edfc0cada2be0) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "tf1_chr0.bin",       0x00000, 0x20000, CRC(9e91794e) SHA1(e873ed31fafae02a3c3d9127801a13f67cbdb5f4) )
 	ROM_LOAD( "tf1_chr1.bin",       0x20000, 0x20000, CRC(76e1bc56) SHA1(f95e4100cad29a8972e4f435b4f9ee3cdc4f4504) )
 	ROM_LOAD( "tf1_chr2.bin",       0x40000, 0x20000, CRC(fcb645d9) SHA1(afedb4c6c1b02444ddb1757ac9808df1b94de2d8) )
@@ -2802,7 +2807,7 @@ ROM_START( tankfrce4 )
 	ROM_LOAD( "tf1_chr4.bin",       0x80000, 0x20000, CRC(51fedc8c) SHA1(4a0c337fe614ebf66ee0fc3cfb05cad51a048fcf) )
 	ROM_LOAD( "tf1_chr5.bin",       0xa0000, 0x20000, CRC(e6c6609a) SHA1(0c05cdd6b1dc4f082b9ac0e4de252c3d72392bb0) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "tf1_obj0.bin",       0x00000, 0x20000, CRC(4bedd51a) SHA1(fedb972986efe5ff3bd6c75fa16f22f8267ee0b7) )
 	ROM_LOAD( "tf1_obj1.bin",       0x20000, 0x20000, CRC(df674d6d) SHA1(65935c2d6072228fcb2fbca8808fc921db9e0ddd) )
 ROM_END
@@ -2829,10 +2834,10 @@ ROM_START( tankfrcej )
 	ROM_LOAD( "tf1_voi0.bin",       0x00000, 0x20000, CRC(f542676a) SHA1(38d54db0807c58152bd120c393bf63b68754e8ff) )
 	ROM_LOAD( "tf1_voi1.bin",       0x20000, 0x20000, CRC(615d09cd) SHA1(0aecf7ca6b65ddfcdcf74f8d412169ec800ba3a3) )
 
-	ROM_REGION( 0x20000, "gfx1", 0 )  /* character mask */
+	ROM_REGION( 0x20000, "c123tmap:mask", 0 )  /* character mask */
 	ROM_LOAD( "tf1_chr8.bin",       0x00000, 0x20000, CRC(7d53b31e) SHA1(7e4b5fc92f7956477392f1e14c6edfc0cada2be0) )
 
-	ROM_REGION( 0x100000, "gfx2", 0 ) /* characters */
+	ROM_REGION( 0x100000, "c123tmap", 0 ) /* characters */
 	ROM_LOAD( "tf1_chr0.bin",       0x00000, 0x20000, CRC(9e91794e) SHA1(e873ed31fafae02a3c3d9127801a13f67cbdb5f4) )
 	ROM_LOAD( "tf1_chr1.bin",       0x20000, 0x20000, CRC(76e1bc56) SHA1(f95e4100cad29a8972e4f435b4f9ee3cdc4f4504) )
 	ROM_LOAD( "tf1_chr2.bin",       0x40000, 0x20000, CRC(fcb645d9) SHA1(afedb4c6c1b02444ddb1757ac9808df1b94de2d8) )
@@ -2840,49 +2845,49 @@ ROM_START( tankfrcej )
 	ROM_LOAD( "tf1_chr4.bin",       0x80000, 0x20000, CRC(51fedc8c) SHA1(4a0c337fe614ebf66ee0fc3cfb05cad51a048fcf) )
 	ROM_LOAD( "tf1_chr5.bin",       0xa0000, 0x20000, CRC(e6c6609a) SHA1(0c05cdd6b1dc4f082b9ac0e4de252c3d72392bb0) )
 
-	ROM_REGION( 0x100000, "gfx3", 0 ) /* sprites */
+	ROM_REGION( 0x100000, "sprite", 0 ) /* sprites */
 	ROM_LOAD( "tf1_obj0.bin",       0x00000, 0x20000, CRC(4bedd51a) SHA1(fedb972986efe5ff3bd6c75fa16f22f8267ee0b7) )
 	ROM_LOAD( "tf1_obj1.bin",       0x20000, 0x20000, CRC(df674d6d) SHA1(65935c2d6072228fcb2fbca8808fc921db9e0ddd) )
 ROM_END
 
 
 
-GAME( 1987, shadowld,  0,        ns1,     shadowld, namcos1_state, shadowld, ROT180, "Namco", "Shadowland (YD3)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, youkaidk2, shadowld, ns1,     shadowld, namcos1_state, shadowld, ROT180, "Namco", "Yokai Douchuuki (Japan, new version (YD2, Rev B))", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, youkaidk1, shadowld, ns1,     shadowld, namcos1_state, shadowld, ROT180, "Namco", "Yokai Douchuuki (Japan, old version (YD1))", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, dspirit,   0,        ns1,     dspirit,  namcos1_state, dspirit,  ROT90,  "Namco", "Dragon Spirit (new version (DS3))", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, dspirit2,  dspirit,  ns1,     dspirit,  namcos1_state, dspirit,  ROT90,  "Namco", "Dragon Spirit (DS2)", MACHINE_SUPPORTS_SAVE ) /* Atari had rights to US market */
-GAME( 1987, dspirit1,  dspirit,  ns1,     dspirit,  namcos1_state, dspirit,  ROT90,  "Namco", "Dragon Spirit (old version (DS1))", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, blazer,    0,        ns1,     ns1,      namcos1_state, blazer,   ROT90,  "Namco", "Blazer (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, quester,   0,        ns1,     quester,  namcos1_state, quester,  ROT90,  "Namco", "Quester (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, questers,  quester,  ns1,     quester,  namcos1_state, quester,  ROT90,  "Namco", "Quester Special Edition (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, pacmania,  0,        ns1,     pacmania, namcos1_state, pacmania, ROT270, "Namco", "Pac-Mania", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, pacmaniao, pacmania, ns1,     pacmania, namcos1_state, pacmania, ROT270, "Namco", "Pac-Mania (111187 sound program)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, pacmaniaj, pacmania, ns1,     pacmania, namcos1_state, pacmania, ROT90,  "Namco", "Pac-Mania (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, galaga88,  0,        ns1,     galaga88, namcos1_state, galaga88, ROT270, "Namco", "Galaga '88", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, galaga88a, galaga88, ns1,     galaga88, namcos1_state, galaga88, ROT90,  "Namco", "Galaga '88 (02-03-88)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, galaga88j, galaga88, ns1,     galaga88, namcos1_state, galaga88, ROT90,  "Namco", "Galaga '88 (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, ws,        0,        ns1,     ns1,      namcos1_state, ws,       ROT180, "Namco", "World Stadium (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, berabohm,  0,        ns1,     berabohm, namcos1_state, berabohm, ROT180, "Namco", "Beraboh Man (Japan, Rev C)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, berabohmb, berabohm, ns1,     berabohm, namcos1_state, berabohm, ROT180, "Namco", "Beraboh Man (Japan, Rev B)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, mmaze,     0,        ns1,     mmaze,    namcos1_state, alice,    ROT180, "Namco", "Marchen Maze (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, mmaze2,    mmaze,    ns1,     mmaze,    namcos1_state, alice,    ROT180, "Namco", "Marchen Maze (Japan, hack?)", MACHINE_SUPPORTS_SAVE ) // removed copyright screen, hacked for export? But still has and requires MCU
-GAME( 1988, bakutotu,  0,        ns1,     bakutotu, namcos1_state, bakutotu, ROT180, "Namco", "Bakutotsu Kijuutei", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, wldcourt,  0,        ns1,     wldcourt, namcos1_state, wldcourt, ROT180, "Namco", "World Court (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, splatter,  0,        ns1,     splatter3,namcos1_state, splatter, ROT180, "Namco", "Splatter House (World, new version (SH3))", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, splatter2, splatter, ns1,     splatter, namcos1_state, splatter, ROT180, "Namco", "Splatter House (World, old version (SH2))", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, splatterj, splatter, ns1,     splatter, namcos1_state, splatter, ROT180, "Namco", "Splatter House (Japan, SH1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1988, faceoff,   0,        ns1,     faceoff,  namcos1_state, faceoff,  ROT180, "Namco", "Face Off (Japan 2 Players)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, rompers,   0,        ns1,     ns1,      namcos1_state, rompers,  ROT90,  "Namco", "Rompers (Japan, new version (Rev B))", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, romperso,  rompers,  ns1,     ns1,      namcos1_state, rompers,  ROT90,  "Namco", "Rompers (Japan, old version)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, blastoff,  0,        ns1,     ns1,      namcos1_state, blastoff, ROT90,  "Namco", "Blast Off (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, ws89,      ws,       ns1,     ws89,     namcos1_state, ws89,     ROT180, "Namco", "World Stadium '89 (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, dangseed,  0,        ns1,     dangseed, namcos1_state, dangseed, ROT90,  "Namco", "Dangerous Seed (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, ws90,      ws,       ns1,     ws90,     namcos1_state, ws90,     ROT180, "Namco", "World Stadium '90 (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, pistoldm,  0,        ns1,     ns1,      namcos1_state, pistoldm, ROT0,   "Namco", "Pistol Daimyo no Bouken (Japan)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, boxyboy,   0,        ns1,     boxyboy,  namcos1_state, soukobdx, ROT0,   "Namco", "Boxy Boy (SB?)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, soukobdx,  boxyboy,  ns1,     boxyboy,  namcos1_state, soukobdx, ROT0,   "Namco", "Souko Ban Deluxe (Japan, SB1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1990, puzlclub,  0,        ns1,     puzlclub, namcos1_state, puzlclub, ROT90,  "Namco", "Puzzle Club (Japan prototype)", MACHINE_SUPPORTS_SAVE )
-GAME( 1991, tankfrce,  0,        ns1,     ns1,      namcos1_state, tankfrce, ROT0,   "Namco", "Tank Force (US, 2 Players)", MACHINE_SUPPORTS_SAVE )
-GAME( 1991, tankfrce4, tankfrce, ns1,     tankfrc4, namcos1_state, tankfrc4, ROT0,   "Namco", "Tank Force (US, 4 Players)", MACHINE_SUPPORTS_SAVE )
-GAME( 1991, tankfrcej, tankfrce, ns1,     ns1,      namcos1_state, tankfrce, ROT0,   "Namco", "Tank Force (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, shadowld,  0,        ns1,     shadowld, namcos1_state, init_shadowld, ROT180, "Namco", "Shadowland (YD3)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, youkaidk2, shadowld, ns1,     shadowld, namcos1_state, init_shadowld, ROT180, "Namco", "Yokai Douchuuki (Japan, new version (YD2, Rev B))", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, youkaidk1, shadowld, ns1,     shadowld, namcos1_state, init_shadowld, ROT180, "Namco", "Yokai Douchuuki (Japan, old version (YD1))", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, dspirit,   0,        ns1,     dspirit,  namcos1_state, init_dspirit,  ROT90,  "Namco", "Dragon Spirit (new version (DS3))", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, dspirit2,  dspirit,  ns1,     dspirit,  namcos1_state, init_dspirit,  ROT90,  "Namco", "Dragon Spirit (DS2)", MACHINE_SUPPORTS_SAVE ) /* Atari had rights to US market */
+GAME( 1987, dspirit1,  dspirit,  ns1,     dspirit,  namcos1_state, init_dspirit,  ROT90,  "Namco", "Dragon Spirit (old version (DS1))", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, blazer,    0,        ns1,     ns1,      namcos1_state, init_blazer,   ROT90,  "Namco", "Blazer (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, quester,   0,        ns1,     quester,  namcos1_state, init_quester,  ROT90,  "Namco", "Quester (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, questers,  quester,  ns1,     quester,  namcos1_state, init_quester,  ROT90,  "Namco", "Quester Special Edition (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, pacmania,  0,        ns1,     pacmania, namcos1_state, init_pacmania, ROT270, "Namco", "Pac-Mania", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, pacmaniao, pacmania, ns1,     pacmania, namcos1_state, init_pacmania, ROT270, "Namco", "Pac-Mania (111187 sound program)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, pacmaniaj, pacmania, ns1,     pacmania, namcos1_state, init_pacmania, ROT90,  "Namco", "Pac-Mania (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, galaga88,  0,        ns1,     galaga88, namcos1_state, init_galaga88, ROT270, "Namco", "Galaga '88", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, galaga88a, galaga88, ns1,     galaga88, namcos1_state, init_galaga88, ROT90,  "Namco", "Galaga '88 (02-03-88)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, galaga88j, galaga88, ns1,     galaga88, namcos1_state, init_galaga88, ROT90,  "Namco", "Galaga '88 (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, ws,        0,        ns1,     ns1,      namcos1_state, init_ws,       ROT180, "Namco", "World Stadium (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, berabohm,  0,        ns1,     berabohm, namcos1_state, init_berabohm, ROT180, "Namco", "Beraboh Man (Japan, Rev C)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, berabohmb, berabohm, ns1,     berabohm, namcos1_state, init_berabohm, ROT180, "Namco", "Beraboh Man (Japan, Rev B)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, mmaze,     0,        ns1,     mmaze,    namcos1_state, init_alice,    ROT180, "Namco", "Marchen Maze (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, mmaze2,    mmaze,    ns1,     mmaze,    namcos1_state, init_alice,    ROT180, "Namco", "Marchen Maze (Japan, hack?)", MACHINE_SUPPORTS_SAVE ) // removed copyright screen, hacked for export? But still has and requires MCU
+GAME( 1988, bakutotu,  0,        ns1,     bakutotu, namcos1_state, init_bakutotu, ROT180, "Namco", "Bakutotsu Kijuutei", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, wldcourt,  0,        ns1,     wldcourt, namcos1_state, init_wldcourt, ROT180, "Namco", "World Court (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, splatter,  0,        ns1,     splatter3,namcos1_state, init_splatter, ROT180, "Namco", "Splatter House (World, new version (SH3))", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, splatter2, splatter, ns1,     splatter, namcos1_state, init_splatter, ROT180, "Namco", "Splatter House (World, old version (SH2))", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, splatterj, splatter, ns1,     splatter, namcos1_state, init_splatter, ROT180, "Namco", "Splatter House (Japan, SH1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1988, faceoff,   0,        ns1,     faceoff,  namcos1_state, init_faceoff,  ROT180, "Namco", "Face Off (Japan 2 Players)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, rompers,   0,        ns1,     ns1,      namcos1_state, init_rompers,  ROT90,  "Namco", "Rompers (Japan, new version (Rev B))", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, romperso,  rompers,  ns1,     ns1,      namcos1_state, init_rompers,  ROT90,  "Namco", "Rompers (Japan, old version)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, blastoff,  0,        ns1,     ns1,      namcos1_state, init_blastoff, ROT90,  "Namco", "Blast Off (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, ws89,      ws,       ns1,     ws89,     namcos1_state, init_ws89,     ROT180, "Namco", "World Stadium '89 (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, dangseed,  0,        ns1,     dangseed, namcos1_state, init_dangseed, ROT90,  "Namco", "Dangerous Seed (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, ws90,      ws,       ns1,     ws90,     namcos1_state, init_ws90,     ROT180, "Namco", "World Stadium '90 (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, pistoldm,  0,        ns1,     ns1,      namcos1_state, init_pistoldm, ROT0,   "Namco", "Pistol Daimyo no Bouken (Japan)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, boxyboy,   0,        ns1,     boxyboy,  namcos1_state, init_soukobdx, ROT0,   "Namco", "Boxy Boy (SB?)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, soukobdx,  boxyboy,  ns1,     boxyboy,  namcos1_state, init_soukobdx, ROT0,   "Namco", "Souko Ban Deluxe (Japan, SB1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1990, puzlclub,  0,        ns1,     puzlclub, namcos1_state, init_puzlclub, ROT90,  "Namco", "Puzzle Club (Japan prototype)", MACHINE_SUPPORTS_SAVE )
+GAME( 1991, tankfrce,  0,        ns1,     ns1,      namcos1_state, init_tankfrce, ROT0,   "Namco", "Tank Force (US, 2 Players)", MACHINE_SUPPORTS_SAVE )
+GAME( 1991, tankfrce4, tankfrce, ns1,     tankfrc4, namcos1_state, init_tankfrc4, ROT0,   "Namco", "Tank Force (US, 4 Players)", MACHINE_SUPPORTS_SAVE )
+GAME( 1991, tankfrcej, tankfrce, ns1,     ns1,      namcos1_state, init_tankfrce, ROT0,   "Namco", "Tank Force (Japan)", MACHINE_SUPPORTS_SAVE )

@@ -7,13 +7,6 @@
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_UPD7752_ADD(_tag,_freq) \
-	MCFG_DEVICE_ADD(_tag, UPD7752, _freq)
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -29,6 +22,7 @@ public:
 	DECLARE_WRITE8_MEMBER( write );
 	DECLARE_READ8_MEMBER( read );
 
+	void upd7752_ram(address_map &map);
 protected:
 	// device-level overrides
 	virtual void device_start() override;

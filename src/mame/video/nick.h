@@ -21,21 +21,6 @@
 //  INTERFACE CONFIGURATION MACROS
 ///*************************************************************************
 
-#define MCFG_NICK_ADD(_tag, _screen_tag, _clock) \
-	MCFG_SCREEN_ADD(_screen_tag, RASTER) \
-	MCFG_SCREEN_REFRESH_RATE(50) \
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) \
-	MCFG_SCREEN_SIZE(ENTERPRISE_SCREEN_WIDTH, ENTERPRISE_SCREEN_HEIGHT) \
-	MCFG_SCREEN_VISIBLE_AREA(0, ENTERPRISE_SCREEN_WIDTH-1, 0, ENTERPRISE_SCREEN_HEIGHT-1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, nick_device, screen_update) \
-	MCFG_DEVICE_ADD(_tag, NICK, _clock) \
-	MCFG_VIDEO_SET_SCREEN(_screen_tag)
-
-
-#define MCFG_NICK_VIRQ_CALLBACK(_write) \
-	devcb = &nick_device::set_virq_wr_callback(*device, DEVCB_##_write);
-
-
 /* there are 64us per line, although in reality
  about 50 are visible. */
 #define ENTERPRISE_SCREEN_WIDTH (50*16)
@@ -73,15 +58,23 @@ class nick_device :  public device_t,
 {
 public:
 	// construction/destruction
+	template <typename T>
+	nick_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&screen_tag) :
+		nick_device(mconfig, tag, owner, clock)
+	{
+		set_screen(std::forward<T>(screen_tag));
+	}
+
 	nick_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	template<class _Object> static devcb_base &set_virq_wr_callback(device_t &device, _Object object) { return downcast<nick_device &>(device).m_write_virq.set_callback(object); }
+	auto virq_wr_callback() { return m_write_virq.bind(); }
 
-	virtual DECLARE_ADDRESS_MAP(vram_map, 8);
-	virtual DECLARE_ADDRESS_MAP(vio_map, 8);
+	virtual void vram_map(address_map &map);
+	virtual void vio_map(address_map &map);
 
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
+	void nick_map(address_map &map);
 protected:
 	// device-level overrides
 	virtual void device_start() override;

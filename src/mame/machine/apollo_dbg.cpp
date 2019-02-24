@@ -21,7 +21,7 @@
 //         TRAP 0
 //------------------------------------------------------
 
-static const char* trap0[] = {
+static char const *const trap0[] = {
 /* 0x00 */nullptr, nullptr,
 /* 0x01 */"FIM_$GET_FIM_ADDR", "",
 /* 0x02 */nullptr, nullptr,
@@ -66,7 +66,7 @@ static const char* trap0[] = {
 //         TRAP1
 //------------------------------------------------------
 
-static const char* trap1[] = {
+static char const *const trap1[] = {
 /* 0x00 */nullptr, nullptr,
 /* 0x01 */nullptr, nullptr,
 /* 0x02 */"FIM_$INSTALL", "x",
@@ -142,7 +142,7 @@ static const char* trap1[] = {
 //         TRAP2
 //------------------------------------------------------
 
-static const char* trap2[] = {
+static char const *const trap2[] = {
 /* 0x00 */nullptr, nullptr,
 /* 0x01 */nullptr, nullptr,
 /* 0x02 */"FILE_$DELETE", "x,x",
@@ -294,7 +294,7 @@ static const char* trap2[] = {
 //         TRAP3
 //------------------------------------------------------
 
-static const char* trap3[] = {
+static char const *const trap3[] = {
 /* 0x00 */"PBU2_$DMA_STOP", "x,x,x",
 /* 0x01 */nullptr, nullptr,
 /* 0x02 */"FILE_$CREATE", "x,x,x",
@@ -474,7 +474,7 @@ static const char* trap3[] = {
 //         TRAP4
 //------------------------------------------------------
 
-static const char* trap4[] = {
+static char const *const trap4[] = {
 /* 0x00 */nullptr, nullptr,
 /* 0x01 */"MST_$SET_GUARD", "u,x,x,x",
 /* 0x02 */"MST_$UNMAP_GLOBAL", "u,x,x,x",
@@ -621,7 +621,7 @@ static const char* trap4[] = {
 //         TRAP5
 //------------------------------------------------------
 
-static const char* trap5[] = {
+static char const *const trap5[] = {
 /* 0x00 */nullptr, nullptr,
 /* 0x01 */"MST_$MAP_AREA", "x,x,x,u,x",
 /* 0x02 */nullptr, nullptr,
@@ -732,7 +732,7 @@ static const char* trap5[] = {
 //         TRAP7
 //------------------------------------------------------
 
-static const char* trap7[] = {
+static char const *const trap7[] = {
 /* 0x00 */"FILE_$LOCK", "u,x,x,x,x,x,x",
 /* 0x01 */"VFMT_$WRITE", "s,x,x,x,x,x,x",
 /* 0x02 */"MST_$MAP_AREA_AT", "x,x,x,x,x,x,x",
@@ -799,7 +799,7 @@ static const char* trap7[] = {
 //         TRAP8
 //------------------------------------------------------
 
-static const char* trap8[] = {
+static char const *const trap8[] = {
 /* 0x00 - 0x07 */"MST_$MAP", "u,x,x,x,x,x,x",
 /* 0x01 - 0x08 */"MST_$MAP_AT", "x,u,x,x,x,x,x,x",
 /* 0x02 - 0x07 */"MST_$MAP_GLOBAL", "u,x,x,x,x,x,x",
@@ -1121,7 +1121,7 @@ int apollo_debug_instruction_hook(m68000_base_device *device, offs_t curpc)
 		else if ((ir & 0xff00) == 0xf200 && (apollo_config( APOLLO_CONF_FPU_TRACE)))
 		{
 			std::string sb;
-			DLOG(("%s sp=%08x FPU: %x %s", apollo_cpu_context(device->machine().firstcpu),
+			DLOG(("%s sp=%08x FPU: %x %s", apollo_cpu_context(m68k),
 					REG_A(m68k)[7], ir, disassemble(m68k, REG_PC(m68k), sb)));
 		}
 		else if (!m68k->pmmu_enabled)
@@ -1133,7 +1133,7 @@ int apollo_debug_instruction_hook(m68000_base_device *device, offs_t curpc)
 			const uint16_t *data = get_data(m68k, REG_A(m68k)[7]);
 			if ( REG_USP(m68k) == 0 && (data[0] & 0x2000) == 0) {
 				DLOG(("%s sp=%08x RTE: sr=%04x pc=%04x%04x v=%04x usp=%08x",
-					apollo_cpu_context(device->machine().firstcpu),
+					apollo_cpu_context(m68k),
 					REG_A(m68k)[7], data[0], data[1], data[2], data[3], REG_USP(m68k)));
 			}
 		}
@@ -1147,7 +1147,7 @@ int apollo_debug_instruction_hook(m68000_base_device *device, offs_t curpc)
 
 			char sb[1000];
 			DLOG(("%s sp=%08x Domain/OS SVC: trap %x 0x%02x: %s",
-					apollo_cpu_context(device->machine().firstcpu), trap.sp,
+					apollo_cpu_context(m68k), trap.sp,
 					trap.trap_no, trap.trap_code,
 					get_svc_call(m68k, trap.trap_no, trap.trap_code, sb)));
 
@@ -1157,7 +1157,7 @@ int apollo_debug_instruction_hook(m68000_base_device *device, offs_t curpc)
 			// rte
 			char sb[1000];
 			DLOG(("%s sp=%08x Domain/OS SVC:              %s D0=0x%x",
-					apollo_cpu_context(device->machine().firstcpu), trap.sp,
+					apollo_cpu_context(m68k), trap.sp,
 					get_svc_call(m68k, trap.trap_no, trap.trap_code, sb), REG_D(m68k)[0]));
 
 			trap.pc = 0;

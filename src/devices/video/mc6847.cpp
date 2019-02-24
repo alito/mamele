@@ -130,15 +130,16 @@ const uint32_t mc6847_base_device::s_palette[mc6847_base_device::PALETTE_LENGTH]
 //-------------------------------------------------
 
 mc6847_friend_device::mc6847_friend_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock,
-		const uint8_t *fontdata, bool is_mc6847t1, double tpfs, int field_sync_falling_edge_scanline, bool supports_partial_body_scanlines)
+		const uint8_t *fontdata, bool is_mc6847t1, double tpfs, int field_sync_falling_edge_scanline, int divider, bool supports_partial_body_scanlines)
 	: device_t(mconfig, type, tag, owner, clock)
+	, device_video_interface(mconfig, *this)
 	, m_write_hsync(*this)
 	, m_write_fsync(*this)
 	, m_character_map(fontdata, is_mc6847t1)
+	, m_tpfs(tpfs)
+	, m_divider(divider)
+	, m_supports_partial_body_scanlines(supports_partial_body_scanlines)
 {
-	m_tpfs = tpfs;
-	m_supports_partial_body_scanlines = supports_partial_body_scanlines;
-
 	// The MC6847 and the GIME apply field sync on different scanlines
 	m_field_sync_falling_edge_scanline = field_sync_falling_edge_scanline;
 }
@@ -154,9 +155,9 @@ inline emu_timer *mc6847_friend_device::setup_timer(device_timer_id id, double o
 {
 	emu_timer *timer = timer_alloc(id);
 	timer->adjust(
-			attotime::from_ticks(offset * 4, m_clock * 4),
+			clocks_to_attotime(offset * m_divider),
 			0,
-			attotime::from_ticks(period * 4, m_clock * 4));
+			clocks_to_attotime(period * m_divider));
 	return timer;
 }
 
@@ -238,7 +239,7 @@ void mc6847_friend_device::update_field_sync_timer()
 	if (expected_field_sync != m_field_sync)
 	{
 		// if so, determine the duration
-		attotime duration = attotime::from_ticks(160, m_clock);
+		attotime duration = clocks_to_attotime(160 * m_divider);
 
 		// and reset the timer
 		m_fsync_timer->adjust(duration, expected_field_sync ? 1 : 0);
@@ -486,8 +487,8 @@ void mc6847_friend_device::record_border_scanline(uint16_t physical_scanline)
 
 int32_t mc6847_friend_device::get_clocks_since_hsync()
 {
-	uint64_t hsync_on_clocks = attotime_to_clocks(m_hsync_on_timer->start());
-	uint64_t current_clocks = attotime_to_clocks(machine().time());
+	uint64_t hsync_on_clocks = attotime_to_clocks(m_hsync_on_timer->start()) / m_divider;
+	uint64_t current_clocks = attotime_to_clocks(machine().time()) / m_divider;
 	return (int32_t) (current_clocks - hsync_on_clocks);
 }
 
@@ -545,7 +546,7 @@ std::string mc6847_friend_device::describe_context() const
 //-------------------------------------------------
 
 mc6847_base_device::mc6847_base_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, const uint8_t *fontdata, double tpfs) :
-	mc6847_friend_device(mconfig, type, tag, owner, clock, fontdata, (type == MC6847T1_NTSC) || (type == MC6847T1_PAL), tpfs, 25+191, true),
+	mc6847_friend_device(mconfig, type, tag, owner, clock, fontdata, (type == MC6847T1_NTSC) || (type == MC6847T1_PAL), tpfs, 25+191, 1, true),
 	m_input_cb(*this),
 	m_black_and_white(false),
 	m_fixed_mode(0),
@@ -572,6 +573,31 @@ void mc6847_base_device::setup_fixed_mode()
 		if (BIT(m_fixed_mode, i))
 			m_fixed_mode_mask |= (1 << i);
 	}
+}
+
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void mc6847_base_device::device_config_complete()
+{
+	if (!has_screen())
+		return;
+
+	if (!screen().refresh_attoseconds())
+	{
+		// FIXME: use correct raw parameters rather than this nonsense
+		screen().set_refresh_hz(m_tpfs > 310.0 ? 50 : 60);
+		screen().set_size(320, 243);
+		screen().set_visarea(0, 320-1, 1, 241-1);
+		screen().set_vblank_time(0);
+	}
+
+	if (!screen().has_screen_update())
+		screen().set_screen_update(screen_update_rgb32_delegate(FUNC(mc6847_base_device::screen_update), this));
 }
 
 

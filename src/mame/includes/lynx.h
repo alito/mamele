@@ -5,12 +5,16 @@
  * includes/lynx.h
  *
  ****************************************************************************/
+#ifndef MAME_INCLUDES_LYNX_H
+#define MAME_INCLUDES_LYNX_H
 
-#ifndef LYNX_H_
-#define LYNX_H_
+#pragma once
 
+#include "emupal.h"
+#include "screen.h"
 #include "audio/lynx.h"
 #include "imagedev/snapquik.h"
+#include "machine/bankdev.h"
 #include "bus/generic/slot.h"
 #include "bus/generic/carts.h"
 
@@ -18,96 +22,13 @@
 #define LYNX_QUICKLOAD  1
 
 
-struct BLITTER
-{
-	// global
-	uint16_t screen;
-	uint16_t colbuf;
-	uint16_t colpos; // byte where value of collision is written
-	int16_t xoff, yoff;
-	// in command
-	int mode;
-	uint8_t spr_coll;
-	uint8_t spritenr;
-	int16_t x_pos,y_pos;
-	uint16_t width, height; // uint16 important for blue lightning
-	int16_t tilt_accumulator;
-	uint16_t height_accumulator, width_accumulator;
-	uint16_t width_offset, height_offset;
-	int16_t stretch, tilt;
-	uint8_t color[16]; // or stored
-	uint16_t bitmap;
-	int use_rle;
-	int line_color;
-
-	uint8_t spr_ctl0;
-	uint8_t spr_ctl1;
-	uint16_t scb;
-	uint16_t scb_next;
-	uint8_t sprite_collide;
-
-	int everon;
-	uint8_t fred;
-	int memory_accesses;
-	attotime time;
-
-	int no_collide;
-	int vstretch;
-	int lefthanded;
-	int busy;
-};
-
-struct UART
-{
-	uint8_t serctl;
-	uint8_t data_received, data_to_send, buffer;
-	int received;
-	int sending;
-	int buffer_loaded;
-};
-
-struct SUZY
-{
-	uint8_t data[0x100];
-	uint8_t high;
-	int low;
-	int signed_math;
-	int accumulate;
-	int accumulate_overflow;
-};
-
-struct MIKEY
-{
-	uint8_t data[0x100];
-	uint16_t disp_addr;
-	uint8_t vb_rest;
-};
-
-struct LYNX_TIMER
-{
-	uint8_t   bakup;
-	uint8_t   cntrl1;
-	uint8_t   cntrl2;
-	uint8_t   counter;
-	emu_timer   *timer;
-	int     timer_active;
-};
-
 #define NR_LYNX_TIMERS  8
 
 class lynx_state : public driver_device
 {
 public:
-	enum
-	{
-		TIMER_BLITTER,
-		TIMER_SHOT,
-		TIMER_UART_LOOPBACK,
-		TIMER_UART
-	};
-
-	lynx_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	lynx_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_mem_0000(*this, "mem_0000"),
 		m_mem_fc00(*this, "mem_fc00"),
 		m_mem_fd00(*this, "mem_fd00"),
@@ -116,11 +37,104 @@ public:
 		m_maincpu(*this, "maincpu"),
 		m_sound(*this, "custom"),
 		m_cart(*this, "cartslot"),
-		m_palette(*this, "palette")  { }
+		m_palette(*this, "palette"),
+		m_screen(*this, "screen"),
+		m_bank_fc00(*this, "bank_fc00"),
+		m_bank_fd00(*this, "bank_fd00"),
+		m_bank_fe00(*this, "bank_fe00"),
+		m_bank_fffa(*this, "bank_fffa")
+	{ }
 
+	void lynx(machine_config &config);
+
+private:
+	struct BLITTER
+	{
+		// global
+		uint16_t screen;
+		uint16_t colbuf;
+		uint16_t colpos; // byte where value of collision is written
+		int16_t xoff, yoff;
+		// in command
+		int mode;
+		uint8_t spr_coll;
+		uint8_t spritenr;
+		int16_t x_pos,y_pos;
+		uint16_t width, height; // uint16 important for blue lightning
+		int16_t tilt_accumulator;
+		uint16_t height_accumulator, width_accumulator;
+		uint16_t width_offset, height_offset;
+		int16_t stretch, tilt;
+		uint8_t color[16]; // or stored
+		uint16_t bitmap;
+		int use_rle;
+		int line_color;
+
+		uint8_t spr_ctl0;
+		uint8_t spr_ctl1;
+		uint16_t scb;
+		uint16_t scb_next;
+		uint8_t sprite_collide;
+
+		int everon;
+		uint8_t fred;
+		int memory_accesses;
+		attotime time;
+
+		int no_collide;
+		int vstretch;
+		int lefthanded;
+		int busy;
+	};
+
+	struct UART
+	{
+		uint8_t serctl;
+		uint8_t data_received, data_to_send, buffer;
+		int received;
+		int sending;
+		int buffer_loaded;
+	};
+
+	struct SUZY
+	{
+		uint8_t data[0x100];
+		uint8_t high;
+		int low;
+		int signed_math;
+		int accumulate;
+		int accumulate_overflow;
+	};
+
+	struct MIKEY
+	{
+		uint8_t data[0x100];
+		uint16_t disp_addr;
+		uint8_t vb_rest;
+	};
+
+	struct LYNX_TIMER
+	{
+		uint8_t   bakup;
+		uint8_t   cntrl1;
+		uint8_t   cntrl2;
+		uint8_t   counter;
+		emu_timer   *timer;
+		int     timer_active;
+	};
+
+	enum
+	{
+		TIMER_BLITTER,
+		TIMER_SHOT,
+		TIMER_UART_LOOPBACK,
+		TIMER_UART
+	};
+
+	virtual void machine_start() override;
+	virtual void machine_reset() override;
 	virtual void video_start() override;
-
-	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 
 	required_shared_ptr<uint8_t> m_mem_0000;
 	required_shared_ptr<uint8_t> m_mem_fc00;
@@ -131,10 +145,14 @@ public:
 	required_device<lynx_sound_device> m_sound;
 	required_device<generic_slot_device> m_cart;
 	required_device<palette_device> m_palette;
+	required_device<screen_device> m_screen;
+	required_device<address_map_bank_device> m_bank_fc00;
+	required_device<address_map_bank_device> m_bank_fd00;
+	required_memory_bank m_bank_fe00;
+	required_memory_bank m_bank_fffa;
 	uint16_t m_granularity;
 	int m_sign_AB;
 	int m_sign_CD;
-	uint32_t m_lynx_palette[0x10];
 	int m_rotate;
 	uint8_t m_memory_config;
 
@@ -144,8 +162,15 @@ public:
 	UART m_uart;
 	LYNX_TIMER m_timer[NR_LYNX_TIMERS];
 
-	bitmap_ind16 m_bitmap;
-	bitmap_ind16 m_bitmap_temp;
+	bitmap_rgb32 m_bitmap;
+	bitmap_rgb32 m_bitmap_temp;
+
+	void lynx_mem(address_map &map);
+	void lynx_fc00_mem(address_map &map);
+	void lynx_fd00_mem(address_map &map);
+
+	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+
 	DECLARE_READ8_MEMBER(suzy_read);
 	DECLARE_WRITE8_MEMBER(suzy_write);
 	DECLARE_WRITE8_MEMBER(lynx_uart_w);
@@ -158,9 +183,6 @@ public:
 	void lynx_multiply();
 	uint8_t lynx_timer_read(int which, int offset);
 	void lynx_timer_write(int which, int offset, uint8_t data);
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	DECLARE_PALETTE_INIT(lynx);
 	void sound_cb();
 	TIMER_CALLBACK_MEMBER(lynx_blitter_timer);
 	TIMER_CALLBACK_MEMBER(lynx_timer_shot);
@@ -183,9 +205,6 @@ public:
 	void lynx_uart_reset();
 	image_verify_result lynx_verify_cart(char *header, int kind);
 	DECLARE_QUICKLOAD_LOAD_MEMBER( lynx );
-
-protected:
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 };
 
 
@@ -292,4 +311,4 @@ protected:
 #define SCB_STRETCH 0x0F    //  L H H/V Size Adder
 #define SCB_TILT        0x11    //  L,H H Position Adder
 
-#endif /* LYNX_H_ */
+#endif // MAME_INCLUDES_LYNX_H

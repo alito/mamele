@@ -58,39 +58,40 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 /* Define clocks based on actual OSC on the PCB */
 
-#define CPU_CLOCK           (XTAL_32MHz / 4)        /* 8 MHz clock for 68000 */
-#define SOUND_CPU_CLOCK     (XTAL_32MHz / 8)        /* 4 MHz clock for Z80 sound CPU */
+#define CPU_CLOCK           (XTAL(32'000'000) / 4)        /* 8 MHz clock for 68000 */
+#define SOUND_CPU_CLOCK     (XTAL(32'000'000) / 8)        /* 4 MHz clock for Z80 sound CPU */
 
 
 /***********************************************************
                 MEMORY STRUCTURES
 ***********************************************************/
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16, volfied_state )
-	AM_RANGE(0x000000, 0x03ffff) AM_ROM     /* program */
-	AM_RANGE(0x080000, 0x0fffff) AM_ROM     /* tiles   */
-	AM_RANGE(0x100000, 0x103fff) AM_RAM     /* main    */
-	AM_RANGE(0x200000, 0x203fff) AM_DEVREADWRITE("pc090oj", pc090oj_device, word_r, word_w)
-	AM_RANGE(0x400000, 0x47ffff) AM_READWRITE(video_ram_r, video_ram_w)
-	AM_RANGE(0x500000, 0x503fff) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE(0x600000, 0x600001) AM_WRITE(video_mask_w)
-	AM_RANGE(0x700000, 0x700001) AM_WRITE(sprite_ctrl_w)
-	AM_RANGE(0xd00000, 0xd00001) AM_READWRITE(video_ctrl_r, video_ctrl_w)
-	AM_RANGE(0xe00000, 0xe00001) AM_DEVWRITE8("ciu", pc060ha_device, master_port_w, 0x00ff)
-	AM_RANGE(0xe00002, 0xe00003) AM_DEVREADWRITE8("ciu", pc060ha_device, master_comm_r, master_comm_w, 0x00ff)
-	AM_RANGE(0xf00000, 0xf007ff) AM_READWRITE(cchip_ram_r, cchip_ram_w)
-	AM_RANGE(0xf00802, 0xf00803) AM_READWRITE(cchip_ctrl_r, cchip_ctrl_w)
-	AM_RANGE(0xf00c00, 0xf00c01) AM_WRITE(cchip_bank_w)
-ADDRESS_MAP_END
+void volfied_state::main_map(address_map &map)
+{
+	map(0x000000, 0x03ffff).rom();     /* program */
+	map(0x080000, 0x0fffff).rom();     /* tiles   */
+	map(0x100000, 0x103fff).ram();     /* main    */
+	map(0x200000, 0x203fff).rw(m_pc090oj, FUNC(pc090oj_device::word_r), FUNC(pc090oj_device::word_w));
+	map(0x400000, 0x47ffff).rw(FUNC(volfied_state::video_ram_r), FUNC(volfied_state::video_ram_w));
+	map(0x500000, 0x503fff).ram().w("palette", FUNC(palette_device::write16)).share("palette");
+	map(0x600000, 0x600001).w(FUNC(volfied_state::video_mask_w));
+	map(0x700000, 0x700001).w(FUNC(volfied_state::sprite_ctrl_w));
+	map(0xd00000, 0xd00001).rw(FUNC(volfied_state::video_ctrl_r), FUNC(volfied_state::video_ctrl_w));
+	map(0xe00001, 0xe00001).w("ciu", FUNC(pc060ha_device::master_port_w));
+	map(0xe00003, 0xe00003).rw("ciu", FUNC(pc060ha_device::master_comm_r), FUNC(pc060ha_device::master_comm_w));
+	map(0xf00000, 0xf007ff).rw(m_cchip, FUNC(taito_cchip_device::mem68_r), FUNC(taito_cchip_device::mem68_w)).umask16(0x00ff);
+	map(0xf00800, 0xf00fff).rw(m_cchip, FUNC(taito_cchip_device::asic_r), FUNC(taito_cchip_device::asic68_w)).umask16(0x00ff);
+}
 
-static ADDRESS_MAP_START( z80_map, AS_PROGRAM, 8, volfied_state )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x8800, 0x8800) AM_DEVWRITE("ciu", pc060ha_device, slave_port_w)
-	AM_RANGE(0x8801, 0x8801) AM_DEVREADWRITE("ciu", pc060ha_device, slave_comm_r, slave_comm_w)
-	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ymsnd", ym2203_device, read, write)
-	AM_RANGE(0x9800, 0x9800) AM_WRITENOP    /* ? */
-ADDRESS_MAP_END
+void volfied_state::z80_map(address_map &map)
+{
+	map(0x0000, 0x7fff).rom();
+	map(0x8000, 0x87ff).ram();
+	map(0x8800, 0x8800).w("ciu", FUNC(pc060ha_device::slave_port_w));
+	map(0x8801, 0x8801).rw("ciu", FUNC(pc060ha_device::slave_comm_r), FUNC(pc060ha_device::slave_comm_w));
+	map(0x9000, 0x9001).rw("ymsnd", FUNC(ym2203_device::read), FUNC(ym2203_device::write));
+	map(0x9800, 0x9800).nopw();    /* ? */
+}
 
 
 /***********************************************************
@@ -161,11 +162,11 @@ static INPUT_PORTS_START( volfied )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL // TODO: probably correct based on initial analysis, but why is this on bit 0x80 when read through the c-chip when it was 0x08 in the simulation and for P1, is it just a Taito workaround for reading through ADC?
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( volfiedu )
@@ -200,7 +201,7 @@ static const gfx_layout tilelayout =
 	128*8
 };
 
-static GFXDECODE_START( volfied )
+static GFXDECODE_START( gfx_volfied )
 	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 4096, 256 )
 GFXDECODE_END
 
@@ -211,28 +212,53 @@ GFXDECODE_END
 
 void volfied_state::machine_start()
 {
-	cchip_init();
 }
 
 void volfied_state::machine_reset()
 {
-	cchip_reset();
 }
 
-static MACHINE_CONFIG_START( volfied )
+WRITE8_MEMBER(volfied_state::counters_w)
+{
+	machine().bookkeeping().coin_lockout_w(1, data & 0x80);
+	machine().bookkeeping().coin_lockout_w(0, data & 0x40);
+	machine().bookkeeping().coin_counter_w(1, data & 0x20);
+	machine().bookkeeping().coin_counter_w(0, data & 0x10);
+}
+
+INTERRUPT_GEN_MEMBER(volfied_state::interrupt)
+{
+	m_maincpu->set_input_line(4, HOLD_LINE);
+	m_cchip->ext_interrupt(ASSERT_LINE);
+	m_cchip_irq_clear->adjust(attotime::zero);
+}
+
+TIMER_DEVICE_CALLBACK_MEMBER(volfied_state::cchip_irq_clear_cb)
+{
+	m_cchip->ext_interrupt(CLEAR_LINE);
+}
+
+
+MACHINE_CONFIG_START(volfied_state::volfied)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M68000, CPU_CLOCK)   /* 8MHz */
-	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", volfied_state,  irq4_line_hold)
+	MCFG_DEVICE_ADD("maincpu", M68000, CPU_CLOCK)   /* 8MHz */
+	MCFG_DEVICE_PROGRAM_MAP(main_map)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", volfied_state,  interrupt)
 
-	MCFG_CPU_ADD("audiocpu", Z80, SOUND_CPU_CLOCK)   /* 4MHz sound CPU, required to run the game */
-	MCFG_CPU_PROGRAM_MAP(z80_map)
+	MCFG_DEVICE_ADD("audiocpu", Z80, SOUND_CPU_CLOCK)   /* 4MHz sound CPU, required to run the game */
+	MCFG_DEVICE_PROGRAM_MAP(z80_map)
 
-	MCFG_TAITO_CCHIP_ADD("cchip", XTAL_12MHz/2) /* ? MHz */
+	TAITO_CCHIP(config, m_cchip, 20_MHz_XTAL/2); // 20MHz OSC next to C-Chip
+	m_cchip->in_pa_callback().set_ioport("F00007");
+	m_cchip->in_pb_callback().set_ioport("F00009");
+	m_cchip->in_pc_callback().set_ioport("F0000B");
+	m_cchip->in_ad_callback().set_ioport("F0000D");
+	m_cchip->out_pb_callback().set(FUNC(volfied_state::counters_w));
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(1200))
 
+	TIMER(config, m_cchip_irq_clear).configure_generic(FUNC(volfied_state::cchip_irq_clear_cb));
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -243,29 +269,28 @@ static MACHINE_CONFIG_START( volfied )
 	MCFG_SCREEN_UPDATE_DRIVER(volfied_state, screen_update)
 	MCFG_SCREEN_PALETTE("palette")
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", volfied)
-	MCFG_PALETTE_ADD("palette", 8192)
-	MCFG_PALETTE_FORMAT(xBBBBBGGGGGRRRRR)
+	GFXDECODE(config, "gfxdecode", "palette", gfx_volfied);
+	PALETTE(config, "palette").set_format(palette_device::xBGR_555, 8192);
 
-	MCFG_DEVICE_ADD("pc090oj", PC090OJ, 0)
-	MCFG_PC090OJ_GFXDECODE("gfxdecode")
-	MCFG_PC090OJ_PALETTE("palette")
+	PC090OJ(config, m_pc090oj, 0);
+	m_pc090oj->set_gfxdecode_tag("gfxdecode");
+	m_pc090oj->set_palette_tag("palette");
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
+	SPEAKER(config, "mono").front_center();
 
-	MCFG_SOUND_ADD("ymsnd", YM2203, 4000000)
-	MCFG_YM2203_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
-	MCFG_AY8910_PORT_A_READ_CB(IOPORT("DSWA"))
-	MCFG_AY8910_PORT_B_READ_CB(IOPORT("DSWB"))
-	MCFG_SOUND_ROUTE(0, "mono", 0.15)
-	MCFG_SOUND_ROUTE(1, "mono", 0.15)
-	MCFG_SOUND_ROUTE(2, "mono", 0.15)
-	MCFG_SOUND_ROUTE(3, "mono", 0.60)
+	ym2203_device &ymsnd(YM2203(config, "ymsnd", 4000000));
+	ymsnd.irq_handler().set_inputline(m_audiocpu, 0);
+	ymsnd.port_a_read_callback().set_ioport("DSWA");
+	ymsnd.port_b_read_callback().set_ioport("DSWB");
+	ymsnd.add_route(0, "mono", 0.15);
+	ymsnd.add_route(1, "mono", 0.15);
+	ymsnd.add_route(2, "mono", 0.15);
+	ymsnd.add_route(3, "mono", 0.60);
 
-	MCFG_DEVICE_ADD("ciu", PC060HA, 0)
-	MCFG_PC060HA_MASTER_CPU("maincpu")
-	MCFG_PC060HA_SLAVE_CPU("audiocpu")
+	pc060ha_device &ciu(PC060HA(config, "ciu", 0));
+	ciu.set_master_tag(m_maincpu);
+	ciu.set_slave_tag(m_audiocpu);
 MACHINE_CONFIG_END
 
 
@@ -285,7 +310,7 @@ ROM_START( volfied )
 	ROM_LOAD16_BYTE( "c04-21.8",    0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",   0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -317,7 +342,7 @@ ROM_START( volfiedo )
 	ROM_LOAD16_BYTE( "c04-21.8",  0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",  0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -349,7 +374,7 @@ ROM_START( volfiedu )
 	ROM_LOAD16_BYTE( "c04-21.8",    0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",   0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -381,7 +406,7 @@ ROM_START( volfieduo )
 	ROM_LOAD16_BYTE( "c04-21.8",  0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",  0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -413,7 +438,7 @@ ROM_START( volfiedj )
 	ROM_LOAD16_BYTE( "c04-21.8",    0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",   0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -445,7 +470,7 @@ ROM_START( volfiedjo )
 	ROM_LOAD16_BYTE( "c04-21.8",  0xc0001, 0x20000, CRC(8598d38e) SHA1(4ec1b819586b50e2f6aff2aaa5e3b06704b9bec2) )
 
 	ROM_REGION( 0x2000, "cchip:cchip_eprom", 0 )
-	ROM_LOAD( "cchip_c04-23",            0x0000, 0x2000, NO_DUMP )
+	ROM_LOAD( "cchip_c04-23",  0x0000, 0x2000, CRC(46b0b479) SHA1(73aa2267eb468c5aa5db67183047e9aef8321215) )
 
 	ROM_REGION( 0xc0000, "gfx1", 0 )    /* sprites 16x16 */
 	ROM_LOAD16_BYTE( "c04-16.2",  0x00000, 0x20000, CRC(8c2476ef) SHA1(972ddc8e47a669f1aeca67d02b4a0bed867ddb7d) )
@@ -466,9 +491,9 @@ ROM_START( volfiedjo )
 ROM_END
 
 
-GAME( 1989, volfied,   0,       volfied, volfied,  volfied_state, 0, ROT270, "Taito Corporation Japan",   "Volfied (World, revision 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, volfiedu,  volfied, volfied, volfiedu, volfied_state, 0, ROT270, "Taito America Corporation", "Volfied (US, revision 1)",    MACHINE_SUPPORTS_SAVE )
-GAME( 1989, volfiedj,  volfied, volfied, volfiedj, volfied_state, 0, ROT270, "Taito Corporation",         "Volfied (Japan, revision 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1989, volfiedo,  volfied, volfied, volfiedj, volfied_state, 0, ROT270, "Taito Corporation Japan",   "Volfied (World)",             MACHINE_SUPPORTS_SAVE )
-GAME( 1989, volfieduo, volfied, volfied, volfiedj, volfied_state, 0, ROT270, "Taito America Corporation", "Volfied (US)",                MACHINE_SUPPORTS_SAVE )
-GAME( 1989, volfiedjo, volfied, volfied, volfiedj, volfied_state, 0, ROT270, "Taito Corporation",         "Volfied (Japan)",             MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfied,   0,       volfied, volfied,  volfied_state, empty_init, ROT270, "Taito Corporation Japan",   "Volfied (World, revision 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfiedu,  volfied, volfied, volfiedu, volfied_state, empty_init, ROT270, "Taito America Corporation", "Volfied (US, revision 1)",    MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfiedj,  volfied, volfied, volfiedj, volfied_state, empty_init, ROT270, "Taito Corporation",         "Volfied (Japan, revision 1)", MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfiedo,  volfied, volfied, volfiedj, volfied_state, empty_init, ROT270, "Taito Corporation Japan",   "Volfied (World)",             MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfieduo, volfied, volfied, volfiedj, volfied_state, empty_init, ROT270, "Taito America Corporation", "Volfied (US)",                MACHINE_SUPPORTS_SAVE )
+GAME( 1989, volfiedjo, volfied, volfied, volfiedj, volfied_state, empty_init, ROT270, "Taito Corporation",         "Volfied (Japan)",             MACHINE_SUPPORTS_SAVE )

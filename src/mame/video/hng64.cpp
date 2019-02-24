@@ -600,7 +600,7 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 		// life would be easier if the roz we're talking about for complex zoom wasn't setting this as well
 
 		// fprintf(stderr, "Tilemap %d is a floor using :\n", tm);
-		const uint32_t floorAddress = 0x40000 + (scrollbase << 4);
+		// const uint32_t floorAddress = 0x40000 + (scrollbase << 4);
 
 		// TODO: The row count is correct, but how is this layer clipped? m_tcram?
 
@@ -635,19 +635,20 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 		// HACK : Clear RAM - this is "needed" in fatfurwa since it doesn't clear its own ram (buriki does)
 		//        Figure out what the difference between the two programs is.  It's possible writing to
 		//        the linescroll ram fills a buffer and it's cleared automatically between frames?
-		for (int ii = 0; ii < 0x2000/4; ii++)
-		{
-			const int realAddress = floorAddress/4;
-			m_videoram[realAddress+ii] = 0x00000000;
-		}
+		// for (int ii = 0; ii < 0x2000/4; ii++)
+		//{
+		//  const int realAddress = floorAddress/4;
+		//  m_videoram[realAddress+ii] = 0x00000000;
+		// }
 
 
 		// Floor mode - per pixel simple / complex modes? -- every other line?
 		//  (there doesn't seem to be enough data in Buriki for every line at least)
 		rectangle clip = visarea;
 
-		if (global_alt_scroll_register_format) // globally selects alt scroll register layout???
-		{
+		// this was wrong, see below
+//      if (global_alt_scroll_register_format) // globally selects alt scroll register layout???
+//      {
 			// Logic would dictate that this should be the 'complex' scroll register layout,
 			// but per-line.  That doesn't work however.
 			//
@@ -662,11 +663,11 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 			//
 			// buriki line data is at 20146000 (physical)
 
-#if HNG64_VIDEO_DEBUG
-			popmessage("Unhandled rowscroll %02x", tileregs>>12);
-#endif
-		}
-		else // 'simple' mode with linescroll, used in some ss64_2 levels (assumed to be correct, but doesn't do much with it.. so could be wrong)
+//#if HNG64_VIDEO_DEBUG
+//          popmessage("Unhandled rowscroll %02x", tileregs>>12);
+//#endif
+//      }
+//      else // 'simple' mode with linescroll, used in some ss64_2 levels (assumed to be correct, but doesn't do much with it.. so could be wrong)
 		{
 			int32_t xtopleft, xmiddle;
 			int32_t ytopleft, ymiddle;
@@ -697,6 +698,7 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 
 				const int xinc = (xmiddle - xtopleft) / 512;
 				const int yinc = (ymiddle - ytopleft) / 512;
+				// TODO: if global_alt_scroll_register_format is enabled uses incxy / incyx into calculation somehow ...
 
 				hng64_tilemap_draw_roz(screen, bitmap,clip,tilemap,xtopleft,ytopleft,
 						xinc<<1,0,0,yinc<<1,
@@ -720,8 +722,9 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 			   see 1:32 in http://www.youtube.com/watch?v=PoYaHOILuGs
 
 			   Xtreme Rally seems to have an issue with this mode on the communication check
-			   screen at startup, but according to videos that should scroll, and no scroll
-			   values are updated, so it might be an unrelated bug.
+			   screen at startup, however during the period in which the values are invalid
+			   it looks like the display shouldn't even be enabled (only gets enabled when
+			   the value starts counting up)
 
 			*/
 
@@ -913,7 +916,7 @@ void hng64_state::hng64_drawtilemap(screen_device &screen, bitmap_rgb32 &bitmap,
 
 uint32_t hng64_state::screen_update_hng64(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-#if 1
+#if 0
 	// press in sams64_2 attract mode for a nice debug screen from the game
 	// not sure how functional it is, and it doesn't appear to test everything (rowscroll modes etc.)
 	// but it could be useful
@@ -925,15 +928,6 @@ uint32_t hng64_state::screen_update_hng64(screen_device &screen, bitmap_rgb32 &b
 		{
 			space.write_byte(0x2f27c8, 0x2);
 		}
-		else if (!strcmp(machine().system().name, "roadedge")) // hack to get test mode (useful for sound test)
-		{
-			space.write_byte(0xcfb53, 0x1);
-		}
-		else if (!strcmp(machine().system().name, "xrally")) // hack to get test mode (useful for sound test)
-		{
-			space.write_byte(0xa2363, 0x1);
-		}
-
 	}
 #endif
 
@@ -999,7 +993,7 @@ uint32_t hng64_state::screen_update_hng64(screen_device &screen, bitmap_rgb32 &b
 	hng64_drawtilemap(screen,bitmap,cliprect, 0);
 
 	// 3d gets drawn next
-	if(!(m_3dregs[0] & 0x1000000))
+	if(!(m_fbcontrol[0] & 0x01))
 	{
 		int x, y;
 
@@ -1051,12 +1045,6 @@ uint32_t hng64_state::screen_update_hng64(screen_device &screen, bitmap_rgb32 &b
 		m_videoregs[0x0b],
 		m_videoregs[0x0c],
 		m_videoregs[0x0d]);
-
-	if (0)
-	popmessage("3D: %08x %08x %08x %08x : %08x %08x %08x %08x : %08x %08x %08x %08x",
-		m_3dregs[0x00/4], m_3dregs[0x04/4], m_3dregs[0x08/4], m_3dregs[0x0c/4],
-		m_3dregs[0x10/4], m_3dregs[0x14/4], m_3dregs[0x18/4], m_3dregs[0x1c/4],
-		m_3dregs[0x20/4], m_3dregs[0x24/4], m_3dregs[0x28/4], m_3dregs[0x2c/4]);
 
 	if (0)
 		popmessage("TC: %08x %08x %08x %08x : %08x %08x %08x %08x : %08x %08x %08x %08x : %08x %08x %08x %08x : %08x %08x %08x %08x : %08x %08x %08x %08x",
@@ -1156,6 +1144,46 @@ WRITE_LINE_MEMBER(hng64_state::screen_vblank_hng64)
  *  Or maybe it switches from fading by scaling to fading using absolute addition and subtraction...
  *  Or maybe they set transition type (there seems to be a cute scaling-squares transition in there somewhere)...
  */
+
+// Transition Control memory.
+WRITE32_MEMBER(hng64_state::tcram_w)
+{
+	uint32_t *hng64_tcram = m_tcram;
+
+	COMBINE_DATA (&hng64_tcram[offset]);
+
+	if(offset == 0x02)
+	{
+		uint16_t min_x, min_y, max_x, max_y;
+		rectangle visarea = m_screen->visible_area();
+
+		min_x = (hng64_tcram[1] & 0xffff0000) >> 16;
+		min_y = (hng64_tcram[1] & 0x0000ffff) >> 0;
+		max_x = (hng64_tcram[2] & 0xffff0000) >> 16;
+		max_y = (hng64_tcram[2] & 0x0000ffff) >> 0;
+
+		if(max_x == 0 || max_y == 0) // bail out if values are invalid, Fatal Fury WA sets this to disable the screen.
+		{
+			m_screen_dis = 1;
+			return;
+		}
+
+		m_screen_dis = 0;
+
+		visarea.set(min_x, min_x + max_x - 1, min_y, min_y + max_y - 1);
+		m_screen->configure(HTOTAL, VTOTAL, visarea, m_screen->frame_period().attoseconds() );
+	}
+}
+
+READ32_MEMBER(hng64_state::tcram_r)
+{
+	/* is this really a port? this seems treated like RAM otherwise, check if there's code anywhere
+	   to write the desired value here instead */
+	if ((offset*4) == 0x48)
+		return ioport("VBLANK")->read();
+
+	return m_tcram[offset];
+}
 
 // Very much a work in progress - no hard testing has been done
 void hng64_state::transition_control( bitmap_rgb32 &bitmap, const rectangle &cliprect)

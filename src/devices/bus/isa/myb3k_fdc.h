@@ -11,12 +11,27 @@
 #pragma once
 
 #include "isa.h"
+#include "imagedev/floppy.h"
 #include "machine/wd_fdc.h"
 #include "formats/imd_dsk.h"
 
+class isa8_myb3k_fdc471x_base
+{
+protected:
+	enum {
+		FDC_MSM_MODE = 0x40,
+		FDC_DDEN = 0x20,
+		//FDC_MOTOR_ON = 0x10, // According to service manual but not schematics and BIOS
+		FDC_SIDE_SEL = 0x08,
+		FDC_MOTOR_ON = 0x04, // According to schematics but "Motor Cont" according to service manual
+		FDC_DRIVE_SEL = 0x03,
+	};
+};
+
 class isa8_myb3k_fdc4710_device :
 	public device_t,
-	public device_isa8_card_interface
+	public device_isa8_card_interface,
+	public isa8_myb3k_fdc471x_base
 {
 public:
 	// construction/destruction
@@ -39,7 +54,7 @@ protected:
 	DECLARE_WRITE8_MEMBER(myb3k_inv_fdc_data_w);
 	DECLARE_READ8_MEMBER(myb3k_fdc_status);
 	DECLARE_WRITE8_MEMBER(myb3k_fdc_command);
-	DECLARE_ADDRESS_MAP(map, 8);
+	void map(address_map &map);
 
 	required_device<mb8876_device> m_fdc;
 	required_device<floppy_connector> m_fdd0;
@@ -53,7 +68,8 @@ private:
 
 class isa8_myb3k_fdc4711_device :
 	public device_t,
-	public device_isa8_card_interface
+	public device_isa8_card_interface,
+	public isa8_myb3k_fdc471x_base
 {
 public:
 	// construction/destruction
@@ -76,7 +92,7 @@ protected:
 	DECLARE_WRITE8_MEMBER(myb3k_inv_fdc_data_w);
 	DECLARE_READ8_MEMBER(myb3k_fdc_status);
 	DECLARE_WRITE8_MEMBER(myb3k_fdc_command);
-	DECLARE_ADDRESS_MAP(map, 8);
+	void map(address_map &map);
 
 	required_device<fd1791_device> m_fdc;
 	required_device<floppy_connector> m_fdd0;

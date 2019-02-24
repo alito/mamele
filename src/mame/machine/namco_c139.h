@@ -17,9 +17,6 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define MCFG_NAMCO_C139_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, NAMCO_C139, 0)
-
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
@@ -34,13 +31,14 @@ public:
 	namco_c139_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// I/O operations
-	DECLARE_ADDRESS_MAP(regs_map, 16);
+	void regs_map(address_map &map);
 
 	DECLARE_READ16_MEMBER(status_r);
 
 	DECLARE_READ16_MEMBER(ram_r);
 	DECLARE_WRITE16_MEMBER(ram_w);
 
+	void data_map(address_map &map);
 protected:
 	// device-level overrides
 //  virtual void device_validity_check(validity_checker &valid) const;

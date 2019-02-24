@@ -4,7 +4,7 @@
 
     m6502d.cpp
 
-    Mostek 6502, original NMOS variant, disassembler
+    MOS Technology 6502, original NMOS variant, disassembler
 
 ***************************************************************************/
 
@@ -179,6 +179,11 @@ offs_t m6502_base_disassembler::disassemble(std::ostream &stream, offs_t pc, con
 	case DASM_bac:
 		util::stream_format(stream, " %d, a", (opcodes.r8(pc) >> 5) & 7);
 		flags |= 1;
+		break;
+
+	case DASM_xa3:
+		util::stream_format(stream, " #$%02x%02x%02x", params.r8(pc+1), params.r8(pc+3), params.r8(pc+2));
+		flags |= 4;
 		break;
 
 	default:

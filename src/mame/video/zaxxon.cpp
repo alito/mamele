@@ -17,46 +17,44 @@
  *
  *************************************/
 
-PALETTE_INIT_MEMBER(zaxxon_state, zaxxon)
+void zaxxon_state::zaxxon_palette(palette_device &palette)
 {
-	const uint8_t *color_prom = memregion("proms")->base();
-	static const int resistances[3] = { 1000, 470, 220 };
-	double rweights[3], gweights[3], bweights[2];
-	int i;
+	uint8_t const *const color_prom = memregion("proms")->base();
+	static constexpr int resistances[3] = { 1000, 470, 220 };
 
-	/* compute the color output resistor weights */
+	// compute the color output resistor weights
+	double rweights[3], gweights[3], bweights[2];
 	compute_resistor_weights(0, 255, -1.0,
 			3,  &resistances[0], rweights, 470, 0,
 			3,  &resistances[0], gweights, 470, 0,
 			2,  &resistances[1], bweights, 470, 0);
 
-	/* initialize the palette with these colors */
-	for (i = 0; i < palette.entries(); i++)
+	// initialize the palette with these colors
+	for (int i = 0; i < palette.entries(); i++)
 	{
 		int bit0, bit1, bit2;
-		int r, g, b;
 
-		/* red component */
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
-		r = combine_3_weights(rweights, bit0, bit1, bit2);
+		// red component
+		bit0 = BIT(color_prom[i], 0);
+		bit1 = BIT(color_prom[i], 1);
+		bit2 = BIT(color_prom[i], 2);
+		int const r = combine_3_weights(rweights, bit0, bit1, bit2);
 
-		/* green component */
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
-		g = combine_3_weights(gweights, bit0, bit1, bit2);
+		// green component
+		bit0 = BIT(color_prom[i], 3);
+		bit1 = BIT(color_prom[i], 4);
+		bit2 = BIT(color_prom[i], 5);
+		int const g = combine_3_weights(gweights, bit0, bit1, bit2);
 
-		/* blue component */
-		bit0 = (color_prom[i] >> 6) & 0x01;
-		bit1 = (color_prom[i] >> 7) & 0x01;
-		b = combine_2_weights(bweights, bit0, bit1);
+		// blue component
+		bit0 = BIT(color_prom[i], 6);
+		bit1 = BIT(color_prom[i], 7);
+		int const b = combine_2_weights(bweights, bit0, bit1);
 
 		palette.set_pen_color(i, rgb_t(r, g, b));
 	}
 
-	/* color_prom now points to the beginning of the character color codes */
+	// color_prom now points to the beginning of the character color codes
 	m_color_codes = &color_prom[256];
 }
 
@@ -123,6 +121,7 @@ void zaxxon_state::video_start_common(tilemap_get_info_delegate fg_tile_info)
 	m_bg_color = 0;
 	m_bg_position = 0;
 	m_fg_color = 0;
+	m_flip_screen = false;
 	m_congo_fg_bank = 0;
 	m_congo_color_bank = 0;
 	memset(m_congo_custom, 0, sizeof(m_congo_custom));
@@ -139,6 +138,7 @@ void zaxxon_state::video_start_common(tilemap_get_info_delegate fg_tile_info)
 	save_item(NAME(m_bg_color));
 	save_item(NAME(m_bg_position));
 	save_item(NAME(m_fg_color));
+	save_item(NAME(m_flip_screen));
 }
 
 
@@ -178,8 +178,8 @@ VIDEO_START_MEMBER(zaxxon_state,congo)
 WRITE_LINE_MEMBER(zaxxon_state::flipscreen_w)
 {
 	/* low bit controls flip; background and sprite flip are handled at render time */
-	flip_screen_set_no_update(!state);
-	m_fg_tilemap->set_flip(flip_screen() ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+	m_flip_screen = !state;
+	m_fg_tilemap->set_flip(m_flip_screen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 }
 
 
@@ -272,7 +272,7 @@ WRITE8_MEMBER(zaxxon_state::congo_sprite_custom_w)
 		int count = m_congo_custom[2];
 
 		/* count cycles (just a guess) */
-		space.device().execute().adjust_icount(-count * 5);
+		m_maincpu->adjust_icount(-count * 5);
 
 		/* this is just a guess; the chip is hardwired to the spriteram */
 		while (count-- >= 0)
@@ -304,13 +304,13 @@ void zaxxon_state::draw_background(bitmap_ind16 &bitmap, const rectangle &clipre
 		int colorbase = m_bg_color + (m_congo_color_bank << 8);
 		int xmask = pixmap.width() - 1;
 		int ymask = pixmap.height() - 1;
-		int flipmask = flip_screen() ? 0xff : 0x00;
-		int flipoffs = flip_screen() ? 0x38 : 0x40;
+		int flipmask = m_flip_screen ? 0xff : 0x00;
+		int flipoffs = m_flip_screen ? 0x38 : 0x40;
 		int x, y;
 
 		/* the starting X value is offset by 1 pixel (normal) or 7 pixels */
 		/* (flipped) due to a delay in the loading */
-		if (!flip_screen())
+		if (!m_flip_screen)
 			flipoffs -= 1;
 		else
 			flipoffs += 7;
@@ -415,7 +415,7 @@ void zaxxon_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect,
 {
 	uint8_t *spriteram = m_spriteram;
 	gfx_element *gfx = m_gfxdecode->gfx(2);
-	int flip = flip_screen();
+	int flip = m_flip_screen;
 	int flipmask = flip ? 0xff : 0x00;
 	int offs;
 

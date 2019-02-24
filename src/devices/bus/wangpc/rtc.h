@@ -47,12 +47,15 @@ protected:
 	virtual void wangpcbus_aiowc_w(address_space &space, offs_t offset, uint16_t mem_mask, uint16_t data) override;
 
 private:
-	required_device<cpu_device> m_maincpu;
+	required_device<z80_device> m_maincpu;
 	required_device<am9517a_device> m_dmac;
 	required_device<z80ctc_device> m_ctc0;
 	required_device<z80ctc_device> m_ctc1;
 	required_device<z80dart_device> m_sio;
 	optional_shared_ptr<uint8_t> m_char_ram;
+
+	void wangpc_rtc_io(address_map &map);
+	void wangpc_rtc_mem(address_map &map);
 };
 
 

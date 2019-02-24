@@ -15,13 +15,16 @@ class ti990_hdc_device : public device_t
 public:
 	ti990_hdc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	template <class Object> static devcb_base &static_set_int_callback(device_t &device, Object &&cb) { return downcast<ti990_hdc_device &>(device).m_interrupt_callback.set_callback(std::forward<Object>(cb)); }
+	template <class Object> devcb_base &set_int_callback(Object &&cb) { return m_interrupt_callback.set_callback(std::forward<Object>(cb)); }
 
 	DECLARE_READ16_MEMBER(read);
 	DECLARE_WRITE16_MEMBER(write);
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( ti990_hd );
 	DECLARE_DEVICE_IMAGE_UNLOAD_MEMBER( ti990_hd );
+
+	auto int_cb() { return m_interrupt_callback.bind(); }
+
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -73,9 +76,6 @@ private:
 
 	hd_unit_t m_d[MAX_DISK_UNIT];
 };
-
-#define MCFG_TI990_HDC_INT_CALLBACK( _write ) \
-	devcb = &ti990_hdc_device::static_set_int_callback( *device, DEVCB_##_write );
 
 DECLARE_DEVICE_TYPE(TI990_HDC, ti990_hdc_device)
 

@@ -29,18 +29,18 @@ includedirs {
 	MAME_DIR .. "src/devices", -- till deps are fixed
 	MAME_DIR .. "src/lib",
 	MAME_DIR .. "src/lib/util",
-	MAME_DIR .. "3rdparty/rapidjson/include",
 	MAME_DIR .. "3rdparty",
 	GEN_DIR  .. "emu",
 	GEN_DIR  .. "emu/layout",
 }
 
 includedirs {
+	ext_includedir("asio"),
 	ext_includedir("expat"),
 	ext_includedir("lua"),
 	ext_includedir("zlib"),
 	ext_includedir("flac"),
-	MAME_DIR .. "3rdparty/asio/include",
+	ext_includedir("rapidjson")
 }
 
 configuration { }
@@ -137,6 +137,7 @@ files {
 	MAME_DIR .. "src/frontend/mame/ui/defimg.ipp",
 	MAME_DIR .. "src/frontend/mame/ui/dirmenu.cpp",
 	MAME_DIR .. "src/frontend/mame/ui/dirmenu.h",
+	MAME_DIR .. "src/frontend/mame/ui/icorender.cpp",
 	MAME_DIR .. "src/frontend/mame/ui/icorender.h",
 	MAME_DIR .. "src/frontend/mame/ui/inifile.cpp",
 	MAME_DIR .. "src/frontend/mame/ui/inifile.h",

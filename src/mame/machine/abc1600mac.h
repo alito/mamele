@@ -23,18 +23,6 @@
 #define ABC1600_MAC_TAG "mac"
 
 
-
-///*************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-///*************************************************************************
-
-#define MCFG_ABC1600_MAC_ADD(_cpu_tag, _program_map) \
-	MCFG_DEVICE_ADD(ABC1600_MAC_TAG, ABC1600_MAC, 0) \
-	MCFG_DEVICE_ADDRESS_MAP(AS_PROGRAM, _program_map) \
-	downcast<abc1600_mac_device *>(device)->set_cpu_tag(_cpu_tag);
-
-
-
 ///*************************************************************************
 //  TYPE DEFINITIONS
 ///*************************************************************************
@@ -47,9 +35,9 @@ class abc1600_mac_device : public device_t,
 public:
 	abc1600_mac_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void set_cpu_tag(const char *cpu_tag) { m_cpu_tag = cpu_tag; }
+	template <typename T> void set_cpu_tag(T &&tag) { m_cpu.set_tag(std::forward<T>(tag)); }
 
-	virtual DECLARE_ADDRESS_MAP(map, 8);
+	virtual void map(address_map &map);
 
 	DECLARE_READ8_MEMBER( cause_r );
 	DECLARE_WRITE8_MEMBER( task_w );
@@ -72,6 +60,7 @@ public:
 	DECLARE_READ8_MEMBER( dma2_iorq_r ) { return dma_iorq_r(DMAMAP_R2_LO, offset); }
 	DECLARE_WRITE8_MEMBER( dma2_iorq_w ) { dma_iorq_w(DMAMAP_R2_LO, offset, data); }
 
+	void program_map(address_map &map);
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -121,8 +110,7 @@ private:
 
 	required_device<watchdog_timer_device> m_watchdog;
 
-	const char *m_cpu_tag;
-	m68000_base_device *m_cpu;
+	required_device<m68000_base_device> m_cpu;
 
 	int m_ifc2;
 	uint8_t m_task;

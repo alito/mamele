@@ -6,8 +6,8 @@
  *  Created on: 1/01/2013
  */
 
-#ifndef S11A_H_
-#define S11A_H_
+#ifndef MAME_INCLUDES_S11A_H
+#define MAME_INCLUDES_S11A_H
 
 #include "includes/s11.h"
 
@@ -18,15 +18,19 @@ public:
 		: s11_state(mconfig, type, tag)
 	{ }
 
+	void s11a(machine_config &config);
+
+	void init_s11a();
+
 	DECLARE_WRITE8_MEMBER(bgbank_w);
 	DECLARE_WRITE8_MEMBER(dig0_w);
-	DECLARE_MACHINE_RESET(s11a);
-	DECLARE_DRIVER_INIT(s11a);
-
-protected:
 
 private:
+	DECLARE_MACHINE_RESET(s11a);
 
+	void s11a_audio_map(address_map &map);
+	void s11a_bg_map(address_map &map);
+	void s11a_main_map(address_map &map);
 };
 
-#endif /* S11A_H_ */
+#endif // MAME_INCLUDES_S11A_H

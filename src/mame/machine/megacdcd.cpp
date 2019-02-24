@@ -161,36 +161,6 @@ void lc89510_temp_device::dummy_interrupt_callback(void)
 {
 }
 
-void lc89510_temp_device::set_CDC_Do_DMA(device_t &device,segacd_dma_delegate new_segacd_dma_callback)
-{
-	lc89510_temp_device &dev = downcast<lc89510_temp_device &>(device);
-	dev.segacd_dma_callback = new_segacd_dma_callback;
-}
-
-void lc89510_temp_device::set_type1_interrupt_callback(device_t &device,interrupt_delegate interrupt_callback)
-{
-	lc89510_temp_device &dev = downcast<lc89510_temp_device &>(device);
-	dev.type1_interrupt_callback = interrupt_callback;
-}
-
-void lc89510_temp_device::set_type2_interrupt_callback(device_t &device,interrupt_delegate interrupt_callback)
-{
-	lc89510_temp_device &dev = downcast<lc89510_temp_device &>(device);
-	dev.type2_interrupt_callback = interrupt_callback;
-}
-
-void lc89510_temp_device::set_type3_interrupt_callback(device_t &device,interrupt_delegate interrupt_callback)
-{
-	lc89510_temp_device &dev = downcast<lc89510_temp_device &>(device);
-	dev.type3_interrupt_callback = interrupt_callback;
-}
-
-void lc89510_temp_device::set_is_neoCD(device_t &device, bool is_neoCD)
-{
-	lc89510_temp_device &dev = downcast<lc89510_temp_device &>(device);
-	dev.is_neoCD = is_neoCD;
-}
-
 // HACK for DMA handling, this gets replaced
 void lc89510_temp_device::Fake_CDC_Do_DMA(int &dmacount, uint8_t *CDC_BUFFER, uint16_t &dma_addrc, uint16_t &destination )
 {
@@ -1184,13 +1154,14 @@ TIMER_DEVICE_CALLBACK_MEMBER( lc89510_temp_device::segacd_access_timer_callback 
 }
 
 
-MACHINE_CONFIG_MEMBER( lc89510_temp_device::device_add_mconfig )
-	MCFG_TIMER_DRIVER_ADD_PERIODIC("hock_timer", lc89510_temp_device, segacd_access_timer_callback, attotime::from_hz(75))
+void lc89510_temp_device::device_add_mconfig(machine_config &config)
+{
+	TIMER(config, "hock_timer").configure_periodic(FUNC(lc89510_temp_device::segacd_access_timer_callback), attotime::from_hz(75));
 
-	MCFG_SOUND_ADD( "cdda", CDDA, 0 )
-	MCFG_SOUND_ROUTE( 0, ":lspeaker", 0.50 ) // TODO: accurate volume balance
-	MCFG_SOUND_ROUTE( 1, ":rspeaker", 0.50 )
-MACHINE_CONFIG_END
+	cdda_device &cdda(CDDA(config, "cdda"));
+	cdda.add_route(0, ":lspeaker", 0.50); // TODO: accurate volume balance
+	cdda.add_route(1, ":rspeaker", 0.50);
+}
 
 
 

@@ -8,7 +8,7 @@
   Preliminary driver by Roberto Fresca.
 
 
-  German board game similar to Ludo, derivated from the indian game Parchisi.
+  German board game similar to Ludo, derived from the Indian game Parchisi.
   Coin-operated machine for 1-4 players. No screen, just artwork and lamps.
   The machine was designed for pubs, etc...
 
@@ -144,17 +144,20 @@
 class manohman_state : public driver_device
 {
 public:
-	manohman_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	manohman_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_duart(*this, "duart"),
 		m_pit(*this, "pit")
 	{ }
 
-	IRQ_CALLBACK_MEMBER(iack_handler);
+	void manohman(machine_config &config);
 
 private:
 	virtual void machine_start() override;
+	void mem_map(address_map &map);
+
+	IRQ_CALLBACK_MEMBER(iack_handler);
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mc68681_device> m_duart;
@@ -169,8 +172,12 @@ void manohman_state::machine_start()
 
 IRQ_CALLBACK_MEMBER(manohman_state::iack_handler)
 {
-	// TODO: fetch 68230 vector
-	return m_duart->get_irq_vector();
+	if (irqline >= M68K_IRQ_4)
+		return m_duart->get_irq_vector();
+	else if (irqline >= M68K_IRQ_2)
+		return m_pit->irq_tiack();
+	else
+		return M68K_INT_ACK_SPURIOUS; // doesn't really matter
 }
 
 
@@ -178,15 +185,18 @@ IRQ_CALLBACK_MEMBER(manohman_state::iack_handler)
 *           Memory Map Definition            *
 *********************************************/
 
-static ADDRESS_MAP_START( mem_map, AS_PROGRAM, 16, manohman_state )
-	AM_RANGE(0x000000, 0x01ffff) AM_ROM
-	AM_RANGE(0x100000, 0x10003f) AM_DEVREADWRITE8("pit", pit68230_device, read, write, 0x00ff)
-	AM_RANGE(0x200000, 0x20001f) AM_DEVREADWRITE8("duart", mc68681_device, read, write, 0x00ff)
-	AM_RANGE(0x300000, 0x300003) AM_DEVWRITE8("saa", saa1099_device, write, 0x00ff) AM_READNOP
-	AM_RANGE(0x400000, 0x40001f) AM_DEVREADWRITE8("rtc", msm6242_device, read, write, 0x00ff)
-	AM_RANGE(0x500000, 0x503fff) AM_RAM AM_SHARE("nvram") //work RAM
-	AM_RANGE(0x600006, 0x600007) AM_NOP //(r) is discarded (watchdog?)
-ADDRESS_MAP_END
+void manohman_state::mem_map(address_map &map)
+{
+	map(0x000000, 0x01ffff).rom();
+	map(0x100000, 0x10003f).rw(m_pit, FUNC(pit68230_device::read), FUNC(pit68230_device::write)).umask16(0x00ff);
+	map(0x200000, 0x20001f).rw(m_duart, FUNC(mc68681_device::read), FUNC(mc68681_device::write)).umask16(0x00ff);
+	map(0x300000, 0x300003).w("saa", FUNC(saa1099_device::write)).umask16(0x00ff).nopr();
+	map(0x400000, 0x40001f).rw("rtc", FUNC(msm6242_device::read), FUNC(msm6242_device::write)).umask16(0x00ff);
+	map(0x500000, 0x503fff).ram().share("nvram"); //work RAM
+	map(0x600002, 0x600003).nopw(); // output through shift register?
+	map(0x600004, 0x600005).nopr();
+	map(0x600006, 0x600007).noprw(); //(r) is discarded (watchdog?)
+}
 
 /*
 
@@ -232,24 +242,25 @@ INPUT_PORTS_END
 *               Machine Config               *
 *********************************************/
 
-static MACHINE_CONFIG_START( manohman )
-	MCFG_CPU_ADD("maincpu", M68000, XTAL_8MHz) // MC68000P8
-	MCFG_CPU_PROGRAM_MAP(mem_map)
-	MCFG_CPU_IRQ_ACKNOWLEDGE_DRIVER(manohman_state, iack_handler)
+void manohman_state::manohman(machine_config &config)
+{
+	M68000(config, m_maincpu, XTAL(8'000'000)); // MC68000P8
+	m_maincpu->set_addrmap(AS_PROGRAM, &manohman_state::mem_map);
+	m_maincpu->set_irq_acknowledge_callback(FUNC(manohman_state::iack_handler));
 
-	MCFG_DEVICE_ADD("pit", PIT68230, XTAL_8MHz) // MC68230P8
+	PIT68230(config, m_pit, XTAL(8'000'000)); // MC68230P8
+	m_pit->timer_irq_callback().set_inputline("maincpu", M68K_IRQ_2);
 
-	MCFG_DEVICE_ADD("duart", MC68681, XTAL_3_6864MHz)
-	MCFG_MC68681_IRQ_CALLBACK(INPUTLINE("maincpu", M68K_IRQ_4))
+	MC68681(config, m_duart, XTAL(3'686'400));
+	m_duart->irq_cb().set_inputline(m_maincpu, M68K_IRQ_4);
 
-	MCFG_DEVICE_ADD("rtc", MSM6242, XTAL_32_768kHz) // M62X42B
+	MSM6242(config, "rtc", XTAL(32'768)); // M62X42B
 
-	MCFG_NVRAM_ADD_NO_FILL("nvram") // KM6264BL-10 x2 + MAX696CFL + battery
+	NVRAM(config, "nvram", nvram_device::DEFAULT_NONE); // KM6264BL-10 x2 + MAX696CFL + battery
 
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("saa", SAA1099, XTAL_8MHz / 2) // clock not verified
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
-MACHINE_CONFIG_END
+	SPEAKER(config, "mono").front_center();
+	SAA1099(config, "saa", XTAL(8'000'000) / 2).add_route(ALL_OUTPUTS, "mono", 0.10); // clock not verified
+}
 
 
 /*********************************************
@@ -273,6 +284,6 @@ ROM_END
 *                Game Drivers                *
 *********************************************/
 
-//    YEAR  NAME      PARENT  MACHINE   INPUT     STATE           INIT    ROT   COMPANY   FULLNAME         FLAGS
-GAME( 199?, manohman, 0,      manohman, manohman, manohman_state, 0,      ROT0, "Merkur", "Mann, oh-Mann", MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_REQUIRES_ARTWORK )
-GAME( 1990, backgamn, 0,      manohman, manohman, manohman_state, 0,      ROT0, "Merkur", "Backgammon",    MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_REQUIRES_ARTWORK )
+//    YEAR  NAME      PARENT  MACHINE   INPUT     STATE           INIT        ROT   COMPANY   FULLNAME         FLAGS
+GAME( 199?, manohman, 0,      manohman, manohman, manohman_state, empty_init, ROT0, "Merkur", "Mann, oh-Mann", MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_REQUIRES_ARTWORK )
+GAME( 1990, backgamn, 0,      manohman, manohman, manohman_state, empty_init, ROT0, "Merkur", "Backgammon",    MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_REQUIRES_ARTWORK )

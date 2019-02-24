@@ -7,6 +7,7 @@
 
 *************************************************************************/
 
+#include "cpu/z80/z80.h"
 #include "machine/gen_latch.h"
 #include "machine/z80ctc.h"
 #include "sound/dac.h"
@@ -38,7 +39,7 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
-	required_device<cpu_device> m_audiocpu;
+	required_device<z80_device> m_audiocpu;
 	required_device<dac_bit_interface> m_dac1;
 	required_device<dac_bit_interface> m_dac2;
 	required_device<vector_device> m_vector;
@@ -75,6 +76,10 @@ public:
 
 	void refresh();
 
+	void cchasm(machine_config &config);
+	void memmap(address_map &map);
+	void sound_memmap(address_map &map);
+	void sound_portmap(address_map &map);
 protected:
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 };

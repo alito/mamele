@@ -28,6 +28,33 @@
 
 /*************************************
  *
+ *  Serial number input kludge
+ *
+ *************************************/
+
+static INPUT_PORTS_START( pic_serial_adjust )
+	PORT_START("SERIAL_DIGIT")
+	PORT_DIPNAME( 0x0f, 0x06, "Serial Low Digit")
+	PORT_DIPSETTING(    0x00, "0")
+	PORT_DIPSETTING(    0x01, "1")
+	PORT_DIPSETTING(    0x02, "2")
+	PORT_DIPSETTING(    0x03, "3")
+	PORT_DIPSETTING(    0x04, "4")
+	PORT_DIPSETTING(    0x05, "5")
+	PORT_DIPSETTING(    0x06, "6")
+	PORT_DIPSETTING(    0x07, "7")
+	PORT_DIPSETTING(    0x08, "8")
+	PORT_DIPSETTING(    0x09, "9")
+	PORT_BIT( 0xf0, 0x00, IPT_UNUSED )
+INPUT_PORTS_END
+
+ioport_constructor midway_serial_pic_device::device_input_ports() const
+{
+	return INPUT_PORTS_NAME(pic_serial_adjust);
+}
+
+/*************************************
+ *
  *  Serial number encoding
  *
  *************************************/
@@ -38,8 +65,9 @@ void midway_serial_pic_device::generate_serial_data(int upper)
 	uint32_t serial_number, temp;
 	uint8_t serial_digit[9];
 
-	serial_number = 123456;
+	serial_number = 123450;
 	serial_number += upper * 1000000;
+	serial_number += m_io_serial_digit->read() & 0x0f;
 
 	serial_digit[0] = (serial_number / 100000000) % 10;
 	serial_digit[1] = (serial_number / 10000000) % 10;
@@ -119,6 +147,7 @@ midway_serial_pic_device::midway_serial_pic_device(const machine_config &mconfig
 
 midway_serial_pic_device::midway_serial_pic_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
 	device_t(mconfig, type, tag, owner, clock),
+	m_io_serial_digit(*this, "SERIAL_DIGIT"),
 	m_upper(0),
 	m_buff(0),
 	m_idx(0),
@@ -136,9 +165,12 @@ midway_serial_pic_device::midway_serial_pic_device(const machine_config &mconfig
 void midway_serial_pic_device::device_start()
 {
 	serial_register_state();
-	generate_serial_data(m_upper);
 }
 
+void midway_serial_pic_device::device_reset()
+{
+	generate_serial_data(m_upper);
+}
 
 WRITE_LINE_MEMBER(midway_serial_pic_device::reset_w)
 {
@@ -216,47 +248,48 @@ void midway_serial_pic_emu_device::device_start()
 
 READ8_MEMBER(midway_serial_pic_emu_device::read_a)
 {
-//  printf("%s: read_a\n", machine().describe_context());
+//  printf("%s: read_a\n", machine().describe_context().c_str());
 	return 0x00;
 }
 
 READ8_MEMBER(midway_serial_pic_emu_device::read_b)
 {
-//  printf("%s: read_b\n", machine().describe_context());
+//  printf("%s: read_b\n", machine().describe_context().c_str());
 	return 0x00;
 }
 
 READ8_MEMBER(midway_serial_pic_emu_device::read_c)
 {
 //  used
-//  printf("%s: read_c\n", machine().describe_context());
+//  printf("%s: read_c\n", machine().describe_context().c_str());
 	return 0x00;
 }
 
 WRITE8_MEMBER(midway_serial_pic_emu_device::write_a)
 {
-//  printf("%s: write_a %02x\n", machine().describe_context(), data);
+//  printf("%s: write_a %02x\n", machine().describe_context().c_str(), data);
 }
 
 WRITE8_MEMBER(midway_serial_pic_emu_device::write_b)
 {
-//  printf("%s: write_b %02x\n", machine().describe_context(), data);
+//  printf("%s: write_b %02x\n", machine().describe_context().c_str(), data);
 }
 
 WRITE8_MEMBER(midway_serial_pic_emu_device::write_c)
 {
 //  used
-//  printf("%s: write_c %02x\n", machine().describe_context(), data);
+//  printf("%s: write_c %02x\n", machine().describe_context().c_str(), data);
 }
 
-MACHINE_CONFIG_MEMBER( midway_serial_pic_emu_device::device_add_mconfig )
-	MCFG_CPU_ADD("pic", PIC16C57, 12000000)    /* ? Mhz */
-	MCFG_PIC16C5x_WRITE_A_CB(WRITE8(midway_serial_pic_emu_device, write_a))
-	MCFG_PIC16C5x_READ_B_CB(READ8(midway_serial_pic_emu_device, read_b))
-	MCFG_PIC16C5x_WRITE_B_CB(WRITE8(midway_serial_pic_emu_device, write_b))
-	MCFG_PIC16C5x_READ_C_CB(READ8(midway_serial_pic_emu_device, read_c))
-	MCFG_PIC16C5x_WRITE_C_CB(WRITE8(midway_serial_pic_emu_device, write_c))
-MACHINE_CONFIG_END
+void midway_serial_pic_emu_device::device_add_mconfig(machine_config &config)
+{
+	pic16c57_device &pic(PIC16C57(config, "pic", 12000000));    /* ? Mhz */
+	pic.write_a().set(FUNC(midway_serial_pic_emu_device::write_a));
+	pic.read_b().set(FUNC(midway_serial_pic_emu_device::read_b));
+	pic.write_b().set(FUNC(midway_serial_pic_emu_device::write_b));
+	pic.read_c().set(FUNC(midway_serial_pic_emu_device::read_c));
+	pic.write_c().set(FUNC(midway_serial_pic_emu_device::write_c));
+}
 
 
 /*************************************
@@ -644,6 +677,10 @@ DEFINE_DEVICE_TYPE(MIDWAY_IOASIC, midway_ioasic_device, "midway_ioasic", "Midway
 
 midway_ioasic_device::midway_ioasic_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
 	midway_serial_pic2_device(mconfig, MIDWAY_IOASIC, tag, owner, clock),
+	m_io_dips(*this, ":DIPS"),
+	m_io_system(*this, ":SYSTEM"),
+	m_io_in1(*this, ":IN1"),
+	m_io_in2(*this, ":IN2"),
 	m_serial_tx_cb(*this),
 	m_aux_output_cb(*this),
 	m_has_dcs(0),
@@ -662,8 +699,8 @@ midway_ioasic_device::midway_ioasic_device(const machine_config &mconfig, const 
 	m_fifo_out(0),
 	m_fifo_bytes(0),
 	m_fifo_force_buffer_empty_pc(0),
-	m_cage(nullptr),
-	m_dcs(nullptr)
+	m_cage(*this, ":cage"),
+	m_dcs(*this, ":dcs")
 {
 	memset(m_fifo,0,sizeof(m_fifo));
 	memset(m_reg,0,sizeof(m_reg));
@@ -692,19 +729,13 @@ void midway_ioasic_device::device_start()
 
 	ioasic_register_state();
 
-	/* do we have a DCS2 sound chip connected? (most likely) */
-	m_dcs = machine().device<dcs_audio_device>("dcs");
+	/* do we have a DCS2 sound chip connected? */
 	m_has_dcs = (m_dcs != nullptr);
-	m_cage = machine().device<atari_cage_device>("cage");
 	m_has_cage = (m_cage != nullptr);
 
 	if (m_has_dcs)
 	{
-		m_dcs_cpu = m_dcs->subdevice("dcs2");
-		if (m_dcs_cpu == nullptr)
-			m_dcs_cpu = m_dcs->subdevice("dsio");
-		if (m_dcs_cpu == nullptr)
-			m_dcs_cpu = m_dcs->subdevice("denver");
+		m_dcs_cpu = m_dcs->get_cpu();
 	}
 
 	m_shuffle_map = &shuffle_maps[m_shuffle_type][0];
@@ -784,9 +815,9 @@ WRITE8_MEMBER(midway_ioasic_device::cage_irq_handler)
 {
 	logerror("CAGE irq handler: %d\n", data);
 	m_sound_irq_state = 0;
-	if (data & CAGE_IRQ_REASON_DATA_READY)
+	if (data & atari_cage_device::CAGE_IRQ_REASON_DATA_READY)
 		m_sound_irq_state |= 0x0040;
-	if (data & CAGE_IRQ_REASON_BUFFER_EMPTY)
+	if (data & atari_cage_device::CAGE_IRQ_REASON_BUFFER_EMPTY)
 		m_sound_irq_state |= 0x0080;
 	update_ioasic_irq();
 }
@@ -842,7 +873,7 @@ READ16_MEMBER(midway_ioasic_device::fifo_r)
 		/* main CPU is handling the I/O ASIC interrupt */
 		if (m_fifo_bytes == 0 && m_has_dcs)
 		{
-			m_fifo_force_buffer_empty_pc = m_dcs_cpu->safe_pc();
+			m_fifo_force_buffer_empty_pc = m_dcs_cpu->pc();
 			if (LOG_FIFO)
 				logerror("fifo_r(%04X): FIFO empty, PC = %04X\n", result, m_fifo_force_buffer_empty_pc);
 		}
@@ -872,7 +903,7 @@ READ16_MEMBER(midway_ioasic_device::fifo_status_r)
 	/* sure the FIFO clear bit is set */
 	if (m_fifo_force_buffer_empty_pc && &space.device() == m_dcs_cpu)
 	{
-		offs_t currpc = m_dcs_cpu->safe_pc();
+		offs_t currpc = m_dcs_cpu->pc();
 		if (currpc >= m_fifo_force_buffer_empty_pc && currpc < m_fifo_force_buffer_empty_pc + 0x10)
 		{
 			m_fifo_force_buffer_empty_pc = 0;
@@ -968,26 +999,26 @@ READ32_MEMBER( midway_ioasic_device::read )
 				result = 0x2001;
 			}
 			else {
-				result = machine().root_device().ioport("DIPS")->read();
+				result = m_io_dips->read();
 			}
 			break;
 
 		case IOASIC_PORT1:
-			result = machine().root_device().ioport("SYSTEM")->read();
+			result = m_io_system->read();
 			break;
 
 		case IOASIC_PORT2:
-			result = machine().root_device().ioport("IN1")->read();
+			result = m_io_in1->read();
 			break;
 
 		case IOASIC_PORT3:
-			result = machine().root_device().ioport("IN2")->read();
+			result = m_io_in2->read();
 			break;
 
 		case IOASIC_UARTIN:
 			m_reg[offset] &= ~0x1000;
 			if (result & 0x1000)
-				logerror("%06X:ioasic_r(%d) = %08X\n", machine().device("maincpu")->safe_pc(), offset, result);
+				logerror("%s: ioasic_r(%d) = %08X\n", machine().describe_context(), offset, result);
 			// Add lf
 			if ((result & 0xff)==0x0d)
 				m_reg[offset] = 0x300a;
@@ -1037,7 +1068,7 @@ READ32_MEMBER( midway_ioasic_device::read )
 	}
 
 	if (LOG_IOASIC && offset != IOASIC_SOUNDSTAT && offset != IOASIC_SOUNDIN)
-		logerror("%08X:ioasic_r(%d) = %08X\n", space.device().safe_pc(), offset, result);
+		logerror("%s:ioasic_r(%d) = %08X\n", machine().describe_context(), offset, result);
 
 	return result;
 }
@@ -1081,7 +1112,7 @@ WRITE32_MEMBER( midway_ioasic_device::write )
 	newreg = m_reg[offset];
 
 	if (LOG_IOASIC && offset != IOASIC_SOUNDOUT)
-		logerror("%06X:ioasic_w(%d) = %08X\n", space.device().safe_pc(), offset, data);
+		logerror("%s ioasic_w(%d) = %08X\n", machine().describe_context(), offset, data);
 
 	switch (offset)
 	{
@@ -1104,7 +1135,7 @@ WRITE32_MEMBER( midway_ioasic_device::write )
 			break;
 
 		case IOASIC_UARTCONTROL:
-			logerror("%08X IOASIC uart control = %04X INTCTRL=%04x\n", machine().device("maincpu")->safe_pc(), data, m_reg[IOASIC_INTCTL]);
+			logerror("%s: IOASIC uart control = %04X INTCTRL=%04x\n", machine().describe_context(), data, m_reg[IOASIC_INTCTL]);
 			break;
 
 		case IOASIC_UARTOUT:
@@ -1128,7 +1159,7 @@ WRITE32_MEMBER( midway_ioasic_device::write )
 
 		case IOASIC_SOUNDCTL:
 			if (LOG_IOASIC)
-				logerror("%08X write IOASIC_SOUNDCTL=%04x\n", machine().device("maincpu")->safe_pc(), data);
+				logerror("%s: write IOASIC_SOUNDCTL=%04x\n", machine().describe_context(), data);
 			/* sound reset? */
 			if (m_has_dcs)
 			{

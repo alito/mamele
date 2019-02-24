@@ -13,8 +13,9 @@
 
 #include "abcbus.h"
 #include "cpu/z80/z80.h"
-#include "cpu/z80/z80daisy.h"
+#include "machine/z80daisy.h"
 #include "formats/abcfd2_dsk.h"
+#include "imagedev/floppy.h"
 #include "machine/wd_fdc.h"
 #include "machine/z80pio.h"
 
@@ -32,8 +33,6 @@ class abc_fd2_device :  public device_t,
 public:
 	// construction/destruction
 	abc_fd2_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-
-	DECLARE_WRITE8_MEMBER( status_w );
 
 protected:
 	// device-level overrides
@@ -59,9 +58,14 @@ private:
 	DECLARE_READ8_MEMBER( pio_pb_r );
 	DECLARE_WRITE8_MEMBER( pio_pb_w );
 
+	DECLARE_WRITE8_MEMBER( status_w );
+
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
-	required_device<cpu_device> m_maincpu;
+	void abc_fd2_io(address_map &map);
+	void abc_fd2_mem(address_map &map);
+
+	required_device<z80_device> m_maincpu;
 	required_device<z80pio_device> m_pio;
 	required_device<fd1771_device> m_fdc;
 	required_device<floppy_connector> m_floppy0;

@@ -29,9 +29,6 @@ public:
 	// construction/destruction
 	iskr_1030_keyboard_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER( ram_r );
-	DECLARE_WRITE8_MEMBER( ram_w );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -52,7 +49,12 @@ private:
 	DECLARE_WRITE8_MEMBER( p2_w );
 	DECLARE_READ_LINE_MEMBER( t1_r );
 
-	required_device<cpu_device> m_maincpu;
+	DECLARE_READ8_MEMBER( ram_r );
+	DECLARE_WRITE8_MEMBER( ram_w );
+
+	void iskr_1030_keyboard_io(address_map &map);
+
+	required_device<i8048_device> m_maincpu;
 	required_ioport m_md00;
 	required_ioport m_md01;
 	required_ioport m_md02;

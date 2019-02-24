@@ -22,6 +22,10 @@ public:
 	// construction/destruction
 	apexc_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
+	// configuration
+	auto tape_read() { return m_tape_read_cb.bind(); }
+	auto tape_punch() { return m_tape_punch_cb.bind(); }
+
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -40,7 +44,7 @@ protected:
 	virtual void state_import(const device_state_entry &entry) override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
 	inline uint32_t apexc_readmem(uint32_t address) { return m_program->read_dword((address)<<2); }
 	inline void apexc_writemem(uint32_t address, uint32_t data) { m_program->write_dword((address)<<2, (data)); }
@@ -56,7 +60,9 @@ protected:
 	void execute();
 
 	address_space_config m_program_config;
-	address_space_config m_io_config;
+
+	devcb_read8 m_tape_read_cb;
+	devcb_write8 m_tape_punch_cb;
 
 	uint32_t m_a;   /* accumulator */
 	uint32_t m_r;   /* register */
@@ -70,7 +76,6 @@ protected:
 	uint32_t m_pc;  /* address of next instruction for the disassembler */
 
 	address_space *m_program;
-	address_space *m_io;
 	int m_icount;
 
 	// For state

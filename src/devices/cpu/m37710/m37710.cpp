@@ -62,46 +62,50 @@
 #define M37710_DEBUG    (0) // enables verbose logging for peripherals, etc.
 
 
-DEFINE_DEVICE_TYPE(M37702M2, m37702m2_device, "m37702m2", "M37702M2")
-DEFINE_DEVICE_TYPE(M37702S1, m37702s1_device, "m37702s1", "M37702S1")
-DEFINE_DEVICE_TYPE(M37710S4, m37710s4_device, "m37710s4", "M37710S4")
-DEFINE_DEVICE_TYPE(M37720S1, m37720s1_device, "m37720s1", "M37720S1")
+DEFINE_DEVICE_TYPE(M37702M2, m37702m2_device, "m37702m2", "Mitsubishi M37702M2")
+DEFINE_DEVICE_TYPE(M37702S1, m37702s1_device, "m37702s1", "Mitsubishi M37702S1")
+DEFINE_DEVICE_TYPE(M37710S4, m37710s4_device, "m37710s4", "Mitsubishi M37710S4")
+DEFINE_DEVICE_TYPE(M37720S1, m37720s1_device, "m37720s1", "Mitsubishi M37720S1")
 
 
 // On-board RAM, ROM, and peripherals
 
 // M37702M2: 512 bytes internal RAM, 16K internal mask ROM
 // (M37702E2: same with EPROM instead of mask ROM)
-DEVICE_ADDRESS_MAP_START( map, 16, m37702m2_device )
-	AM_RANGE(0x000000, 0x00007f) AM_READWRITE8(m37710_internal_r, m37710_internal_w, 0xffff)
-	AM_RANGE(0x000080, 0x00027f) AM_RAM
-	AM_RANGE(0x00c000, 0x00ffff) AM_ROM AM_REGION(M37710_INTERNAL_ROM_REGION, 0)
-ADDRESS_MAP_END
+void m37702m2_device::map(address_map &map)
+{
+	map(0x000000, 0x00007f).rw(FUNC(m37702m2_device::m37710_internal_r), FUNC(m37702m2_device::m37710_internal_w));
+	map(0x000080, 0x00027f).ram();
+	map(0x00c000, 0x00ffff).rom().region(M37710_INTERNAL_ROM_REGION, 0);
+}
 
 
 // M37702S1: 512 bytes internal RAM, no internal ROM
-DEVICE_ADDRESS_MAP_START( map, 16, m37702s1_device )
-	AM_RANGE(0x000000, 0x00007f) AM_READWRITE8(m37710_internal_r, m37710_internal_w, 0xffff)
-	AM_RANGE(0x000080, 0x00027f) AM_RAM
-ADDRESS_MAP_END
+void m37702s1_device::map(address_map &map)
+{
+	map(0x000000, 0x00007f).rw(FUNC(m37702s1_device::m37710_internal_r), FUNC(m37702s1_device::m37710_internal_w));
+	map(0x000080, 0x00027f).ram();
+}
 
 
 // M37710S4: 2048 bytes internal RAM, no internal ROM
-DEVICE_ADDRESS_MAP_START( map, 16, m37710s4_device )
-	AM_RANGE(0x000000, 0x00007f) AM_READWRITE8(m37710_internal_r, m37710_internal_w, 0xffff)
-	AM_RANGE(0x000080, 0x00087f) AM_RAM
-ADDRESS_MAP_END
+void m37710s4_device::map(address_map &map)
+{
+	map(0x000000, 0x00007f).rw(FUNC(m37710s4_device::m37710_internal_r), FUNC(m37710s4_device::m37710_internal_w));
+	map(0x000080, 0x00087f).ram();
+}
 
 // M37720S1: 512 bytes internal RAM, no internal ROM, built-in DMA
-DEVICE_ADDRESS_MAP_START( map, 16, m37720s1_device )
-	AM_RANGE(0x000000, 0x00007f) AM_READWRITE8(m37710_internal_r, m37710_internal_w, 0xffff)
-	AM_RANGE(0x000080, 0x00027f) AM_RAM
-ADDRESS_MAP_END
+void m37720s1_device::map(address_map &map)
+{
+	map(0x000000, 0x00007f).rw(FUNC(m37720s1_device::m37710_internal_r), FUNC(m37720s1_device::m37710_internal_w));
+	map(0x000080, 0x00027f).ram();
+}
 
 // many other combinations of RAM and ROM size exist
 
 
-m37710_cpu_device::m37710_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_delegate map_delegate)
+m37710_cpu_device::m37710_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor map_delegate)
 	: cpu_device(mconfig, type, tag, owner, clock)
 	, m_program_config("program", ENDIANNESS_LITTLE, 16, 24, 0, map_delegate)
 	, m_io_config("io", ENDIANNESS_LITTLE, 8, 16, 0)
@@ -116,24 +120,24 @@ m37702m2_device::m37702m2_device(const machine_config &mconfig, const char *tag,
 
 
 m37702m2_device::m37702m2_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
-	: m37710_cpu_device(mconfig, type, tag, owner, clock, address_map_delegate(FUNC(m37702m2_device::map), this))
+	: m37710_cpu_device(mconfig, type, tag, owner, clock, address_map_constructor(FUNC(m37702m2_device::map), this))
 {
 }
 
 
 m37702s1_device::m37702s1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: m37710_cpu_device(mconfig, M37702S1, tag, owner, clock, address_map_delegate(FUNC(m37702s1_device::map), this))
+	: m37710_cpu_device(mconfig, M37702S1, tag, owner, clock, address_map_constructor(FUNC(m37702s1_device::map), this))
 {
 }
 
 
 m37710s4_device::m37710s4_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: m37710_cpu_device(mconfig, M37710S4, tag, owner, clock, address_map_delegate(FUNC(m37710s4_device::map), this))
+	: m37710_cpu_device(mconfig, M37710S4, tag, owner, clock, address_map_constructor(FUNC(m37710s4_device::map), this))
 {
 }
 
 m37720s1_device::m37720s1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: m37710_cpu_device(mconfig, M37720S1, tag, owner, clock, address_map_delegate(FUNC(m37720s1_device::map), this))
+	: m37710_cpu_device(mconfig, M37720S1, tag, owner, clock, address_map_constructor(FUNC(m37720s1_device::map), this))
 {
 }
 
@@ -147,7 +151,7 @@ std::vector<std::pair<int, const address_space_config *>> m37710_cpu_device::mem
 
 /* interrupt control mapping */
 
-const int m37710_cpu_device::m37710_irq_levels[M37710_LINE_MAX] =
+const int m37710_cpu_device::m37710_irq_levels[M37710_INTERRUPT_MAX] =
 {
 	// maskable
 	0x6f,   // DMA3          0
@@ -167,7 +171,7 @@ const int m37710_cpu_device::m37710_irq_levels[M37710_LINE_MAX] =
 	0x77,   // Timer A2     14
 	0x76,   // Timer A1     15
 	0x75,   // Timer A0     16
-	0x7f,                                                                                                                                                                                          // IRQ 2         13
+	0x7f,   // IRQ 2        13
 	0x7e,   // IRQ 1        18
 	0x7d,   // IRQ 0        19
 
@@ -179,7 +183,7 @@ const int m37710_cpu_device::m37710_irq_levels[M37710_LINE_MAX] =
 	0,  // reset
 };
 
-const int m37710_cpu_device::m37710_irq_vectors[M37710_LINE_MAX] =
+const int m37710_cpu_device::m37710_irq_vectors[M37710_INTERRUPT_MAX] =
 {
 	// maskable
 	0xffce, // DMA3
@@ -371,20 +375,31 @@ void m37710_cpu_device::m37710_external_tick(int timer, int state)
 		return;
 	}
 
-	// check if enabled
+	// check if enabled and in event counter mode
 	if (m_m37710_regs[0x40] & (1<<timer))
 	{
 		if ((m_m37710_regs[0x56+timer] & 0x3) == 1)
 		{
-			if (m_m37710_regs[0x46+(timer*2)] == 0xff)
+			int upcount = 0;
+
+			// timer b always counts down
+			if (timer <= 4)
 			{
-				m_m37710_regs[0x46+(timer*2)] = 0;
-				m_m37710_regs[0x46+(timer*2)+1]++;
+				if (m_m37710_regs[0x56+timer] & 0x10)
+				{
+					// up/down determined by timer out pin
+					upcount = m_timer_out[timer];
+				}
+				else
+					upcount = m_m37710_regs[0x44] >> timer & 1;
 			}
-			else
-			{
-				m_m37710_regs[0x46+(timer*2)]++;
-			}
+
+			int incval = (upcount) ? 1 : -1;
+			int edgeval = (upcount) ? 0xff : 0x00;
+
+			if (m_m37710_regs[0x46+(timer*2)] == edgeval)
+				m_m37710_regs[0x46+(timer*2)+1] += incval;
+			m_m37710_regs[0x46+(timer*2)] += incval;
 		}
 		else
 		{
@@ -688,7 +703,7 @@ WRITE8_MEMBER(m37710_cpu_device::m37710_internal_w)
 	}
 }
 
-const m37710_cpu_device::opcode_func *m37710_cpu_device::m37710i_opcodes[4] =
+const m37710_cpu_device::opcode_func *const m37710_cpu_device::m37710i_opcodes[4] =
 {
 	m37710i_opcodes_M0X0,
 	m37710i_opcodes_M0X1,
@@ -696,7 +711,7 @@ const m37710_cpu_device::opcode_func *m37710_cpu_device::m37710i_opcodes[4] =
 	m37710i_opcodes_M1X1,
 };
 
-const m37710_cpu_device::opcode_func *m37710_cpu_device::m37710i_opcodes2[4] =
+const m37710_cpu_device::opcode_func *const m37710_cpu_device::m37710i_opcodes2[4] =
 {
 	m37710i_opcodes42_M0X0,
 	m37710i_opcodes42_M0X1,
@@ -704,7 +719,7 @@ const m37710_cpu_device::opcode_func *m37710_cpu_device::m37710i_opcodes2[4] =
 	m37710i_opcodes42_M1X1,
 };
 
-const m37710_cpu_device::opcode_func *m37710_cpu_device::m37710i_opcodes3[4] =
+const m37710_cpu_device::opcode_func *const m37710_cpu_device::m37710i_opcodes3[4] =
 {
 	m37710i_opcodes89_M0X0,
 	m37710i_opcodes89_M0X1,
@@ -752,7 +767,7 @@ void m37710_cpu_device::m37710i_update_irqs()
 	int wantedIRQ = -1;
 	int curpri = 0;
 
-	for (curirq = M37710_LINE_MAX - 1; curirq >= 0; curirq--)
+	for (curirq = M37710_INTERRUPT_MAX - 1; curirq >= 0; curirq--)
 	{
 		if ((pending & (1 << curirq)))
 		{
@@ -949,9 +964,9 @@ bool m37710_cpu_device::get_x_flag() const
 	return FLAG_X;
 }
 
-util::disasm_interface *m37710_cpu_device::create_disassembler()
+std::unique_ptr<util::disasm_interface> m37710_cpu_device::create_disassembler()
 {
-	return new m7700_disassembler(this);
+	return std::make_unique<m7700_disassembler>(this);
 }
 
 void m37710_cpu_device::m37710_restore_state()
@@ -998,7 +1013,7 @@ void m37710_cpu_device::device_start()
 	memset(m_m37710_regs, 0, sizeof(m_m37710_regs));
 
 	m_program = &space(AS_PROGRAM);
-	m_direct = m_program->direct<0>();
+	m_cache = m_program->cache<1, 0, ENDIANNESS_LITTLE>();
 	m_io = &space(AS_IO);
 
 	m_ICount = 0;
@@ -1010,6 +1025,7 @@ void m37710_cpu_device::device_start()
 	{
 		m_timers[i] = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(m37710_cpu_device::m37710_timer_cb), this));
 		m_reload[i] = attotime::never;
+		m_timer_out[i] = 0;
 	}
 
 	save_item(NAME(m_a));
@@ -1054,6 +1070,7 @@ void m37710_cpu_device::device_start()
 	save_item(NAME(m_reload[5]));
 	save_item(NAME(m_reload[6]));
 	save_item(NAME(m_reload[7]));
+	save_item(NAME(m_timer_out));
 
 	machine().save().register_postload(save_prepost_delegate(save_prepost_delegate(FUNC(m37710_cpu_device::m37710_restore_state), this)));
 
@@ -1074,7 +1091,7 @@ void m37710_cpu_device::device_start()
 	state_add( STATE_GENPCBASE, "CURPC", m_debugger_pc ).callimport().callexport().noshow();
 	state_add( STATE_GENFLAGS, "GENFLAGS", m_debugger_p ).formatstr("%8s").noshow();
 
-	m_icountptr = &m_ICount;
+	set_icountptr(m_ICount);
 }
 
 
@@ -1174,15 +1191,26 @@ void m37710_cpu_device::execute_set_input(int inputnum, int state)
 			m37710_set_irq_line(inputnum, state);
 			break;
 
-		case M37710_LINE_TIMERA0TICK:
-		case M37710_LINE_TIMERA1TICK:
-		case M37710_LINE_TIMERA2TICK:
-		case M37710_LINE_TIMERA3TICK:
-		case M37710_LINE_TIMERA4TICK:
-		case M37710_LINE_TIMERB0TICK:
-		case M37710_LINE_TIMERB1TICK:
-		case M37710_LINE_TIMERB2TICK:
-			m37710_external_tick(inputnum - M37710_LINE_TIMERA0TICK, state);
+		case M37710_LINE_TIMERA0IN:
+		case M37710_LINE_TIMERA1IN:
+		case M37710_LINE_TIMERA2IN:
+		case M37710_LINE_TIMERA3IN:
+		case M37710_LINE_TIMERA4IN:
+		case M37710_LINE_TIMERB0IN:
+		case M37710_LINE_TIMERB1IN:
+		case M37710_LINE_TIMERB2IN:
+			m37710_external_tick(inputnum - M37710_LINE_TIMERA0IN, state);
+			break;
+
+		case M37710_LINE_TIMERA0OUT:
+		case M37710_LINE_TIMERA1OUT:
+		case M37710_LINE_TIMERA2OUT:
+		case M37710_LINE_TIMERA3OUT:
+		case M37710_LINE_TIMERA4OUT:
+		case M37710_LINE_TIMERB0OUT:
+		case M37710_LINE_TIMERB1OUT:
+		case M37710_LINE_TIMERB2OUT:
+			m_timer_out[inputnum - M37710_LINE_TIMERA0OUT] = state ? 1 : 0;
 			break;
 	}
 }

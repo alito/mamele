@@ -40,8 +40,6 @@ public:
 	// construction/destruction
 	cmd_hd_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_WRITE8_MEMBER( led_w );
-
 protected:
 	// device-level overrides
 	virtual void device_start() override;
@@ -57,8 +55,13 @@ protected:
 	void cbm_iec_data(int state) override;
 	void cbm_iec_reset(int state) override;
 
-	required_device<cpu_device> m_maincpu;
+private:
+	required_device<m6502_device> m_maincpu;
 	required_device<scsi_port_device> m_scsibus;
+
+	DECLARE_WRITE8_MEMBER( led_w );
+
+	void mem_map(address_map &map);
 };
 
 

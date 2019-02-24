@@ -17,6 +17,7 @@
 
 #include "isa.h"
 #include "machine/pc_fdc.h"
+#include "imagedev/floppy.h"
 
 /***************************************************************************
  FUNCTION PROTOTYPES
@@ -55,6 +56,7 @@ protected:
 
 	virtual uint8_t dack_r(int line) override;
 	virtual void dack_w(int line, uint8_t data) override;
+	virtual void dack_line_w(int line, int state) override;
 	virtual void eop_w(int state) override;
 
 	void set_interrupt(enum line_state line_state);
@@ -64,6 +66,8 @@ protected:
 	required_ioport m_biosopts;
 
 	omti_disk_image_device *our_disks[OMTI_MAX_LUN+1];
+
+	std::string cpu_context() const;
 
 private:
 	DECLARE_WRITE_LINE_MEMBER( fdc_irq_w );

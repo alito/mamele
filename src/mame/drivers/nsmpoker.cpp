@@ -61,36 +61,45 @@
 #include "emu.h"
 #include "cpu/tms9900/tms9995.h"
 #include "sound/ay8910.h"
+#include "emupal.h"
 #include "screen.h"
 
 
-#define MASTER_CLOCK    XTAL_22_1184MHz
+#define MASTER_CLOCK    XTAL(22'118'400)
 
 
 class nsmpoker_state : public driver_device
 {
 public:
-	nsmpoker_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	nsmpoker_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_videoram(*this, "videoram"),
 		m_colorram(*this, "colorram"),
 		m_maincpu(*this, "maincpu"),
-		m_gfxdecode(*this, "gfxdecode") { }
+		m_gfxdecode(*this, "gfxdecode")
+	{ }
 
+	void nsmpoker(machine_config &config);
+
+protected:
+	virtual void machine_reset() override;
+	virtual void video_start() override;
+private:
 	required_shared_ptr<uint8_t> m_videoram;
 	required_shared_ptr<uint8_t> m_colorram;
 	tilemap_t *m_bg_tilemap;
+	required_device<tms9995_device> m_maincpu;
+	required_device<gfxdecode_device> m_gfxdecode;
+
 	DECLARE_WRITE8_MEMBER(nsmpoker_videoram_w);
 	DECLARE_WRITE8_MEMBER(nsmpoker_colorram_w);
 	DECLARE_READ8_MEMBER(debug_r);
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
-	virtual void video_start() override;
-	DECLARE_PALETTE_INIT(nsmpoker);
-	virtual void machine_reset() override;
+	void nsmpoker_palette(palette_device &palette) const;
 	uint32_t screen_update_nsmpoker(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(nsmpoker_interrupt);
-	required_device<cpu_device> m_maincpu;
-	required_device<gfxdecode_device> m_gfxdecode;
+	void nsmpoker_map(address_map &map);
+	void nsmpoker_portmap(address_map &map);
 };
 
 
@@ -143,7 +152,7 @@ uint32_t nsmpoker_state::screen_update_nsmpoker(screen_device &screen, bitmap_in
 }
 
 
-PALETTE_INIT_MEMBER(nsmpoker_state, nsmpoker)
+void nsmpoker_state::nsmpoker_palette(palette_device &palete) const
 {
 }
 
@@ -174,18 +183,20 @@ READ8_MEMBER(nsmpoker_state::debug_r)
 * Memory Map Information *
 *************************/
 
-static ADDRESS_MAP_START( nsmpoker_map, AS_PROGRAM, 8, nsmpoker_state )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x9000, 0xafff) AM_RAM // OK... cleared at beginning.
-	AM_RANGE(0xb000, 0xcfff) AM_ROM // WRONG... just to map the last rom somewhere.
-	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(nsmpoker_videoram_w) AM_SHARE("videoram") // WRONG... just a placeholder.
-	AM_RANGE(0xf000, 0xffff) AM_RAM_WRITE(nsmpoker_colorram_w) AM_SHARE("colorram") // WRONG... just a placeholder.
-ADDRESS_MAP_END
+void nsmpoker_state::nsmpoker_map(address_map &map)
+{
+	map(0x0000, 0x7fff).rom();
+	map(0x9000, 0xafff).ram(); // OK... cleared at beginning.
+	map(0xb000, 0xcfff).rom(); // WRONG... just to map the last rom somewhere.
+	map(0xe000, 0xefff).ram().w(FUNC(nsmpoker_state::nsmpoker_videoram_w)).share("videoram"); // WRONG... just a placeholder.
+	map(0xf000, 0xffff).ram().w(FUNC(nsmpoker_state::nsmpoker_colorram_w)).share("colorram"); // WRONG... just a placeholder.
+}
 
-static ADDRESS_MAP_START( nsmpoker_portmap, AS_IO, 8, nsmpoker_state )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xf0, 0xf0) AM_READ(debug_r)   // kind of trap at beginning
-ADDRESS_MAP_END
+void nsmpoker_state::nsmpoker_portmap(address_map &map)
+{
+	map.global_mask(0xff);
+	map(0xf0, 0xf0).r(FUNC(nsmpoker_state::debug_r));   // kind of trap at beginning
+}
 
 /* I/O byte R/W
 
@@ -391,7 +402,7 @@ static const gfx_layout tilelayout =
 * Graphics Decode Information *
 ******************************/
 
-static GFXDECODE_START( nsmpoker )
+static GFXDECODE_START( gfx_nsmpoker )
 	GFXDECODE_ENTRY( "maincpu", 0, charlayout, 0, 16 )
 	GFXDECODE_ENTRY( "maincpu", 0, tilelayout, 0, 16 )
 GFXDECODE_END
@@ -400,20 +411,21 @@ GFXDECODE_END
 void nsmpoker_state::machine_reset()
 {
 	// Disable auto wait state generation by raising the READY line on reset
-	tms9995_device* cpu = static_cast<tms9995_device*>(machine().device("maincpu"));
-	cpu->ready_line(ASSERT_LINE);
-	cpu->reset_line(ASSERT_LINE);
+	m_maincpu->ready_line(ASSERT_LINE);
+	m_maincpu->reset_line(ASSERT_LINE);
 }
 
 /*************************
 *    Machine Drivers     *
 *************************/
 
-static MACHINE_CONFIG_START( nsmpoker )
+MACHINE_CONFIG_START(nsmpoker_state::nsmpoker)
 
 	// CPU TMS9995, standard variant; no line connections
-	MCFG_TMS99xx_ADD("maincpu", TMS9995, MASTER_CLOCK/2, nsmpoker_map, nsmpoker_portmap)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", nsmpoker_state,  nsmpoker_interrupt)
+	TMS9995(config, m_maincpu, MASTER_CLOCK/2);
+	m_maincpu->set_addrmap(AS_PROGRAM, &nsmpoker_state::nsmpoker_map);
+	m_maincpu->set_addrmap(AS_IO, &nsmpoker_state::nsmpoker_portmap);
+	m_maincpu->set_vblank_int("screen", FUNC(nsmpoker_state::nsmpoker_interrupt));
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -424,10 +436,8 @@ static MACHINE_CONFIG_START( nsmpoker )
 	MCFG_SCREEN_UPDATE_DRIVER(nsmpoker_state, screen_update_nsmpoker)
 	MCFG_SCREEN_PALETTE("palette")
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", nsmpoker)
-
-	MCFG_PALETTE_ADD("palette", 16)
-	MCFG_PALETTE_INIT_OWNER(nsmpoker_state, nsmpoker)
+	GFXDECODE(config, m_gfxdecode, "palette", gfx_nsmpoker);
+	PALETTE(config, "palette", FUNC(nsmpoker_state::nsmpoker_palette), 16);
 
 MACHINE_CONFIG_END
 
@@ -459,5 +469,5 @@ ROM_END
 *      Game Drivers      *
 *************************/
 
-//    YEAR  NAME      PARENT  MACHINE   INPUT     STATE           INIT  ROT   COMPANY   FULLNAME               FLAGS
-GAME( 198?, nsmpoker, 0,      nsmpoker, nsmpoker, nsmpoker_state, 0,    ROT0, "NSM",    "NSM Poker (TMS9995)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+//    YEAR  NAME      PARENT  MACHINE   INPUT     STATE           INIT        ROT   COMPANY   FULLNAME               FLAGS
+GAME( 198?, nsmpoker, 0,      nsmpoker, nsmpoker, nsmpoker_state, empty_init, ROT0, "NSM",    "NSM Poker (TMS9995)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

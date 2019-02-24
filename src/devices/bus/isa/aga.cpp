@@ -9,8 +9,8 @@
 #include "aga.h"
 #include "video/cgapal.h"
 
-#define CGA_HCLK (XTAL_14_31818MHz/8)
-#define CGA_LCLK (XTAL_14_31818MHz/16)
+#define CGA_HCLK (XTAL(14'318'181)/8)
+#define CGA_LCLK (XTAL(14'318'181)/16)
 
 #define AGA_SCREEN_NAME "screen"
 #define AGA_MC6845_NAME "mc6845_aga"
@@ -273,19 +273,20 @@ MC6845_UPDATE_ROW( isa8_aga_device::aga_update_row )
 }
 
 
-MACHINE_CONFIG_MEMBER( isa8_aga_device::device_add_mconfig )
+MACHINE_CONFIG_START(isa8_aga_device::device_add_mconfig)
 	MCFG_SCREEN_ADD( AGA_SCREEN_NAME, RASTER )
-	MCFG_SCREEN_RAW_PARAMS( XTAL_14_31818MHz,912,0,640,262,0,200 )
+	MCFG_SCREEN_RAW_PARAMS( XTAL(14'318'181),912,0,640,262,0,200 )
 	MCFG_SCREEN_UPDATE_DEVICE( AGA_MC6845_NAME, mc6845_device, screen_update )
 
 	MCFG_PALETTE_ADD( "palette", /* CGA_PALETTE_SETS * 16*/ 65536 )
 
-	MCFG_MC6845_ADD(AGA_MC6845_NAME, MC6845, AGA_SCREEN_NAME, XTAL_14_31818MHz/8)
-	MCFG_MC6845_SHOW_BORDER_AREA(false)
-	MCFG_MC6845_CHAR_WIDTH(8)
-	MCFG_MC6845_UPDATE_ROW_CB(isa8_aga_device, aga_update_row)
-	MCFG_MC6845_OUT_HSYNC_CB(WRITELINE(isa8_aga_device, hsync_changed))
-	MCFG_MC6845_OUT_VSYNC_CB(WRITELINE(isa8_aga_device, vsync_changed))
+	MC6845(config, m_mc6845, XTAL(14'318'181)/8);
+	m_mc6845->set_screen(AGA_SCREEN_NAME);
+	m_mc6845->set_show_border_area(false);
+	m_mc6845->set_char_width(8);
+	m_mc6845->set_update_row_callback(FUNC(isa8_aga_device::aga_update_row), this);
+	m_mc6845->out_hsync_callback().set(FUNC(isa8_aga_device::hsync_changed));
+	m_mc6845->out_vsync_callback().set(FUNC(isa8_aga_device::vsync_changed));
 MACHINE_CONFIG_END
 
 
@@ -863,7 +864,7 @@ void isa8_aga_device::pc_aga_set_mode( AGA_MODE mode)
 
 	switch (m_mode) {
 	case AGA_COLOR:
-		m_mc6845->set_clock( XTAL_14_31818MHz/8 );
+		m_mc6845->set_clock( XTAL(14'318'181)/8 );
 		break;
 	case AGA_MONO:
 		m_mc6845->set_clock( 16257000/9 );

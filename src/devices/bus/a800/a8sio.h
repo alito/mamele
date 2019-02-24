@@ -35,29 +35,25 @@
 
 #pragma once
 
-
-//**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_A8SIO_SLOT_ADD(_nbtag, _tag, _def_slot) \
-	MCFG_DEVICE_ADD(_tag, A8SIO_SLOT, 0) \
-	MCFG_DEVICE_SLOT_INTERFACE(a8sio_cards, _def_slot, false) \
-	a8sio_slot_device::static_set_a8sio_slot(*device, _nbtag, _tag);
-
-#define MCFG_A8SIO_DATA_IN_CB(_devcb) \
-	devcb = &a8sio_device::set_data_in_callback(*device, DEVCB_##_devcb);
-
+void a8sio_cards(device_slot_interface &device);
 
 class a8sio_slot_device : public device_t,
 							public device_slot_interface
 {
 public:
 	// construction/destruction
+	a8sio_slot_device(machine_config const &mconfig, char const *tag, device_t *owner, char const *dflt)
+		: a8sio_slot_device(mconfig, tag, owner, (uint32_t)0)
+	{
+		option_reset();
+		a8sio_cards(*this);
+		set_default_option(dflt);
+		set_fixed(false);
+	}
 	a8sio_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// inline configuration
-	static void static_set_a8sio_slot(device_t &device, const char *tag, const char *slottag);
+	void set_a8sio_slot(const char *tag, const char *slottag) { m_a8sio_tag = tag; m_a8sio_slottag = slottag; }
 
 protected:
 	a8sio_slot_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -84,9 +80,9 @@ public:
 	a8sio_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// inline configuration
-	template <class Object> static devcb_base &set_clock_in_callback(device_t &device, Object &&cb) { return downcast<a8sio_device &>(device).m_out_clock_in_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_data_in_callback(device_t &device, Object &&cb) { return downcast<a8sio_device &>(device).m_out_data_in_cb.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_audio_in_callback(device_t &device, Object &&cb) { return downcast<a8sio_device &>(device).m_out_audio_in_cb.set_callback(std::forward<Object>(cb)); }
+	auto clock_in() { return m_out_clock_in_cb.bind(); }
+	auto data_in() { return m_out_data_in_cb.bind(); }
+	auto audio_in() { return m_out_audio_in_cb.bind(); }
 
 	void add_a8sio_card(device_a8sio_card_interface *card);
 	device_a8sio_card_interface *get_a8sio_card();
@@ -114,9 +110,8 @@ protected:
 	device_a8sio_card_interface *m_device;
 };
 
-
 // device type definition
-extern const device_type A8SIO;
+DECLARE_DEVICE_TYPE(A8SIO, a8sio_device)
 
 
 class device_a8sio_card_interface : public device_slot_card_interface
@@ -129,7 +124,7 @@ public:
 	void set_a8sio_device();
 
 	// inline configuration
-	static void static_set_a8sio_tag(device_t &device, const char *tag, const char *slottag);
+	void set_a8sio_tag(const char *tag, const char *slottag) { m_a8sio_tag = tag; m_a8sio_slottag = slottag; }
 
 	virtual DECLARE_WRITE_LINE_MEMBER( motor_w );
 
@@ -140,8 +135,5 @@ public:
 	const char *m_a8sio_tag;
 	const char *m_a8sio_slottag;
 };
-
-
-SLOT_INTERFACE_EXTERN(a8sio_cards);
 
 #endif // MAME_BUS_A800_A8SIO_H

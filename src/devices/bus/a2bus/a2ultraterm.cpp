@@ -104,16 +104,17 @@ ROM_END
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( a2bus_videx160_device::device_add_mconfig )
+MACHINE_CONFIG_START(a2bus_videx160_device::device_add_mconfig)
 	MCFG_SCREEN_ADD( ULTRATERM_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_RAW_PARAMS(CLOCK_LOW, 882, 0, 720, 370, 0, 350 )
 	MCFG_SCREEN_UPDATE_DEVICE( ULTRATERM_MC6845_NAME, mc6845_device, screen_update )
 
-	MCFG_MC6845_ADD(ULTRATERM_MC6845_NAME, MC6845, ULTRATERM_SCREEN_NAME, CLOCK_LOW/9)
-	MCFG_MC6845_SHOW_BORDER_AREA(false)
-	MCFG_MC6845_CHAR_WIDTH(8)
-	MCFG_MC6845_UPDATE_ROW_CB(a2bus_videx160_device, crtc_update_row)
-	MCFG_MC6845_OUT_VSYNC_CB(WRITELINE(a2bus_videx160_device, vsync_changed))
+	MC6845(config, m_crtc, CLOCK_LOW/9);
+	m_crtc->set_screen(ULTRATERM_SCREEN_NAME);
+	m_crtc->set_show_border_area(false);
+	m_crtc->set_char_width(8);
+	m_crtc->set_update_row_callback(FUNC(a2bus_videx160_device::crtc_update_row), this);
+	m_crtc->out_vsync_callback().set(FUNC(a2bus_videx160_device::vsync_changed));
 MACHINE_CONFIG_END
 
 //-------------------------------------------------
@@ -157,9 +158,6 @@ a2bus_ultratermenh_device::a2bus_ultratermenh_device(const machine_config &mconf
 
 void a2bus_videx160_device::device_start()
 {
-	// set_a2bus_device makes m_slot valid
-	set_a2bus_device();
-
 	m_rom = machine().root_device().memregion(this->subtag(ULTRATERM_ROM_REGION).c_str())->base();
 
 	m_chrrom = machine().root_device().memregion(this->subtag(ULTRATERM_GFX_REGION).c_str())->base();
@@ -186,7 +184,7 @@ void a2bus_videx160_device::device_reset()
 
 uint8_t a2bus_videx160_device::read_c0nx(uint8_t offset)
 {
-//    printf("Read c0n%x (PC=%x)\n", offset, machine().describe_context());
+//    printf("%s Read c0n%x\n", machine().describe_context().c_str(), offset);
 
 	if (!(m_ctrl1 & CT1_VTEMU))
 	{
@@ -196,7 +194,7 @@ uint8_t a2bus_videx160_device::read_c0nx(uint8_t offset)
 	switch (offset)
 	{
 		case 1:
-			return m_crtc->register_r();   // status_r?
+			return m_crtc->read_register();   // status_r?
 
 		case 2:
 			return m_ctrl1;
@@ -215,16 +213,16 @@ uint8_t a2bus_videx160_device::read_c0nx(uint8_t offset)
 
 void a2bus_videx160_device::write_c0nx(uint8_t offset, uint8_t data)
 {
-//    printf("Write %02x to c0n%x (PC=%x)\n", data, offset, machine().describe_context());
+//    printf("%s Write %02x to c0n%x\n", machine().describe_context().c_str(), data, offset);
 
 	switch (offset)
 	{
 		case 0:
-			m_crtc->address_w(data);
+			m_crtc->write_address(data);
 			break;
 
 		case 1:
-			m_crtc->register_w(data);
+			m_crtc->write_register(data);
 			break;
 
 		case 2:
@@ -256,7 +254,7 @@ void a2bus_videx160_device::write_c0nx(uint8_t offset, uint8_t data)
 
 uint8_t a2bus_videx160_device::read_cnxx(uint8_t offset)
 {
-	return m_rom[offset+(m_slot * 0x100)];
+	return m_rom[offset+(slotno() * 0x100)];
 }
 
 /*-------------------------------------------------

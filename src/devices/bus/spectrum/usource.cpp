@@ -60,7 +60,6 @@ spectrum_usource_device::spectrum_usource_device(const machine_config &mconfig, 
 
 void spectrum_usource_device::device_start()
 {
-	m_slot = dynamic_cast<spectrum_expansion_slot_device *>(owner());
 }
 
 
@@ -88,7 +87,7 @@ READ8_MEMBER(spectrum_usource_device::mreq_r)
 {
 	uint8_t data;
 
-	if (!machine().side_effect_disabled() && (offset == 0x2bae))
+	if (!machine().side_effects_disabled() && (offset == 0x2bae))
 	{
 		m_romcs = !m_romcs;
 	}

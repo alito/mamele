@@ -10,17 +10,16 @@ class tc0080vco_device : public device_t
 public:
 	tc0080vco_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration
-	static void static_set_gfxdecode_tag(device_t &device, const char *tag);
-	static void set_gfx_region(device_t &device, int gfxnum) { downcast<tc0080vco_device &>(device).m_gfxnum = gfxnum; }
-	static void set_tx_region(device_t &device, int txnum) { downcast<tc0080vco_device &>(device).m_txnum = txnum; }
-	static void set_offsets(device_t &device, int x_offset, int y_offset)
+	// configuration
+	template <typename T> void set_gfxdecode_tag(T &&tag) { m_gfxdecode.set_tag(std::forward<T>(tag)); }
+	void set_gfx_region(int gfxnum) { m_gfxnum = gfxnum; }
+	void set_tx_region(int txnum) { m_txnum = txnum; }
+	void set_offsets(int x_offset, int y_offset)
 	{
-		tc0080vco_device &dev = downcast<tc0080vco_device &>(device);
-		dev.m_bg_xoffs = x_offset;
-		dev.m_bg_yoffs = y_offset;
+		m_bg_xoffs = x_offset;
+		m_bg_yoffs = y_offset;
 	}
-	static void set_bgflip_yoffs(device_t &device, int offs) { downcast<tc0080vco_device &>(device).m_bg_flip_yoffs = offs; }
+	void set_bgflip_yoffs(int offs) { m_bg_flip_yoffs = offs; }
 
 	DECLARE_READ16_MEMBER( word_r );
 	DECLARE_WRITE16_MEMBER( word_w );
@@ -35,11 +34,11 @@ public:
 	uint16_t scrram_r(int offset);
 	DECLARE_WRITE16_MEMBER( scrollram_w );
 	READ_LINE_MEMBER( flipscreen_r );
-	void postload();
 
 protected:
 	// device-level overrides
 	virtual void device_start() override;
+	virtual void device_post_load() override;
 
 private:
 	// internal state
@@ -84,20 +83,5 @@ private:
 };
 
 DECLARE_DEVICE_TYPE(TC0080VCO, tc0080vco_device)
-
-#define MCFG_TC0080VCO_GFX_REGION(_region) \
-	tc0080vco_device::set_gfx_region(*device, _region);
-
-#define MCFG_TC0080VCO_TX_REGION(_region) \
-	tc0080vco_device::set_tx_region(*device, _region);
-
-#define MCFG_TC0080VCO_OFFSETS(_xoffs, _yoffs) \
-	tc0080vco_device::set_offsets(*device, _xoffs, _yoffs);
-
-#define MCFG_TC0080VCO_BGFLIP_OFFS(_offs) \
-	tc0080vco_device::set_bgflip_yoffs(*device, _offs);
-
-#define MCFG_TC0080VCO_GFXDECODE(_gfxtag) \
-	tc0080vco_device::static_set_gfxdecode_tag(*device, "^" _gfxtag);
 
 #endif // MAME_VIDEO_TC0080VCO_H

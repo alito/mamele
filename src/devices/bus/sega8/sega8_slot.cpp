@@ -178,7 +178,9 @@ static const sega8_slot slot_list[] =
 	{ SEGA8_MUSIC_EDITOR, "music_editor" },
 	{ SEGA8_DAHJEE_TYPEA, "dahjee_typea" },
 	{ SEGA8_DAHJEE_TYPEB, "dahjee_typeb" },
-	{ SEGA8_SEOJIN, "seojin" }
+	{ SEGA8_SEOJIN, "seojin" },
+	{ SEGA8_MULTICART, "multicart" },
+	{ SEGA8_MEGACART, "megacart" }
 };
 
 static int sega8_get_pcb_id(const char *slot)
@@ -277,7 +279,7 @@ void sega8_cart_slot_device::setup_ram()
 			m_cart->ram_alloc(0x800);
 			m_cart->set_has_battery(false);
 		}
-		else if (m_type == SEGA8_BASIC_L3)
+		else if (m_type == SEGA8_BASIC_L3 || m_type == SEGA8_MULTICART || m_type == SEGA8_MEGACART)
 		{
 			m_cart->ram_alloc(0x8000);
 			m_cart->set_has_battery(false);
@@ -561,6 +563,10 @@ int sega8_cart_slot_device::get_cart_type(const uint8_t *ROM, uint32_t len) cons
 		}
 	}
 
+	// Lode Runner Japan Europe
+	if (len == 0x8000 && !strncmp((const char *)&ROM[0x226c], "LICENSEDFROMBRODERBUND@SOFTWARE@INC", 35))
+		type = SEGA8_BASE_ROM;
+
 	// Terebi Oekaki (TV Draw)
 	if (len >= 0x13b3 + 7 && !strncmp((const char *)&ROM[0x13b3], "annakmn", 7))
 		type = SEGA8_TEREBIOEKAKI;
@@ -579,6 +585,14 @@ int sega8_cart_slot_device::get_cart_type(const uint8_t *ROM, uint32_t len) cons
 		if (!strncmp((const char *)&ROM[0x0841], "PIANO", 5) || !strncmp((const char *)&ROM[0x0841], "music", 5))
 			type = SEGA8_MUSIC_EDITOR;
 	}
+
+	// SC-3000 Survivors Multicart
+	if (len == 0x200000)
+		type = SEGA8_MULTICART;
+
+	// SC-3000 Survivors Megacart
+	if (len == 0x400000)
+		type = SEGA8_MEGACART;
 
 
 	return type;
@@ -634,6 +648,14 @@ READ8_MEMBER(sega8_cart_slot_device::read_ram)
 		return 0xff;
 }
 
+READ8_MEMBER(sega8_cart_slot_device::read_io)
+{
+	if (m_cart)
+		return m_cart->read_io(space, offset);
+	else
+		return 0xff;
+}
+
 
 /*-------------------------------------------------
  write
@@ -655,6 +677,12 @@ WRITE8_MEMBER(sega8_cart_slot_device::write_ram)
 {
 	if (m_cart)
 		m_cart->write_ram(space, offset, data);
+}
+
+WRITE8_MEMBER(sega8_cart_slot_device::write_io)
+{
+	if (m_cart)
+		m_cart->write_io(space, offset, data);
 }
 
 
@@ -802,54 +830,60 @@ void sega8_cart_slot_device::internal_header_logging(uint8_t *ROM, uint32_t len,
 #include "ccatch.h"
 #include "mgear.h"
 
-SLOT_INTERFACE_START(sg1000_cart)
-	SLOT_INTERFACE_INTERNAL("rom",  SEGA8_ROM_STD)
-	SLOT_INTERFACE_INTERNAL("othello",  SEGA8_ROM_OTHELLO)
-	SLOT_INTERFACE_INTERNAL("castle",  SEGA8_ROM_CASTLE)
-	SLOT_INTERFACE_INTERNAL("terebi",  SEGA8_ROM_TEREBI)
-	SLOT_INTERFACE_INTERNAL("level3",  SEGA8_ROM_BASIC_L3)
-	SLOT_INTERFACE_INTERNAL("music_editor",  SEGA8_ROM_MUSIC_EDITOR)
-	SLOT_INTERFACE_INTERNAL("dahjee_typea",  SEGA8_ROM_DAHJEE_TYPEA)
-	SLOT_INTERFACE_INTERNAL("dahjee_typeb",  SEGA8_ROM_DAHJEE_TYPEB)
-	SLOT_INTERFACE_INTERNAL("cardcatcher",  SEGA8_ROM_CARDCATCH)
-SLOT_INTERFACE_END
+void sg1000_cart(device_slot_interface &device)
+{
+	device.option_add_internal("rom",  SEGA8_ROM_STD);
+	device.option_add_internal("othello",  SEGA8_ROM_OTHELLO);
+	device.option_add_internal("castle",  SEGA8_ROM_CASTLE);
+	device.option_add_internal("terebi",  SEGA8_ROM_TEREBI);
+	device.option_add_internal("level3",  SEGA8_ROM_BASIC_L3);
+	device.option_add_internal("music_editor",  SEGA8_ROM_MUSIC_EDITOR);
+	device.option_add_internal("dahjee_typea",  SEGA8_ROM_DAHJEE_TYPEA);
+	device.option_add_internal("dahjee_typeb",  SEGA8_ROM_DAHJEE_TYPEB);
+	device.option_add_internal("cardcatcher",  SEGA8_ROM_CARDCATCH);
+	device.option_add_internal("multicart",  SEGA8_ROM_MULTICART);
+	device.option_add_internal("megacart",  SEGA8_ROM_MEGACART);
+}
 
-SLOT_INTERFACE_START(sg1000mk3_cart)
-	SLOT_INTERFACE_INTERNAL("rom",  SEGA8_ROM_STD)
-	SLOT_INTERFACE_INTERNAL("terebi",  SEGA8_ROM_TEREBI)
-	SLOT_INTERFACE_INTERNAL("codemasters",  SEGA8_ROM_CODEMASTERS)
-	SLOT_INTERFACE_INTERNAL("4pak",  SEGA8_ROM_4PAK)
-	SLOT_INTERFACE_INTERNAL("zemina",  SEGA8_ROM_ZEMINA)
-	SLOT_INTERFACE_INTERNAL("nemesis",  SEGA8_ROM_NEMESIS)
-	SLOT_INTERFACE_INTERNAL("janggun",  SEGA8_ROM_JANGGUN)
-	SLOT_INTERFACE_INTERNAL("hicom",  SEGA8_ROM_HICOM)
-	SLOT_INTERFACE_INTERNAL("korean",  SEGA8_ROM_KOREAN)
-	SLOT_INTERFACE_INTERNAL("korean_nb",  SEGA8_ROM_KOREAN_NB)
-	SLOT_INTERFACE_INTERNAL("seojin",  SEGA8_ROM_SEOJIN)
-	SLOT_INTERFACE_INTERNAL("othello",  SEGA8_ROM_OTHELLO)
-	SLOT_INTERFACE_INTERNAL("castle",  SEGA8_ROM_CASTLE)
-	SLOT_INTERFACE_INTERNAL("dahjee_typea",  SEGA8_ROM_DAHJEE_TYPEA)
-	SLOT_INTERFACE_INTERNAL("dahjee_typeb",  SEGA8_ROM_DAHJEE_TYPEB)
+void sg1000mk3_cart(device_slot_interface &device)
+{
+	device.option_add_internal("rom",  SEGA8_ROM_STD);
+	device.option_add_internal("terebi",  SEGA8_ROM_TEREBI);
+	device.option_add_internal("codemasters",  SEGA8_ROM_CODEMASTERS);
+	device.option_add_internal("4pak",  SEGA8_ROM_4PAK);
+	device.option_add_internal("zemina",  SEGA8_ROM_ZEMINA);
+	device.option_add_internal("nemesis",  SEGA8_ROM_NEMESIS);
+	device.option_add_internal("janggun",  SEGA8_ROM_JANGGUN);
+	device.option_add_internal("hicom",  SEGA8_ROM_HICOM);
+	device.option_add_internal("korean",  SEGA8_ROM_KOREAN);
+	device.option_add_internal("korean_nb",  SEGA8_ROM_KOREAN_NB);
+	device.option_add_internal("seojin",  SEGA8_ROM_SEOJIN);
+	device.option_add_internal("othello",  SEGA8_ROM_OTHELLO);
+	device.option_add_internal("castle",  SEGA8_ROM_CASTLE);
+	device.option_add_internal("dahjee_typea",  SEGA8_ROM_DAHJEE_TYPEA);
+	device.option_add_internal("dahjee_typeb",  SEGA8_ROM_DAHJEE_TYPEB);
 	// are these SC-3000 carts below actually compatible or not? remove if not!
-	SLOT_INTERFACE_INTERNAL("level3",  SEGA8_ROM_BASIC_L3)
-	SLOT_INTERFACE_INTERNAL("music_editor",  SEGA8_ROM_MUSIC_EDITOR)
-SLOT_INTERFACE_END
+	device.option_add_internal("level3",  SEGA8_ROM_BASIC_L3);
+	device.option_add_internal("music_editor",  SEGA8_ROM_MUSIC_EDITOR);
+}
 
-SLOT_INTERFACE_START(sms_cart)
-	SLOT_INTERFACE_INTERNAL("rom",  SEGA8_ROM_STD)
-	SLOT_INTERFACE_INTERNAL("codemasters",  SEGA8_ROM_CODEMASTERS)
-	SLOT_INTERFACE_INTERNAL("4pak",  SEGA8_ROM_4PAK)
-	SLOT_INTERFACE_INTERNAL("zemina",  SEGA8_ROM_ZEMINA)
-	SLOT_INTERFACE_INTERNAL("nemesis",  SEGA8_ROM_NEMESIS)
-	SLOT_INTERFACE_INTERNAL("janggun",  SEGA8_ROM_JANGGUN)
-	SLOT_INTERFACE_INTERNAL("hicom",  SEGA8_ROM_HICOM)
-	SLOT_INTERFACE_INTERNAL("korean",  SEGA8_ROM_KOREAN)
-	SLOT_INTERFACE_INTERNAL("korean_nb",  SEGA8_ROM_KOREAN_NB)
-SLOT_INTERFACE_END
+void sms_cart(device_slot_interface &device)
+{
+	device.option_add_internal("rom",  SEGA8_ROM_STD);
+	device.option_add_internal("codemasters",  SEGA8_ROM_CODEMASTERS);
+	device.option_add_internal("4pak",  SEGA8_ROM_4PAK);
+	device.option_add_internal("zemina",  SEGA8_ROM_ZEMINA);
+	device.option_add_internal("nemesis",  SEGA8_ROM_NEMESIS);
+	device.option_add_internal("janggun",  SEGA8_ROM_JANGGUN);
+	device.option_add_internal("hicom",  SEGA8_ROM_HICOM);
+	device.option_add_internal("korean",  SEGA8_ROM_KOREAN);
+	device.option_add_internal("korean_nb",  SEGA8_ROM_KOREAN_NB);
+}
 
-SLOT_INTERFACE_START(gg_cart)
-	SLOT_INTERFACE_INTERNAL("rom",  SEGA8_ROM_STD)
-	SLOT_INTERFACE_INTERNAL("eeprom",  SEGA8_ROM_EEPROM)
-	SLOT_INTERFACE_INTERNAL("codemasters",  SEGA8_ROM_CODEMASTERS)
-	SLOT_INTERFACE_INTERNAL("mgear",  SEGA8_ROM_MGEAR)
-SLOT_INTERFACE_END
+void gg_cart(device_slot_interface &device)
+{
+	device.option_add_internal("rom",  SEGA8_ROM_STD);
+	device.option_add_internal("eeprom",  SEGA8_ROM_EEPROM);
+	device.option_add_internal("codemasters",  SEGA8_ROM_CODEMASTERS);
+	device.option_add_internal("mgear",  SEGA8_ROM_MGEAR);
+}

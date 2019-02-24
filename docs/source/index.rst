@@ -10,7 +10,7 @@ MAME Documentation
 	
 .. toctree::
     :titlesonly:
-    
+
     whatis
     initialsetup/index
 
@@ -18,6 +18,7 @@ MAME Documentation
     commandline/index
     advanced/index
 
+    debugger/index
     tools/index
 
     techspecs/index

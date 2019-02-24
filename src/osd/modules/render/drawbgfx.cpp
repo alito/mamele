@@ -43,6 +43,7 @@
 #include "bgfx/uniform.h"
 #include "bgfx/slider.h"
 #include "bgfx/target.h"
+#include "bgfx/view.h"
 
 #include "imgui/imgui.h"
 
@@ -54,10 +55,10 @@
 //  CONSTANTS
 //============================================================
 
-const uint16_t renderer_bgfx::CACHE_SIZE = 1024;
-const uint32_t renderer_bgfx::PACKABLE_SIZE = 128;
-const uint32_t renderer_bgfx::WHITE_HASH = 0x87654321;
-const char* renderer_bgfx::WINDOW_PREFIX = "Window 0, ";
+uint16_t const renderer_bgfx::CACHE_SIZE = 1024;
+uint32_t const renderer_bgfx::PACKABLE_SIZE = 128;
+uint32_t const renderer_bgfx::WHITE_HASH = 0x87654321;
+char const *const renderer_bgfx::WINDOW_PREFIX = "Window 0, ";
 
 //============================================================
 //  MACROS
@@ -80,8 +81,17 @@ uint32_t renderer_bgfx::s_current_view = 0;
 renderer_bgfx::renderer_bgfx(std::shared_ptr<osd_window> w)
 	: osd_renderer(w, FLAG_NONE)
 	, m_options(downcast<osd_options &>(w->machine().options()))
+	, m_framebuffer(nullptr)
+	, m_texture_cache(nullptr)
 	, m_dimensions(0, 0)
+	, m_textures(nullptr)
+	, m_targets(nullptr)
+	, m_shaders(nullptr)
+	, m_effects(nullptr)
+	, m_chains(nullptr)
+	, m_ortho_view(nullptr)
 	, m_max_view(0)
+	, m_avi_view(nullptr)
 	, m_avi_writer(nullptr)
 	, m_avi_target(nullptr)
 {
@@ -107,6 +117,7 @@ renderer_bgfx::~renderer_bgfx()
 
 		delete m_avi_writer;
 		delete [] m_avi_data;
+		delete m_avi_view;
 	}
 
 	// Cleanup.
@@ -206,7 +217,7 @@ IInspectable* AsInspectable(Platform::Agile<Windows::UI::Core::CoreWindow> win)
 int renderer_bgfx::create()
 {
 	// create renderer
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
 	osd_dim wdim = win->get_size();
 	m_width[win->m_index] = wdim.width();
 	m_height[win->m_index] = wdim.height();
@@ -233,35 +244,40 @@ int renderer_bgfx::create()
 		sdlSetWindow(std::dynamic_pointer_cast<sdl_window_info>(win)->platform_window());
 #endif
 		std::string backend(m_options.bgfx_backend());
+		bgfx::Init init;
+		init.type = bgfx::RendererType::Count;
+		init.vendorId = BGFX_PCI_ID_NONE;
+		init.resolution.width = wdim.width();
+		init.resolution.height = wdim.height();
+		init.resolution.reset = BGFX_RESET_NONE;
 		if (backend == "auto")
 		{
-			bgfx::init();
 		}
 		else if (backend == "dx9" || backend == "d3d9")
 		{
-			bgfx::init(bgfx::RendererType::Direct3D9);
+			init.type = bgfx::RendererType::Direct3D9;
 		}
 		else if (backend == "dx11" || backend == "d3d11")
 		{
-			bgfx::init(bgfx::RendererType::Direct3D11);
+			init.type = bgfx::RendererType::Direct3D11;
 		}
 		else if (backend == "gles")
 		{
-			bgfx::init(bgfx::RendererType::OpenGLES);
+			init.type = bgfx::RendererType::OpenGLES;
 		}
 		else if (backend == "glsl" || backend == "opengl")
 		{
-			bgfx::init(bgfx::RendererType::OpenGL);
+			init.type = bgfx::RendererType::OpenGL;
 		}
 		else if (backend == "metal")
 		{
-			bgfx::init(bgfx::RendererType::Metal);
+			init.type = bgfx::RendererType::Metal;
 		}
 		else
 		{
 			printf("Unknown backend type '%s', going with auto-detection\n", backend.c_str());
-			bgfx::init();
 		}
+		bgfx::init(init);
 		bgfx::reset(m_width[win->m_index], m_height[win->m_index], video_config.waitvsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
 		// Enable debug text.
 		bgfx::setDebug(m_options.bgfx_debug() ? BGFX_DEBUG_STATS : BGFX_DEBUG_TEXT);
@@ -284,6 +300,10 @@ int renderer_bgfx::create()
 		m_framebuffer = m_targets->create_backbuffer(sdlNativeWindowHandle(std::dynamic_pointer_cast<sdl_window_info>(win)->platform_window()), m_width[win->m_index], m_height[win->m_index]);
 #endif
 		bgfx::touch(win->m_index);
+
+		if (m_ortho_view) {
+			m_ortho_view->set_backbuffer(m_framebuffer);
+		}
 	}
 
 	// Create program from shaders.
@@ -306,7 +326,7 @@ int renderer_bgfx::create()
 	m_chains = new chain_manager(win->machine(), m_options, *m_textures, *m_targets, *m_effects, win->m_index, *this);
 	m_sliders_dirty = true;
 
-	uint32_t flags = BGFX_TEXTURE_U_CLAMP | BGFX_TEXTURE_V_CLAMP | BGFX_TEXTURE_MIN_POINT | BGFX_TEXTURE_MAG_POINT | BGFX_TEXTURE_MIP_POINT;
+	uint32_t flags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT;
 	m_texture_cache = m_textures->create_texture("#cache", bgfx::TextureFormat::RGBA8, CACHE_SIZE, CACHE_SIZE, nullptr, flags);
 
 	memset(m_white, 0xff, sizeof(uint32_t) * 16 * 16);
@@ -323,7 +343,8 @@ int renderer_bgfx::create()
 
 void renderer_bgfx::record()
 {
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
+
 	if (win->m_index > 0)
 	{
 		return;
@@ -342,12 +363,19 @@ void renderer_bgfx::record()
 		m_targets->destroy_target("avibuffer0");
 		m_avi_target = nullptr;
 		bgfx::destroy(m_avi_texture);
+		delete m_avi_view;
+		m_avi_view = nullptr;
 	}
 	else
 	{
 		m_avi_writer->record(m_options.bgfx_avi_name());
 		m_avi_target = m_targets->create_target("avibuffer", bgfx::TextureFormat::RGBA8, m_width[0], m_height[0], TARGET_STYLE_CUSTOM, false, true, 1, 0);
 		m_avi_texture = bgfx::createTexture2D(m_width[0], m_height[0], false, 1, bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK);
+
+		if (m_avi_view == nullptr)
+		{
+			m_avi_view = new bgfx_ortho_view(this, 10, m_avi_target, m_seen_views);
+		}
 	}
 }
 
@@ -467,24 +495,25 @@ void renderer_bgfx::render_post_screen_quad(int view, render_primitive* prim, bg
 	vertex(&vertices[4], x[2], y[2], 0, 0xffffffff, u[2], v[2]);
 	vertex(&vertices[5], x[0], y[0], 0, 0xffffffff, u[0], v[0]);
 
-	uint32_t texture_flags = BGFX_TEXTURE_U_CLAMP | BGFX_TEXTURE_V_CLAMP;
+	uint32_t texture_flags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
 	if (video_config.filter == 0)
 	{
-		texture_flags |= BGFX_TEXTURE_MIN_POINT | BGFX_TEXTURE_MAG_POINT | BGFX_TEXTURE_MIP_POINT;
+		texture_flags |= BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT;
 	}
 
 	uint32_t blend = PRIMFLAG_GET_BLENDMODE(prim->flags);
 	bgfx::setVertexBuffer(0,buffer);
 	bgfx::setTexture(0, m_screen_effect[blend]->uniform("s_tex")->handle(), m_targets->target(screen, "output")->texture(), texture_flags);
-	m_screen_effect[blend]->submit(view);
+	m_screen_effect[blend]->submit(m_ortho_view->get_index());
 }
 
 void renderer_bgfx::render_avi_quad()
 {
+	m_avi_view->set_index(s_current_view);
+	m_avi_view->setup();
+
 	bgfx::setViewRect(s_current_view, 0, 0, m_width[0], m_height[0]);
 	bgfx::setViewClear(s_current_view, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x00000000, 1.0f, 0);
-
-	setup_matrices(s_current_view, false);
 
 	bgfx::TransientVertexBuffer buffer;
 	bgfx::allocTransientVertexBuffer(&buffer, 6, ScreenVertex::ms_decl);
@@ -526,28 +555,25 @@ void renderer_bgfx::render_textured_quad(render_primitive* prim, bgfx::Transient
 	vertex(&vertices[4], x[2], y[2], 0, rgba, u[2], v[2]);
 	vertex(&vertices[5], x[0], y[0], 0, rgba, u[0], v[0]);
 
-	uint32_t texture_flags = BGFX_TEXTURE_U_CLAMP | BGFX_TEXTURE_V_CLAMP;
+	uint32_t texture_flags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
 	if (video_config.filter == 0)
 	{
-		texture_flags |= BGFX_TEXTURE_MIN_POINT | BGFX_TEXTURE_MAG_POINT | BGFX_TEXTURE_MIP_POINT;
+		texture_flags |= BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT;
 	}
 
 	uint16_t tex_width(prim->texture.width);
 	uint16_t tex_height(prim->texture.height);
 
-	const bgfx::Memory* mem = bgfx_util::mame_texture_data_to_bgfx_texture_data(prim->flags & PRIMFLAG_TEXFORMAT_MASK,
-		tex_width, tex_height, prim->texture.rowpixels, prim->texture.palette, prim->texture.base);
-
-	bgfx::TextureHandle texture = bgfx::createTexture2D(tex_width, tex_height, false, 1, bgfx::TextureFormat::RGBA8, texture_flags, mem);
+	bgfx::TextureHandle texture = m_textures->create_or_update_mame_texture(prim->flags & PRIMFLAG_TEXFORMAT_MASK
+		, tex_width, tex_height, prim->texture.rowpixels, prim->texture.palette, prim->texture.base, prim->texture.seqid
+		, texture_flags, prim->texture.unique_id, prim->texture.old_id);
 
 	bgfx_effect** effects = PRIMFLAG_GET_SCREENTEX(prim->flags) ? m_screen_effect : m_gui_effect;
 
 	uint32_t blend = PRIMFLAG_GET_BLENDMODE(prim->flags);
 	bgfx::setVertexBuffer(0,buffer);
 	bgfx::setTexture(0, effects[blend]->uniform("s_tex")->handle(), texture);
-	effects[blend]->submit(m_ui_view);
-
-	bgfx::destroy(texture);
+	effects[blend]->submit(m_ortho_view->get_index());
 }
 
 #define MAX_TEMP_COORDS 100
@@ -760,11 +786,14 @@ uint32_t renderer_bgfx::u32Color(uint32_t r, uint32_t g, uint32_t b, uint32_t a 
 
 int renderer_bgfx::draw(int update)
 {
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
+
 	int window_index = win->m_index;
 
 	m_seen_views.clear();
-	m_ui_view = -1;
+	if (m_ortho_view) {
+		m_ortho_view->set_index(UINT_MAX);
+	}
 
 	osd_dim wdim = win->get_size();
 	m_width[window_index] = wdim.width();
@@ -831,7 +860,7 @@ int renderer_bgfx::draw(int update)
 		{
 			bgfx::setVertexBuffer(0,&buffer);
 			bgfx::setTexture(0, m_gui_effect[blend]->uniform("s_tex")->handle(), m_texture_cache->texture());
-			m_gui_effect[blend]->submit(m_ui_view);
+			m_gui_effect[blend]->submit(m_ortho_view->get_index());
 		}
 
 		if (status != BUFFER_DONE && status != BUFFER_PRE_FLUSH)
@@ -885,7 +914,7 @@ void renderer_bgfx::update_recording()
 
 void renderer_bgfx::add_audio_to_recording(const int16_t *buffer, int samples_this_frame)
 {
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
 	if (m_avi_writer != nullptr && m_avi_writer->recording() && win->m_index == 0)
 	{
 		m_avi_writer->audio_frame(buffer, samples_this_frame);
@@ -894,7 +923,7 @@ void renderer_bgfx::add_audio_to_recording(const int16_t *buffer, int samples_th
 
 bool renderer_bgfx::update_dimensions()
 {
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
 
 	const uint32_t window_index = win->m_index;
 	const uint32_t width = m_width[window_index];
@@ -923,9 +952,12 @@ bool renderer_bgfx::update_dimensions()
 #else
 			m_framebuffer = m_targets->create_backbuffer(sdlNativeWindowHandle(std::dynamic_pointer_cast<sdl_window_info>(win)->platform_window()), width, height);
 #endif
+			if (m_ortho_view)
+				m_ortho_view->set_backbuffer(m_framebuffer);
 
 			bgfx::setViewFrameBuffer(s_current_view, m_framebuffer->target());
 			bgfx::setViewClear(s_current_view, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x00000000, 1.0f, 0);
+			bgfx::setViewMode(s_current_view, bgfx::ViewMode::Sequential);
 			bgfx::touch(s_current_view);
 			bgfx::frame();
 			return true;
@@ -934,83 +966,16 @@ bool renderer_bgfx::update_dimensions()
 	return false;
 }
 
-void renderer_bgfx::setup_view(uint32_t view_index, bool screen)
+void renderer_bgfx::setup_ortho_view()
 {
-	auto win = assert_window();
-
-	const uint32_t window_index = win->m_index;
-	const uint32_t width = m_width[window_index];
-	const uint32_t height = m_height[window_index];
-
-	if (window_index != 0)
+	if (!m_ortho_view)
 	{
-		bgfx::setViewFrameBuffer(view_index, m_framebuffer->target());
+		m_ortho_view = new bgfx_ortho_view(this, s_current_view, m_framebuffer, m_seen_views);
 	}
-
-	bgfx::setViewRect(view_index, 0, 0, width, height);
-
-#if SCENE_VIEW
-	if (view_index == m_max_view)
-	{
-#else
-	while ((view_index + 1) > m_seen_views.size())
-	{
-		m_seen_views.push_back(false);
-	}
-
-	if (!m_seen_views[view_index])
-	{
-		m_seen_views[view_index] = true;
-#endif
-		if (m_avi_writer != nullptr && m_avi_writer->recording() && win->m_index == 0)
-		{
-			bgfx::setViewFrameBuffer(view_index, m_avi_target->target());
-		}
-		bgfx::setViewClear(view_index, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x00000000, 1.0f, 0);
-	}
-
-	setup_matrices(view_index, screen);
-}
-
-void renderer_bgfx::setup_matrices(uint32_t view_index, bool screen)
-{
-	auto win = assert_window();
-	const uint32_t window_index = win->m_index;
-	const uint32_t width = m_width[window_index];
-	const uint32_t height = m_height[window_index];
-
-	float proj[16];
-	float view[16];
-	const bgfx::Caps* caps = bgfx::getCaps();
-	if (screen)
-	{
-		static float offset = 0.0f;
-		offset += 0.5f;
-		float up[3]  = { 0.0f, -1.0f, 0.0f };
-		float cam_z = width * 0.5f * (float(height) / float(width));
-		cam_z *= 1.05f;
-		float eye_height = height * 0.5f * 1.05f;
-		float at[3]  = { width * 0.5f, height * 0.5f, 0.0f };
-		float eye[3] = { width * 0.5f, eye_height, cam_z };
-		bx::mtxLookAt(view, eye, at, up);
-
-		bx::mtxProj(proj, 90.0f, float(width) / float(height), 0.1f, 5000.0f, bgfx::getCaps()->homogeneousDepth);
-	}
-	else
-	{
-		bx::mtxIdentity(view);
-		bx::mtxOrtho(proj, 0.0f, width, height, 0.0f, 0.0f, 100.0f, 0.0f, caps->homogeneousDepth);
-	}
-
-	bgfx::setViewTransform(view_index, view, proj);
-}
-
-void renderer_bgfx::init_ui_view()
-{
-	if (m_ui_view < 0)
-	{
-		m_ui_view = s_current_view;
-		setup_view(m_ui_view, false);
+	m_ortho_view->update();
+	if (m_ortho_view->get_index() == UINT_MAX) {
+		m_ortho_view->set_index(s_current_view);
+		m_ortho_view->setup();
 		s_current_view++;
 	}
 }
@@ -1025,7 +990,7 @@ renderer_bgfx::buffer_status renderer_bgfx::buffer_primitives(bool atlas_valid, 
 		switch ((*prim)->type)
 		{
 			case render_primitive::LINE:
-				init_ui_view();
+				setup_ortho_view();
 				put_packed_line(*prim, (ScreenVertex*)buffer->data + vertices);
 				vertices += 30;
 				break;
@@ -1033,7 +998,7 @@ renderer_bgfx::buffer_status renderer_bgfx::buffer_primitives(bool atlas_valid, 
 			case render_primitive::QUAD:
 				if ((*prim)->texture.base == nullptr)
 				{
-					init_ui_view();
+					setup_ortho_view();
 					put_packed_quad(*prim, WHITE_HASH, (ScreenVertex*)buffer->data + vertices);
 					vertices += 6;
 				}
@@ -1042,7 +1007,7 @@ renderer_bgfx::buffer_status renderer_bgfx::buffer_primitives(bool atlas_valid, 
 					const uint32_t hash = get_texture_hash(*prim);
 					if (atlas_valid && (*prim)->packable(PACKABLE_SIZE) && hash != 0 && m_hash_to_entry[hash].hash())
 					{
-						init_ui_view();
+						setup_ortho_view();
 						put_packed_quad(*prim, hash, (ScreenVertex*)buffer->data + vertices);
 						vertices += 6;
 					}
@@ -1059,16 +1024,15 @@ renderer_bgfx::buffer_status renderer_bgfx::buffer_primitives(bool atlas_valid, 
 							setup_view(s_current_view, true);
 							render_post_screen_quad(s_current_view, *prim, buffer, screen);
 							s_current_view++;
-							m_ui_view = -1;
 #else
-							init_ui_view();
-							render_post_screen_quad(m_ui_view, *prim, buffer, screen);
+							setup_ortho_view();
+							render_post_screen_quad(m_ortho_view->get_index(), *prim, buffer, screen);
 #endif
 							return BUFFER_SCREEN;
 						}
 						else
 						{
-							init_ui_view();
+							setup_ortho_view();
 							render_textured_quad(*prim, buffer);
 							return BUFFER_EMPTY;
 						}
@@ -1102,7 +1066,7 @@ renderer_bgfx::buffer_status renderer_bgfx::buffer_primitives(bool atlas_valid, 
 
 void renderer_bgfx::set_bgfx_state(uint32_t blend)
 {
-	uint64_t flags = BGFX_STATE_RGB_WRITE | BGFX_STATE_ALPHA_WRITE | BGFX_STATE_DEPTH_TEST_ALWAYS;
+	uint64_t flags = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS;
 	bgfx::setState(flags | bgfx_util::get_blend_state(blend));
 }
 
@@ -1183,7 +1147,7 @@ bool renderer_bgfx::check_for_dirty_atlas()
 {
 	bool atlas_dirty = false;
 
-	auto win = assert_window();
+	std::shared_ptr<osd_window> win = assert_window();
 	std::map<uint32_t, rectangle_packer::packable_rectangle> acquired_infos;
 	for (render_primitive &prim : *win->m_primlist)
 	{
@@ -1275,3 +1239,12 @@ void renderer_bgfx::set_sliders_dirty()
 {
 	m_sliders_dirty = true;
 }
+
+uint32_t renderer_bgfx::get_window_width(uint32_t index) const {
+	return m_width[index];
+}
+
+uint32_t renderer_bgfx::get_window_height(uint32_t index) const {
+	return m_height[index];
+}
+

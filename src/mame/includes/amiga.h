@@ -25,6 +25,7 @@ Ernesto Corvi & Mariusz Wojcieszek
 #include "machine/i2cmem.h"
 #include "machine/8364_paula.h"
 #include "video/amigaaga.h"
+#include "emupal.h"
 #include "screen.h"
 
 
@@ -307,58 +308,59 @@ class amiga_state : public driver_device
 {
 public:
 	amiga_state(const machine_config &mconfig, device_type type, const char *tag) :
-	driver_device(mconfig, type, tag),
-	m_agnus_id(AGNUS_NTSC),
-	m_denise_id(DENISE),
-	m_maincpu(*this, "maincpu"),
-	m_cia_0(*this, "cia_0"),
-	m_cia_1(*this, "cia_1"),
-	m_rs232(*this, "rs232"),
-	m_centronics(*this, "centronics"),
-	m_paula(*this, "amiga"),
-	m_fdc(*this, "fdc"),
-	m_screen(*this, "screen"),
-	m_palette(*this, "palette"),
-	m_overlay(*this, "overlay"),
-	m_input_device(*this, "input"),
-	m_joy0dat_port(*this, "joy_0_dat"),
-	m_joy1dat_port(*this, "joy_1_dat"),
-	m_potgo_port(*this, "potgo"),
-	m_pot0dat_port(*this, "POT0DAT"),
-	m_pot1dat_port(*this, "POT1DAT"),
-	m_joy_ports(*this, "p%u_joy", 1),
-	m_p1_mouse_x(*this, "p1_mouse_x"),
-	m_p1_mouse_y(*this, "p1_mouse_y"),
-	m_p2_mouse_x(*this, "p2_mouse_x"),
-	m_p2_mouse_y(*this, "p2_mouse_y"),
-	m_hvpos(*this, "HVPOS"),
-	m_chip_ram_mask(0),
-	m_cia_0_irq(0),
-	m_cia_1_irq(0),
-	m_pot0x(0), m_pot1x(0), m_pot0y(0), m_pot1y(0),
-	m_pot0dat(0x0000),
-	m_pot1dat(0x0000),
-	m_centronics_busy(0),
-	m_centronics_perror(0),
-	m_centronics_select(0),
-	m_gayle_reset(false),
-	m_diw(),
-	m_diwhigh_valid(false),
-	m_previous_lof(true),
-	m_rx_shift(0),
-	m_tx_shift(0),
-	m_rx_state(0),
-	m_tx_state(0),
-	m_rx_previous(1)
+		driver_device(mconfig, type, tag),
+		m_agnus_id(AGNUS_NTSC),
+		m_denise_id(DENISE),
+		m_maincpu(*this, "maincpu"),
+		m_cia_0(*this, "cia_0"),
+		m_cia_1(*this, "cia_1"),
+		m_rs232(*this, "rs232"),
+		m_centronics(*this, "centronics"),
+		m_paula(*this, "amiga"),
+		m_fdc(*this, "fdc"),
+		m_screen(*this, "screen"),
+		m_palette(*this, "palette"),
+		m_overlay(*this, "overlay"),
+		m_input_device(*this, "input"),
+		m_joy0dat_port(*this, "joy_0_dat"),
+		m_joy1dat_port(*this, "joy_1_dat"),
+		m_potgo_port(*this, "potgo"),
+		m_pot0dat_port(*this, "POT0DAT"),
+		m_pot1dat_port(*this, "POT1DAT"),
+		m_joy_ports(*this, "p%u_joy", 1),
+		m_p1_mouse_x(*this, "p1_mouse_x"),
+		m_p1_mouse_y(*this, "p1_mouse_y"),
+		m_p2_mouse_x(*this, "p2_mouse_x"),
+		m_p2_mouse_y(*this, "p2_mouse_y"),
+		m_hvpos(*this, "HVPOS"),
+		m_power_led(*this, "power_led"),
+		m_chip_ram_mask(0),
+		m_cia_0_irq(0),
+		m_cia_1_irq(0),
+		m_pot0x(0), m_pot1x(0), m_pot0y(0), m_pot1y(0),
+		m_pot0dat(0x0000),
+		m_pot1dat(0x0000),
+		m_centronics_busy(0),
+		m_centronics_perror(0),
+		m_centronics_select(0),
+		m_gayle_reset(false),
+		m_diw(),
+		m_diwhigh_valid(false),
+		m_previous_lof(true),
+		m_rx_shift(0),
+		m_tx_shift(0),
+		m_rx_state(0),
+		m_tx_state(0),
+		m_rx_previous(1)
 	{ }
 
 	/* chip RAM access */
-	uint16_t chip_ram_r(offs_t byteoffs)
+	uint16_t read_chip_ram(offs_t byteoffs)
 	{
 		return EXPECTED(byteoffs < m_chip_ram.bytes()) ? m_chip_ram.read(byteoffs >> 1) : 0xffff;
 	}
 
-	void chip_ram_w(offs_t byteoffs, uint16_t data)
+	void write_chip_ram(offs_t byteoffs, uint16_t data)
 	{
 		if (EXPECTED(byteoffs < m_chip_ram.bytes()))
 			m_chip_ram.write(byteoffs >> 1, data);
@@ -366,13 +368,13 @@ public:
 
 	DECLARE_READ16_MEMBER(chip_ram_r)
 	{
-		return chip_ram_r(offset & ~1) & mem_mask;
+		return read_chip_ram(offset & ~1) & mem_mask;
 	}
 
 	DECLARE_WRITE16_MEMBER(chip_ram_w)
 	{
-		uint16_t val = chip_ram_r(offset & ~1) & ~mem_mask;
-		chip_ram_w(offset & ~1, val | data);
+		uint16_t val = read_chip_ram(offset & ~1) & ~mem_mask;
+		write_chip_ram(offset & ~1, val | data);
 	}
 
 	/* sprite states */
@@ -414,7 +416,7 @@ public:
 
 	DECLARE_VIDEO_START( amiga );
 	DECLARE_VIDEO_START( amiga_aga );
-	DECLARE_PALETTE_INIT( amiga );
+	void amiga_palette(palette_device &palette) const;
 
 	uint32_t screen_update_amiga(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_amiga_aga(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
@@ -463,15 +465,15 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(fdc_dsksyn_w);
 
 	// standard clocks
-	static const int CLK_28M_PAL = XTAL_28_37516MHz;
-	static const int CLK_7M_PAL = CLK_28M_PAL / 4;
-	static const int CLK_C1_PAL = CLK_28M_PAL / 8;
-	static const int CLK_E_PAL = CLK_7M_PAL / 10;
+	static constexpr XTAL CLK_28M_PAL = XTAL(28'375'160);
+	static constexpr XTAL CLK_7M_PAL = CLK_28M_PAL / 4;
+	static constexpr XTAL CLK_C1_PAL = CLK_28M_PAL / 8;
+	static constexpr XTAL CLK_E_PAL = CLK_7M_PAL / 10;
 
-	static const int CLK_28M_NTSC = XTAL_28_63636MHz;
-	static const int CLK_7M_NTSC = CLK_28M_NTSC / 4;
-	static const int CLK_C1_NTSC = CLK_28M_NTSC / 8;
-	static const int CLK_E_NTSC = CLK_7M_NTSC / 10;
+	static constexpr XTAL CLK_28M_NTSC = XTAL(28'636'363);
+	static constexpr XTAL CLK_7M_NTSC = CLK_28M_NTSC / 4;
+	static constexpr XTAL CLK_C1_NTSC = CLK_28M_NTSC / 8;
+	static constexpr XTAL CLK_E_NTSC = CLK_7M_NTSC / 10;
 
 	// screen layout
 	enum
@@ -489,13 +491,21 @@ public:
 	uint16_t m_agnus_id;
 	uint16_t m_denise_id;
 
-	void custom_chip_w(uint16_t offset, uint16_t data, uint16_t mem_mask = 0xffff)
+	void write_custom_chip(uint16_t offset, uint16_t data, uint16_t mem_mask = 0xffff)
 	{
 		custom_chip_w(m_maincpu->space(AS_PROGRAM), offset, data, mem_mask);
 	}
 
 	void blitter_setup();
 
+	void amiga_base(machine_config &config);
+	void pal_video(machine_config &config);
+	void ntsc_video(machine_config &config);
+	void overlay_1mb_map(address_map &map);
+	void overlay_1mb_map32(address_map &map);
+	void overlay_2mb_map16(address_map &map);
+	void overlay_2mb_map32(address_map &map);
+	void overlay_512kb_map(address_map &map);
 protected:
 	// A bit of a trick here: some registers are 32-bit. In order to efficiently
 	// read them on both big-endian and little-endian systems, we store the custom
@@ -587,6 +597,7 @@ protected:
 	optional_ioport m_p2_mouse_y;
 	optional_ioport m_hvpos;
 
+	output_finder<> m_power_led;
 	memory_array m_chip_ram;
 	uint32_t m_chip_ram_mask;
 
@@ -709,8 +720,5 @@ private:
 
 	uint32_t amiga_gethvpos();
 };
-
-MACHINE_CONFIG_EXTERN( pal_video );
-MACHINE_CONFIG_EXTERN( ntsc_video );
 
 #endif // MAME_INCLUDES_AMIGA_H

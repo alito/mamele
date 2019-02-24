@@ -14,6 +14,7 @@
 #pragma once
 
 #include "cpcexp.h"
+#include "imagedev/floppy.h"
 #include "machine/upd765.h"
 
 class cpc_ddi1_device : public device_t, public device_cpc_expansion_card_interface
@@ -49,7 +50,6 @@ private:
 };
 
 // device type definition
-extern const device_type CPC_DDI1;
 DECLARE_DEVICE_TYPE(CPC_DDI1, cpc_ddi1_device)
 
 #endif // MAME_BUS_CPC_DDI1_H

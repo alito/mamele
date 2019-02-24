@@ -2,6 +2,8 @@
 // copyright-holders:Samuele Zannoli
 
 #include "emu.h"
+#include "machine/pci.h"
+#include "includes/xbox_pci.h"
 #include "includes/xbox_usb.h"
 #include "includes/xbox.h"
 
@@ -1541,6 +1543,7 @@ int ohci_game_controller_device::handle_interrupt_pid(int endpoint, int pid, uin
 
 void ohci_game_controller_device::device_start()
 {
+	initialize(machine());
 }
 
 ioport_constructor ohci_game_controller_device::device_input_ports() const

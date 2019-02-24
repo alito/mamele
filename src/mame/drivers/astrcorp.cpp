@@ -43,6 +43,7 @@ To do:
 #include "machine/ticket.h"
 #include "machine/timer.h"
 #include "sound/okim6295.h"
+#include "emupal.h"
 #include "screen.h"
 #include "speaker.h"
 
@@ -50,8 +51,8 @@ To do:
 class astrocorp_state : public driver_device
 {
 public:
-	astrocorp_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	astrocorp_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_oki(*this, "oki"),
 		m_gfxdecode(*this, "gfxdecode"),
@@ -59,9 +60,24 @@ public:
 		m_palette(*this, "palette"),
 		m_hopper(*this, "hopper"),
 		m_ticket(*this, "ticket"),
-		m_spriteram(*this, "spriteram")
+		m_spriteram(*this, "spriteram"),
+		m_lamps(*this, "lamp%u", 0U)
 	{ }
 
+	void skilldrp(machine_config &config);
+	void showhand(machine_config &config);
+	void speeddrp(machine_config &config);
+	void showhanc(machine_config &config);
+
+	void init_astoneag();
+	void init_showhanc();
+	void init_showhand();
+
+protected:
+	virtual void machine_start() override;
+	virtual void video_start() override;
+
+private:
 	// devices
 	required_device<cpu_device> m_maincpu;
 	required_device<okim6295_device> m_oki;
@@ -78,6 +94,9 @@ public:
 	bitmap_ind16 m_bitmap;
 	uint16_t     m_screen_enable;
 	uint16_t     m_draw_sprites;
+
+	output_finder<7> m_lamps;
+
 	DECLARE_WRITE16_MEMBER(astrocorp_draw_sprites_w);
 	DECLARE_WRITE16_MEMBER(astrocorp_eeprom_w);
 	DECLARE_WRITE16_MEMBER(showhand_outputs_w);
@@ -86,20 +105,21 @@ public:
 	DECLARE_READ16_MEMBER(astrocorp_unk_r);
 	DECLARE_WRITE16_MEMBER(astrocorp_sound_bank_w);
 	DECLARE_WRITE16_MEMBER(skilldrp_sound_bank_w);
-	DECLARE_DRIVER_INIT(astoneag);
-	DECLARE_DRIVER_INIT(showhanc);
-	DECLARE_DRIVER_INIT(showhand);
-	DECLARE_VIDEO_START(astrocorp);
 	uint32_t screen_update_astrocorp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(skilldrp_scanline);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
+
+	void showhanc_map(address_map &map);
+	void showhand_map(address_map &map);
+	void skilldrp_map(address_map &map);
+	void speeddrp_map(address_map &map);
 };
 
 /***************************************************************************
                                 Video
 ***************************************************************************/
 
-VIDEO_START_MEMBER(astrocorp_state,astrocorp)
+void astrocorp_state::video_start()
 {
 	m_screen->register_screen_bitmap(m_bitmap);
 
@@ -214,7 +234,7 @@ WRITE16_MEMBER(astrocorp_state::astrocorp_sound_bank_w)
 	if (ACCESSING_BITS_8_15)
 	{
 		m_oki->set_rom_bank((data >> 8) & 1);
-//      logerror("CPU #0 PC %06X: OKI bank %08X\n", space.device().safe_pc(), data);
+//      logerror("CPU #0 PC %06X: OKI bank %08X\n", m_maincpu->pc(), data);
 	}
 }
 
@@ -223,7 +243,7 @@ WRITE16_MEMBER(astrocorp_state::skilldrp_sound_bank_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		m_oki->set_rom_bank(data & 1);
-//      logerror("CPU #0 PC %06X: OKI bank %08X\n", space.device().safe_pc(), data);
+//      logerror("CPU #0 PC %06X: OKI bank %08X\n", m_maincpu->pc(), data);
 	}
 }
 
@@ -232,17 +252,17 @@ WRITE16_MEMBER(astrocorp_state::showhand_outputs_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		machine().bookkeeping().coin_counter_w(0,    (data & 0x0004));   // coin counter
-		output().set_led_value(0,    (data & 0x0008));   // you win
+		m_lamps[0] = BIT(data, 3);   // you win
 		if ((data & 0x0010)) machine().bookkeeping().increment_dispensed_tickets(1); // coin out
-		output().set_led_value(1,    (data & 0x0020));   // coin/hopper jam
+		m_lamps[1] = BIT(data, 5);   // coin/hopper jam
 	}
 	if (ACCESSING_BITS_8_15)
 	{
-		output().set_led_value(2,    (data & 0x0100));   // bet
-		output().set_led_value(3,    (data & 0x0800));   // start
-		output().set_led_value(4,    (data & 0x1000));   // ? select/choose
-		output().set_led_value(5,    (data & 0x2000));   // ? select/choose
-		output().set_led_value(6,    (data & 0x4000));   // look
+		m_lamps[2] = BIT(data, 8);   // bet
+		m_lamps[3] = BIT(data, 11);   // start
+		m_lamps[4] = BIT(data, 12);   // ? select/choose
+		m_lamps[5] = BIT(data, 13);   // ? select/choose
+		m_lamps[6] = BIT(data, 15);   // look
 	}
 //  popmessage("%04X",data);
 }
@@ -272,18 +292,18 @@ WRITE16_MEMBER(astrocorp_state::skilldrp_outputs_w)
 		machine().bookkeeping().coin_counter_w(1, BIT(data, 2));   // key out |
 		m_hopper->motor_w(BIT(data, 3));                           // hopper motor?
 		//                                  BIT(data, 4)           // hopper?
-		output().set_led_value(0, BIT(data, 5));                   // error lamp (coin/hopper jam: "call attendant")
+		m_lamps[0] = BIT(data, 5);                   // error lamp (coin/hopper jam: "call attendant")
 		m_ticket->motor_w(BIT(data, 7));                           // ticket motor?
 	}
 	if (ACCESSING_BITS_8_15)
 	{
 		// lamps:
-		output().set_led_value(1, BIT(data, 8));    // select
-		output().set_led_value(2, BIT(data, 10));   // take
-		output().set_led_value(3, BIT(data, 11));   // bet
-		output().set_led_value(4, BIT(data, 12));   // start
-		output().set_led_value(5, BIT(data, 14));   // win / test
-		output().set_led_value(6, BIT(data, 15));   // ticket?
+		m_lamps[1] = BIT(data, 8);    // select
+		m_lamps[2] = BIT(data, 10);   // take
+		m_lamps[3] = BIT(data, 11);   // bet
+		m_lamps[4] = BIT(data, 12);   // start
+		m_lamps[5] = BIT(data, 14);   // win / test
+		m_lamps[6] = BIT(data, 15);   // ticket?
 	}
 
 //  popmessage("%04X",data);
@@ -294,7 +314,7 @@ WRITE16_MEMBER(astrocorp_state::astrocorp_screen_enable_w)
 	COMBINE_DATA(&m_screen_enable);
 //  popmessage("%04X",data);
 	if (m_screen_enable & (~1))
-		logerror("CPU #0 PC %06X: screen enable = %04X\n", space.device().safe_pc(), m_screen_enable);
+		logerror("CPU #0 PC %06X: screen enable = %04X\n", m_maincpu->pc(), m_screen_enable);
 }
 
 READ16_MEMBER(astrocorp_state::astrocorp_unk_r)
@@ -303,65 +323,71 @@ READ16_MEMBER(astrocorp_state::astrocorp_unk_r)
 }
 
 
-static ADDRESS_MAP_START( showhand_map, AS_PROGRAM, 16, astrocorp_state )
-	AM_RANGE( 0x000000, 0x01ffff ) AM_ROM
-	AM_RANGE( 0x050000, 0x050fff ) AM_RAM AM_SHARE("spriteram")
-	AM_RANGE( 0x052000, 0x052001 ) AM_WRITE(astrocorp_draw_sprites_w)
-	AM_RANGE( 0x054000, 0x054001 ) AM_READ_PORT("INPUTS")
-	AM_RANGE( 0x058000, 0x058001 ) AM_WRITE(astrocorp_eeprom_w)
-	AM_RANGE( 0x05a000, 0x05a001 ) AM_WRITE(showhand_outputs_w)
-	AM_RANGE( 0x05e000, 0x05e001 ) AM_READ_PORT("EEPROMIN")
-	AM_RANGE( 0x060000, 0x0601ff ) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE( 0x070000, 0x073fff ) AM_RAM AM_SHARE("nvram") // battery
-	AM_RANGE( 0x080000, 0x080001 ) AM_WRITE(astrocorp_sound_bank_w)
-	AM_RANGE( 0x0a0000, 0x0a0001 ) AM_WRITE(astrocorp_screen_enable_w)
-	AM_RANGE( 0x0d0000, 0x0d0001 ) AM_READ(astrocorp_unk_r) AM_DEVWRITE8("oki", okim6295_device, write, 0xff00)
-ADDRESS_MAP_END
+void astrocorp_state::showhand_map(address_map &map)
+{
+	map(0x000000, 0x01ffff).rom();
+	map(0x050000, 0x050fff).ram().share("spriteram");
+	map(0x052000, 0x052001).w(FUNC(astrocorp_state::astrocorp_draw_sprites_w));
+	map(0x054000, 0x054001).portr("INPUTS");
+	map(0x058000, 0x058001).w(FUNC(astrocorp_state::astrocorp_eeprom_w));
+	map(0x05a000, 0x05a001).w(FUNC(astrocorp_state::showhand_outputs_w));
+	map(0x05e000, 0x05e001).portr("EEPROMIN");
+	map(0x060000, 0x0601ff).ram().w(m_palette, FUNC(palette_device::write16)).share("palette");
+	map(0x070000, 0x073fff).ram().share("nvram"); // battery
+	map(0x080000, 0x080001).w(FUNC(astrocorp_state::astrocorp_sound_bank_w));
+	map(0x0a0000, 0x0a0001).w(FUNC(astrocorp_state::astrocorp_screen_enable_w));
+	map(0x0d0000, 0x0d0001).r(FUNC(astrocorp_state::astrocorp_unk_r));
+	map(0x0d0000, 0x0d0000).w(m_oki, FUNC(okim6295_device::write));
+}
 
-static ADDRESS_MAP_START( showhanc_map, AS_PROGRAM, 16, astrocorp_state )
-	AM_RANGE( 0x000000, 0x01ffff ) AM_ROM
-	AM_RANGE( 0x060000, 0x0601ff ) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE( 0x070000, 0x070001 ) AM_WRITE(astrocorp_sound_bank_w)
-	AM_RANGE( 0x080000, 0x080fff ) AM_RAM AM_SHARE("spriteram")
-	AM_RANGE( 0x082000, 0x082001 ) AM_WRITE(astrocorp_draw_sprites_w)
-	AM_RANGE( 0x084000, 0x084001 ) AM_READ_PORT("INPUTS")
-	AM_RANGE( 0x088000, 0x088001 ) AM_WRITE(astrocorp_eeprom_w)
-	AM_RANGE( 0x08a000, 0x08a001 ) AM_WRITE(showhand_outputs_w)
-	AM_RANGE( 0x08e000, 0x08e001 ) AM_READ_PORT("EEPROMIN")
-	AM_RANGE( 0x090000, 0x093fff ) AM_RAM AM_SHARE("nvram") // battery
-	AM_RANGE( 0x0a0000, 0x0a0001 ) AM_WRITE(astrocorp_screen_enable_w)
-	AM_RANGE( 0x0e0000, 0x0e0001 ) AM_READ(astrocorp_unk_r) AM_DEVWRITE8("oki", okim6295_device, write, 0xff00)
-ADDRESS_MAP_END
+void astrocorp_state::showhanc_map(address_map &map)
+{
+	map(0x000000, 0x01ffff).rom();
+	map(0x060000, 0x0601ff).ram().w(m_palette, FUNC(palette_device::write16)).share("palette");
+	map(0x070000, 0x070001).w(FUNC(astrocorp_state::astrocorp_sound_bank_w));
+	map(0x080000, 0x080fff).ram().share("spriteram");
+	map(0x082000, 0x082001).w(FUNC(astrocorp_state::astrocorp_draw_sprites_w));
+	map(0x084000, 0x084001).portr("INPUTS");
+	map(0x088000, 0x088001).w(FUNC(astrocorp_state::astrocorp_eeprom_w));
+	map(0x08a000, 0x08a001).w(FUNC(astrocorp_state::showhand_outputs_w));
+	map(0x08e000, 0x08e001).portr("EEPROMIN");
+	map(0x090000, 0x093fff).ram().share("nvram"); // battery
+	map(0x0a0000, 0x0a0001).w(FUNC(astrocorp_state::astrocorp_screen_enable_w));
+	map(0x0e0000, 0x0e0001).r(FUNC(astrocorp_state::astrocorp_unk_r));
+	map(0x0e0000, 0x0e0000).w(m_oki, FUNC(okim6295_device::write));
+}
 
-static ADDRESS_MAP_START( skilldrp_map, AS_PROGRAM, 16, astrocorp_state )
-	AM_RANGE( 0x000000, 0x03ffff ) AM_ROM
-	AM_RANGE( 0x200000, 0x200fff ) AM_RAM AM_SHARE("spriteram")
-	AM_RANGE( 0x202000, 0x202001 ) AM_WRITE(astrocorp_draw_sprites_w)
-	AM_RANGE( 0x204000, 0x204001 ) AM_READ_PORT("INPUTS")
-	AM_RANGE( 0x208000, 0x208001 ) AM_WRITE(astrocorp_eeprom_w)
-	AM_RANGE( 0x20a000, 0x20a001 ) AM_WRITE(skilldrp_outputs_w)
-	AM_RANGE( 0x20e000, 0x20e001 ) AM_READ_PORT("EEPROMIN")
-	AM_RANGE( 0x380000, 0x3801ff ) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE( 0x400000, 0x400001 ) AM_WRITE(astrocorp_screen_enable_w)
-	AM_RANGE( 0x500000, 0x507fff ) AM_RAM AM_SHARE("nvram") // battery
-	AM_RANGE( 0x580000, 0x580001 ) AM_WRITE(skilldrp_sound_bank_w)
-	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8("oki", okim6295_device, read, write, 0x00ff)
-ADDRESS_MAP_END
+void astrocorp_state::skilldrp_map(address_map &map)
+{
+	map(0x000000, 0x03ffff).rom();
+	map(0x200000, 0x200fff).ram().share("spriteram");
+	map(0x202000, 0x202001).w(FUNC(astrocorp_state::astrocorp_draw_sprites_w));
+	map(0x204000, 0x204001).portr("INPUTS");
+	map(0x208000, 0x208001).w(FUNC(astrocorp_state::astrocorp_eeprom_w));
+	map(0x20a000, 0x20a001).w(FUNC(astrocorp_state::skilldrp_outputs_w));
+	map(0x20e000, 0x20e001).portr("EEPROMIN");
+	map(0x380000, 0x3801ff).ram().w(m_palette, FUNC(palette_device::write16)).share("palette");
+	map(0x400000, 0x400001).w(FUNC(astrocorp_state::astrocorp_screen_enable_w));
+	map(0x500000, 0x507fff).ram().share("nvram"); // battery
+	map(0x580000, 0x580001).w(FUNC(astrocorp_state::skilldrp_sound_bank_w));
+	map(0x600001, 0x600001).rw(m_oki, FUNC(okim6295_device::read), FUNC(okim6295_device::write));
+}
 
-static ADDRESS_MAP_START( speeddrp_map, AS_PROGRAM, 16, astrocorp_state )
-	AM_RANGE( 0x000000, 0x01ffff ) AM_ROM
-	AM_RANGE( 0x280000, 0x283fff ) AM_RAM AM_SHARE("nvram") // battery
-	AM_RANGE( 0x380000, 0x380fff ) AM_RAM AM_SHARE("spriteram")
-	AM_RANGE( 0x382000, 0x382001 ) AM_WRITE(astrocorp_draw_sprites_w)
-	AM_RANGE( 0x384000, 0x384001 ) AM_READ_PORT("INPUTS")
-	AM_RANGE( 0x388000, 0x388001 ) AM_WRITE(astrocorp_eeprom_w)
-	AM_RANGE( 0x38a000, 0x38a001 ) AM_WRITE(skilldrp_outputs_w)
-	AM_RANGE( 0x38e000, 0x38e001 ) AM_READ_PORT("EEPROMIN")
-	AM_RANGE( 0x480000, 0x4801ff ) AM_RAM_DEVWRITE("palette", palette_device, write) AM_SHARE("palette")
-	AM_RANGE( 0x500000, 0x500001 ) AM_WRITE(astrocorp_screen_enable_w)
-	AM_RANGE( 0x580000, 0x580001 ) AM_WRITE(skilldrp_sound_bank_w)
-	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8("oki", okim6295_device, read, write, 0x00ff)
-ADDRESS_MAP_END
+void astrocorp_state::speeddrp_map(address_map &map)
+{
+	map(0x000000, 0x01ffff).rom();
+	map(0x280000, 0x283fff).ram().share("nvram"); // battery
+	map(0x380000, 0x380fff).ram().share("spriteram");
+	map(0x382000, 0x382001).w(FUNC(astrocorp_state::astrocorp_draw_sprites_w));
+	map(0x384000, 0x384001).portr("INPUTS");
+	map(0x388000, 0x388001).w(FUNC(astrocorp_state::astrocorp_eeprom_w));
+	map(0x38a000, 0x38a001).w(FUNC(astrocorp_state::skilldrp_outputs_w));
+	map(0x38e000, 0x38e001).portr("EEPROMIN");
+	map(0x480000, 0x4801ff).ram().w(m_palette, FUNC(palette_device::write16)).share("palette");
+	map(0x500000, 0x500001).w(FUNC(astrocorp_state::astrocorp_screen_enable_w));
+	map(0x580000, 0x580001).w(FUNC(astrocorp_state::skilldrp_sound_bank_w));
+	map(0x600001, 0x600001).rw(m_oki, FUNC(okim6295_device::read), FUNC(okim6295_device::write));
+}
 
 /***************************************************************************
                                 Input Ports
@@ -376,7 +402,7 @@ static INPUT_PORTS_START( showhand )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW,  IPT_BUTTON3   )   PORT_NAME("Look / Small")
 	PORT_SERVICE_NO_TOGGLE( 0x0020,   IP_ACTIVE_LOW )   // settings
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW,  IPT_UNKNOWN   )   // ?
-	PORT_BIT( 0x0080, IP_ACTIVE_LOW,  IPT_SPECIAL   )   // coin sensor
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW,  IPT_CUSTOM   )   // coin sensor
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW,  IPT_BUTTON2   )   PORT_NAME("Yes / Big")
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW,  IPT_BUTTON4   )   PORT_NAME("Hold1")  // HOLD1 in test mode
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW,  IPT_BUTTON1   )   PORT_NAME("Select")
@@ -384,7 +410,7 @@ static INPUT_PORTS_START( showhand )
 	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SERVICE1  )   PORT_NAME("Reset Settings") // when 1 in test mode: reset settings (must be 0 on startup)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN   )   // ?
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_COIN2     )   // key in
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_SPECIAL   )   // coin sensor
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_CUSTOM   )   // coin sensor
 
 	PORT_START( "EEPROMIN" )
 	PORT_BIT( 0xfff7, IP_ACTIVE_LOW,  IPT_UNUSED )
@@ -411,7 +437,7 @@ static INPUT_PORTS_START( showhanc )
 	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_BUTTON4   )   PORT_NAME("Hold2")  // HOLD2 in test mode
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW,  IPT_BUTTON2   )   PORT_NAME("Yes / Big")  // HOLD4 in test mode
 	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SERVICE1  )   PORT_NAME("Reset Settings") // when 1 in test mode: reset settings (must be 0 on startup)
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL   )   // must be 0 for inputs to work
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_CUSTOM   )   // must be 0 for inputs to work
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_COIN2     )   PORT_IMPULSE(1) // key in (shows an error)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN   )
 
@@ -439,9 +465,9 @@ static INPUT_PORTS_START( skilldrp )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW,  IPT_UNKNOWN       )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN       )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW,  IPT_START2        )   PORT_NAME("Bet")
-	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_READ_LINE_DEVICE_MEMBER("ticket", ticket_dispenser_device, line_r) // ticket sw
+	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("ticket", ticket_dispenser_device, line_r) // ticket sw
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW,  IPT_GAMBLE_BOOK   )
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_READ_LINE_DEVICE_MEMBER("hopper", ticket_dispenser_device, line_r) // hopper sw
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("hopper", ticket_dispenser_device, line_r) // hopper sw
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_GAMBLE_KEYIN  )
 
 	PORT_START( "EEPROMIN" )
@@ -469,7 +495,7 @@ static const gfx_layout layout_16x16x8 =
 	16*16*8
 };
 
-static GFXDECODE_START( astrocorp )
+static GFXDECODE_START( gfx_astrocorp )
 	GFXDECODE_ENTRY("sprites", 0, layout_16x16x8, 0, 1)
 GFXDECODE_END
 
@@ -481,11 +507,17 @@ GFXDECODE_END
 static const uint16_t showhand_default_eeprom[15] =   {0x0001,0x0007,0x000a,0x0003,0x0000,0x0009,0x0003,0x0000,0x0002,0x0001,0x0000,0x0000,0x0000,0x0000,0x0000};
 
 
+void astrocorp_state::machine_start()
+{
+	m_lamps.resolve();
+}
+
+
 /*
 TODO: understand if later hardware uses different parameters (XTAL is almost surely NOT 20 MHz so ...). Also, weirdly enough, there's an unused
 6x PAL XTAL according to notes, but VSync = 58,85 Hz?
 */
-#define ASTROCORP_PIXEL_CLOCK XTAL_20MHz/2
+#define ASTROCORP_PIXEL_CLOCK XTAL(20'000'000)/2
 #define ASTROCORP_HTOTAL 651
 #define ASTROCORP_HBEND 0
 //#define ASTROCORP_HBSTART 320
@@ -493,16 +525,16 @@ TODO: understand if later hardware uses different parameters (XTAL is almost sur
 #define ASTROCORP_VBEND 0
 #define ASTROCORP_VBSTART 240
 
-static MACHINE_CONFIG_START( showhand )
+MACHINE_CONFIG_START(astrocorp_state::showhand)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M68000, XTAL_20MHz / 2)
-	MCFG_CPU_PROGRAM_MAP(showhand_map)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", astrocorp_state,  irq4_line_hold)
+	MCFG_DEVICE_ADD("maincpu", M68000, XTAL(20'000'000) / 2)
+	MCFG_DEVICE_PROGRAM_MAP(showhand_map)
+	MCFG_DEVICE_VBLANK_INT_DRIVER("screen", astrocorp_state,  irq4_line_hold)
 
-	MCFG_NVRAM_ADD_0FILL("nvram")
-	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")
-	MCFG_EEPROM_SERIAL_DATA(showhand_default_eeprom, sizeof(showhand_default_eeprom))
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
+
+	EEPROM_93C46_16BIT(config, "eeprom").default_data(showhand_default_eeprom, sizeof(showhand_default_eeprom));
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -512,25 +544,23 @@ static MACHINE_CONFIG_START( showhand )
 //  MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MCFG_SCREEN_RAW_PARAMS(ASTROCORP_PIXEL_CLOCK,ASTROCORP_HTOTAL,ASTROCORP_HBEND,320,ASTROCORP_VTOTAL,ASTROCORP_VBEND,ASTROCORP_VBSTART)
 	MCFG_SCREEN_UPDATE_DRIVER(astrocorp_state, screen_update_astrocorp)
-	MCFG_SCREEN_PALETTE("palette")
+	MCFG_SCREEN_PALETTE(m_palette)
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", astrocorp)
-	MCFG_PALETTE_ADD("palette", 0x100)
-	MCFG_PALETTE_FORMAT(BBBBBGGGGGGRRRRR)
-
-	MCFG_VIDEO_START_OVERRIDE(astrocorp_state,astrocorp)
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_astrocorp);
+	PALETTE(config, m_palette).set_format(palette_device::BGR_565, 0x100);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
+	SPEAKER(config, "mono").front_center();
 
-	MCFG_OKIM6295_ADD("oki", XTAL_20MHz/20, PIN7_HIGH)
+	MCFG_DEVICE_ADD("oki", OKIM6295, XTAL(20'000'000)/20, okim6295_device::PIN7_HIGH)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_DERIVED( showhanc, showhand )
-	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_PROGRAM_MAP(showhanc_map)
+MACHINE_CONFIG_START(astrocorp_state::showhanc)
+	showhand(config);
+	MCFG_DEVICE_MODIFY("maincpu")
+	MCFG_DEVICE_PROGRAM_MAP(showhanc_map)
 MACHINE_CONFIG_END
 
 
@@ -545,18 +575,18 @@ TIMER_DEVICE_CALLBACK_MEMBER(astrocorp_state::skilldrp_scanline)
 		m_maincpu->set_input_line(2, HOLD_LINE);
 }
 
-static MACHINE_CONFIG_START( skilldrp )
+MACHINE_CONFIG_START(astrocorp_state::skilldrp)
 
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", M68000, XTAL_24MHz / 2) // JX-1689F1028N GRX586.V5
-	MCFG_CPU_PROGRAM_MAP(skilldrp_map)
-	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", astrocorp_state, skilldrp_scanline, "screen", 0, 1)
+	MCFG_DEVICE_ADD("maincpu", M68000, XTAL(24'000'000) / 2) // JX-1689F1028N GRX586.V5
+	MCFG_DEVICE_PROGRAM_MAP(skilldrp_map)
+	TIMER(config, "scantimer").configure_scanline(FUNC(astrocorp_state::skilldrp_scanline), "screen", 0, 1);
 
-	MCFG_NVRAM_ADD_0FILL("nvram")
-	MCFG_EEPROM_SERIAL_93C46_ADD("eeprom")
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
+	EEPROM_93C46_16BIT(config, "eeprom");
 
-	MCFG_TICKET_DISPENSER_ADD("ticket", attotime::from_msec(200), TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW )
-	MCFG_TICKET_DISPENSER_ADD("hopper", attotime::from_msec(200), TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW )
+	TICKET_DISPENSER(config, m_ticket, attotime::from_msec(200), TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW );
+	TICKET_DISPENSER(config, m_hopper, attotime::from_msec(200), TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW );
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -566,25 +596,23 @@ static MACHINE_CONFIG_START( skilldrp )
 //  MCFG_SCREEN_VISIBLE_AREA(0, 0x200-1, 0, 0xf0-1)
 	MCFG_SCREEN_RAW_PARAMS(ASTROCORP_PIXEL_CLOCK,ASTROCORP_HTOTAL,ASTROCORP_HBEND,512,ASTROCORP_VTOTAL,ASTROCORP_VBEND,ASTROCORP_VBSTART)
 	MCFG_SCREEN_UPDATE_DRIVER(astrocorp_state, screen_update_astrocorp)
-	MCFG_SCREEN_PALETTE("palette")
+	MCFG_SCREEN_PALETTE(m_palette)
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", astrocorp)
-	MCFG_PALETTE_ADD("palette", 0x100)
-	MCFG_PALETTE_FORMAT(BBBBBGGGGGGRRRRR)
-
-	MCFG_VIDEO_START_OVERRIDE(astrocorp_state,astrocorp)
+	GFXDECODE(config, m_gfxdecode, m_palette, gfx_astrocorp);
+	PALETTE(config, m_palette).set_format(palette_device::BGR_565, 0x100);
 
 	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
+	SPEAKER(config, "mono").front_center();
 
-	MCFG_OKIM6295_ADD("oki", XTAL_24MHz/24, PIN7_HIGH)
+	MCFG_DEVICE_ADD("oki", OKIM6295, XTAL(24'000'000)/24, okim6295_device::PIN7_HIGH)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_DERIVED( speeddrp, skilldrp )
-	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_PROGRAM_MAP(speeddrp_map)
+MACHINE_CONFIG_START(astrocorp_state::speeddrp)
+	skilldrp(config);
+	MCFG_DEVICE_MODIFY("maincpu")
+	MCFG_DEVICE_PROGRAM_MAP(speeddrp_map)
 MACHINE_CONFIG_END
 
 
@@ -1181,7 +1209,7 @@ ROM_START( dinodino )
 ROM_END
 
 
-DRIVER_INIT_MEMBER(astrocorp_state,showhand)
+void astrocorp_state::init_showhand()
 {
 #if 0
 	uint16_t *rom = (uint16_t*)memregion("maincpu")->base();
@@ -1197,7 +1225,7 @@ DRIVER_INIT_MEMBER(astrocorp_state,showhand)
 #endif
 }
 
-DRIVER_INIT_MEMBER(astrocorp_state,showhanc)
+void astrocorp_state::init_showhanc()
 {
 #if 0
 	uint16_t *rom = (uint16_t*)memregion("maincpu")->base();
@@ -1210,7 +1238,7 @@ DRIVER_INIT_MEMBER(astrocorp_state,showhanc)
 #endif
 }
 
-DRIVER_INIT_MEMBER(astrocorp_state,astoneag)
+void astrocorp_state::init_astoneag()
 {
 #if 0
 	uint16_t *rom = (uint16_t*)memregion("maincpu")->base();
@@ -1361,16 +1389,16 @@ DRIVER_INIT_MEMBER(astrocorp_state,astoneag)
 #endif
 }
 
-GAME( 2000,  showhand,  0,        showhand, showhand, astrocorp_state, showhand, ROT0, "Astro Corp.",        "Show Hand (Italy)",                MACHINE_SUPPORTS_SAVE )
-GAME( 2000,  showhanc,  showhand, showhanc, showhanc, astrocorp_state, showhanc, ROT0, "Astro Corp.",        "Wang Pai Dui Jue (China)",         MACHINE_SUPPORTS_SAVE )
-GAME( 2002,  skilldrp,  0,        skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Skill Drop Georgia (Ver. G1.0S)",  MACHINE_SUPPORTS_SAVE )
-GAME( 2003,  speeddrp,  0,        speeddrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Speed Drop (Ver. 1.06)",           MACHINE_SUPPORTS_SAVE )
+GAME( 2000,  showhand,  0,        showhand, showhand, astrocorp_state, init_showhand, ROT0, "Astro Corp.",        "Show Hand (Italy)",                MACHINE_SUPPORTS_SAVE )
+GAME( 2000,  showhanc,  showhand, showhanc, showhanc, astrocorp_state, init_showhanc, ROT0, "Astro Corp.",        "Wang Pai Dui Jue (China)",         MACHINE_SUPPORTS_SAVE )
+GAME( 2002,  skilldrp,  0,        skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Skill Drop Georgia (Ver. G1.0S)",  MACHINE_SUPPORTS_SAVE )
+GAME( 2003,  speeddrp,  0,        speeddrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Speed Drop (Ver. 1.06)",           MACHINE_SUPPORTS_SAVE )
 
 // Encrypted games (not working):
-GAME( 2003?, dinodino,  0,        skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Dino Dino",                        MACHINE_NOT_WORKING )
-GAME( 2004?, astoneag,  0,        skilldrp, skilldrp, astrocorp_state, astoneag, ROT0, "Astro Corp.",        "Stone Age (Astro, Ver. ENG.03.A)", MACHINE_NOT_WORKING )
-GAME( 2005?, winbingo,  0,        skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Win Win Bingo (set 1)",            MACHINE_NOT_WORKING )
-GAME( 2005?, winbingoa, winbingo, skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Win Win Bingo (set 2)",            MACHINE_NOT_WORKING )
-GAME( 2005?, hacher,    winbingo, skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "bootleg (Gametron)", "Hacher (hack of Win Win Bingo)",   MACHINE_NOT_WORKING )
-GAME( 2005?, zoo,       0,        showhand, showhand, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Zoo (Ver. ZO.02.D)",               MACHINE_NOT_WORKING )
-GAME( 2007?, westvent,  0,        skilldrp, skilldrp, astrocorp_state, 0,        ROT0, "Astro Corp.",        "Western Venture (Ver. AA.02.D)",   MACHINE_NOT_WORKING )
+GAME( 2003?, dinodino,  0,        skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Dino Dino",                        MACHINE_NOT_WORKING )
+GAME( 2004?, astoneag,  0,        skilldrp, skilldrp, astrocorp_state, init_astoneag, ROT0, "Astro Corp.",        "Stone Age (Astro, Ver. ENG.03.A)", MACHINE_NOT_WORKING )
+GAME( 2005?, winbingo,  0,        skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Win Win Bingo (set 1)",            MACHINE_NOT_WORKING )
+GAME( 2005?, winbingoa, winbingo, skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Win Win Bingo (set 2)",            MACHINE_NOT_WORKING )
+GAME( 2005?, hacher,    winbingo, skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "bootleg (Gametron)", "Hacher (hack of Win Win Bingo)",   MACHINE_NOT_WORKING )
+GAME( 2005?, zoo,       0,        showhand, showhand, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Zoo (Ver. ZO.02.D)",               MACHINE_NOT_WORKING )
+GAME( 2007?, westvent,  0,        skilldrp, skilldrp, astrocorp_state, empty_init,    ROT0, "Astro Corp.",        "Western Venture (Ver. AA.02.D)",   MACHINE_NOT_WORKING )

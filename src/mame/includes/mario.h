@@ -1,10 +1,13 @@
 // license:BSD-3-Clause
 // copyright-holders:Mirko Buffoni
-#ifndef MARIO_H_
-#define MARIO_H_
+#ifndef MAME_INCLUDES_MARIO_H
+#define MAME_INCLUDES_MARIO_H
+
+#pragma once
 
 #include "machine/gen_latch.h"
 #include "machine/z80dma.h"
+#include "emupal.h"
 
 #define OLD_SOUND   (0)
 
@@ -22,7 +25,7 @@
  * 7C -> 100 => 256 - 124 = 132 ==> 264 Scanlines
  */
 
-#define MASTER_CLOCK            XTAL_24MHz
+#define MASTER_CLOCK            XTAL(24'000'000)
 #define PIXEL_CLOCK             (MASTER_CLOCK / 4)
 #define CLOCK_1H                (MASTER_CLOCK / 8)
 #define CLOCK_16H               (CLOCK_1H / 16)
@@ -36,18 +39,17 @@
 #define VBSTART                 (240)
 #define VBEND                   (16)
 
-#define Z80_MASTER_CLOCK        XTAL_8MHz
+#define Z80_MASTER_CLOCK        XTAL(8'000'000)
 #define Z80_CLOCK               (Z80_MASTER_CLOCK / 2) /* verified on pcb */
 
-#define I8035_MASTER_CLOCK      XTAL_11MHz /* verified on pcb: 730Khz */
+#define I8035_MASTER_CLOCK      XTAL(11'000'000) /* verified on pcb: 730Khz */
 #define I8035_CLOCK             (I8035_MASTER_CLOCK)
 
 class mario_state : public driver_device
 {
 public:
-	mario_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-
+	mario_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_audiocpu(*this, "audiocpu"),
 		m_gfxdecode(*this, "gfxdecode"),
@@ -67,8 +69,16 @@ public:
 #endif
 		m_spriteram(*this, "spriteram"),
 		m_videoram(*this, "videoram"),
-		m_monitor(0) { }
+		m_monitor(0)
+	{ }
 
+	void mario_base(machine_config &config);
+	void masao(machine_config &config);
+	void masao_audio(machine_config &config);
+	void mario(machine_config &config);
+	void mario_audio(machine_config &config);
+
+private:
 	/* devices */
 	required_device<cpu_device> m_maincpu;
 	required_device<cpu_device> m_audiocpu;
@@ -80,7 +90,7 @@ public:
 	optional_device<generic_latch_8_device> m_soundlatch3;
 	optional_device<generic_latch_8_device> m_soundlatch4;
 #if OLD_SOUND
-	optional_device<discrete_device> m_discrete;
+	optional_device<discrete_sound_device> m_discrete;
 #else
 	optional_device<netlist_mame_logic_input_device> m_audio_snd0;
 	optional_device<netlist_mame_logic_input_device> m_audio_snd1;
@@ -128,9 +138,9 @@ public:
 	virtual void video_start() override;
 	virtual void sound_start() override;
 	virtual void sound_reset() override;
-	DECLARE_PALETTE_INIT(mario);
+	void mario_palette(palette_device &palette) const;
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	INTERRUPT_GEN_MEMBER(vblank_irq);
+	DECLARE_WRITE_LINE_MEMBER(vblank_irq);
 	DECLARE_WRITE8_MEMBER(mario_sh_sound_w);
 	DECLARE_WRITE8_MEMBER(mario_sh1_w);
 	DECLARE_WRITE8_MEMBER(mario_sh2_w);
@@ -138,11 +148,12 @@ public:
 	DECLARE_WRITE8_MEMBER(memory_write_byte);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void set_ea(int ea);
+	void mario_io_map(address_map &map);
+	void mario_map(address_map &map);
+	void mario_sound_io_map(address_map &map);
+	void mario_sound_map(address_map &map);
+	void masao_map(address_map &map);
+	void masao_sound_map(address_map &map);
 };
 
-/*----------- defined in audio/mario.c -----------*/
-
-MACHINE_CONFIG_EXTERN( mario_audio );
-MACHINE_CONFIG_EXTERN( masao_audio );
-
-#endif /*MARIO_H_*/
+#endif // MAME_INCLUDES_MARIO_H

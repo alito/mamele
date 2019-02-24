@@ -157,7 +157,7 @@ WRITE_LINE_MEMBER( thomson_state::to7_set_cassette_motor )
    Bit-order is most significant bit first (unlike TO7).
 
    Double-density MO6 cassettes follow the exact same mechanism, but with
-   at double frequency (perdiods at 2400 Hz, and half-perdios at 1200 Hz).
+   at double frequency (periods at 2400 Hz, and half-periods at 1200 Hz).
 */
 
 
@@ -375,7 +375,7 @@ READ8_MEMBER( thomson_state::to7_cartridge_r )
 {
 	uint8_t* pos = memregion( "maincpu" )->base() + 0x10000;
 	uint8_t data = pos[offset + (m_thom_cart_bank % m_thom_cart_nb_banks) * 0x4000];
-	if ( !machine().side_effect_disabled() )
+	if ( !machine().side_effects_disabled() )
 	{
 		m_thom_cart_bank = offset & 3;
 		to7_update_cart_bank();
@@ -520,24 +520,24 @@ to7_io_line_device::to7_io_line_device(const machine_config &mconfig, const char
 {
 }
 
-MACHINE_CONFIG_MEMBER( to7_io_line_device::device_add_mconfig )
+MACHINE_CONFIG_START(to7_io_line_device::device_add_mconfig)
 	/// THIS PIO is part of CC 90-232 expansion
-	MCFG_DEVICE_ADD(THOM_PIA_IO, PIA6821, 0)
-	MCFG_PIA_READPA_HANDLER(READ8(to7_io_line_device, porta_in))
-	MCFG_PIA_WRITEPA_HANDLER(WRITE8(to7_io_line_device, porta_out))
-	MCFG_PIA_WRITEPB_HANDLER(DEVWRITE8("cent_data_out", output_latch_device, write))
-	MCFG_PIA_CB2_HANDLER(DEVWRITELINE("centronics", centronics_device, write_strobe))
-	MCFG_PIA_IRQA_HANDLER(DEVWRITELINE("^mainfirq", input_merger_device, in_w<1>))
-	MCFG_PIA_IRQB_HANDLER(DEVWRITELINE("^mainfirq", input_merger_device, in_w<1>))
+	PIA6821(config, m_pia_io, 0);
+	m_pia_io->readpa_handler().set(FUNC(to7_io_line_device::porta_in));
+	m_pia_io->writepa_handler().set(FUNC(to7_io_line_device::porta_out));
+	m_pia_io->writepb_handler().set("cent_data_out", FUNC(output_latch_device::bus_w));
+	m_pia_io->cb2_handler().set("centronics", FUNC(centronics_device::write_strobe));
+	m_pia_io->irqa_handler().set("^mainfirq", FUNC(input_merger_device::in_w<1>));
+	m_pia_io->irqb_handler().set("^mainfirq", FUNC(input_merger_device::in_w<1>));
 
-	MCFG_RS232_PORT_ADD("rs232", default_rs232_devices, nullptr)
-	MCFG_RS232_RXD_HANDLER(WRITELINE(to7_io_line_device, write_rxd))
-	MCFG_RS232_CTS_HANDLER(WRITELINE(to7_io_line_device, write_cts))
-	MCFG_RS232_DSR_HANDLER(WRITELINE(to7_io_line_device, write_dsr))
+	RS232_PORT(config, m_rs232, default_rs232_devices, nullptr);
+	m_rs232->rxd_handler().set(FUNC(to7_io_line_device::write_rxd));
+	m_rs232->cts_handler().set(FUNC(to7_io_line_device::write_cts));
+	m_rs232->dsr_handler().set(FUNC(to7_io_line_device::write_dsr));
 
-	MCFG_CENTRONICS_ADD("centronics", centronics_devices, "printer")
-	MCFG_CENTRONICS_ACK_HANDLER(DEVWRITELINE(THOM_PIA_IO, pia6821_device, cb1_w))
-	MCFG_CENTRONICS_BUSY_HANDLER(WRITELINE(to7_io_line_device, write_centronics_busy))
+	MCFG_DEVICE_ADD("centronics", CENTRONICS, centronics_devices, "printer")
+	MCFG_CENTRONICS_ACK_HANDLER(WRITELINE(THOM_PIA_IO, pia6821_device, cb1_w))
+	MCFG_CENTRONICS_BUSY_HANDLER(WRITELINE(*this, to7_io_line_device, write_centronics_busy))
 
 	MCFG_CENTRONICS_OUTPUT_LATCH_ADD("cent_data_out", "centronics")
 
@@ -641,8 +641,8 @@ WRITE_LINE_MEMBER( thomson_state::to7_modem_tx_w )
 
 WRITE_LINE_MEMBER( thomson_state::write_acia_clock )
 {
-	m_acia6850->write_txc(state);
-	m_acia6850->write_rxc(state);
+	m_acia->write_txc(state);
+	m_acia->write_rxc(state);
 }
 
 void thomson_state::to7_modem_reset()
@@ -668,7 +668,7 @@ void thomson_state::to7_modem_init()
 
 READ8_MEMBER( thomson_state::to7_modem_mea8000_r )
 {
-	if ( machine().side_effect_disabled() )
+	if ( machine().side_effects_disabled() )
 	{
 		return 0;
 	}
@@ -1534,7 +1534,7 @@ READ8_MEMBER( thomson_state::mo5_cartridge_r )
 {
 	uint8_t* pos = memregion( "maincpu" )->base() + 0x10000;
 	uint8_t data = pos[offset + 0xbffc + (m_thom_cart_bank % m_thom_cart_nb_banks) * 0x4000];
-	if ( !machine().side_effect_disabled() )
+	if ( !machine().side_effects_disabled() )
 	{
 		m_thom_cart_bank = offset & 3;
 		mo5_update_cart_bank();
@@ -1713,14 +1713,14 @@ void thomson_state::to9_set_video_mode( uint8_t data, int style )
 			thom_set_video_mode( THOM_VMODE_TO9 );
 		break;
 
-		// undocumented, but tested on a real TO8D
-		case 0x20: thom_set_video_mode( THOM_VMODE_MO5_ALT );     break;
+	// undocumented, but tested on a real TO8D
+	case 0x20: thom_set_video_mode( THOM_VMODE_MO5_ALT );     break;
 
 	case 0x21: thom_set_video_mode( THOM_VMODE_BITMAP4 );     break;
 
 	case 0x41: thom_set_video_mode( THOM_VMODE_BITMAP4_ALT ); break;
 
-		// also undocumented but tested
+	// also undocumented but tested
 	case 0x59: thom_set_video_mode( THOM_VMODE_BITMAP4_ALT_HALF ); break;
 
 	case 0x2a:
@@ -1743,6 +1743,9 @@ void thomson_state::to9_set_video_mode( uint8_t data, int style )
 
 	case 0x3f: thom_set_video_mode( THOM_VMODE_OVERLAY3 );    break;
 
+	// undocumented variant enconding for bitmap16
+	case 0x5b: thom_set_video_mode( THOM_VMODE_BITMAP16_ALT ); break;
+
 	default:
 		logerror( "to9_set_video_mode: unknown mode $%02X tr=%i phi=%i mod=%i\n", data, (data >> 5) & 3, (data >> 3) & 2, data & 7 );
 	}
@@ -1757,7 +1760,7 @@ READ8_MEMBER( thomson_state::to9_vreg_r )
 	case 0: /* palette data */
 	{
 		uint8_t c =  m_to9_palette_data[ m_to9_palette_idx ];
-		if ( !machine().side_effect_disabled() )
+		if ( !machine().side_effects_disabled() )
 		{
 			m_to9_palette_idx = ( m_to9_palette_idx + 1 ) & 31;
 		}
@@ -1937,7 +1940,7 @@ READ8_MEMBER( thomson_state::to9_cartridge_r )
 {
 	uint8_t* pos = memregion( "maincpu" )->base() + 0x10000;
 	uint8_t data = pos[offset + (m_thom_cart_bank % m_thom_cart_nb_banks) * 0x4000];
-	if ( !machine().side_effect_disabled() )
+	if ( !machine().side_effects_disabled() )
 	{
 		m_thom_cart_bank = offset & 3;
 		to9_update_cart_bank();
@@ -2091,7 +2094,7 @@ READ8_MEMBER( thomson_state::to9_kbd_r )
 		return m_to9_kbd_status;
 
 	case 1: /* get input data */
-		if ( !machine().side_effect_disabled() )
+		if ( !machine().side_effects_disabled() )
 		{
 			m_to9_kbd_status &= ~(ACIA_6850_irq | ACIA_6850_PE);
 			if ( m_to9_kbd_overrun )
@@ -3141,7 +3144,7 @@ READ8_MEMBER( thomson_state::to8_cartridge_r )
 {
 	uint8_t* pos = memregion( "maincpu" )->base() + 0x10000;
 	uint8_t data = pos[offset + (m_thom_cart_bank % m_thom_cart_nb_banks) * 0x4000];
-	if ( !machine().side_effect_disabled() )
+	if ( !machine().side_effects_disabled() )
 	{
 		m_thom_cart_bank = offset & 3;
 		to8_update_cart_bank();
@@ -3175,7 +3178,7 @@ void thomson_state::to8_floppy_reset()
 
 READ8_MEMBER( thomson_state::to8_floppy_r )
 {
-	if ( machine().side_effect_disabled() )
+	if ( machine().side_effects_disabled() )
 		return 0;
 
 	if ( (m_to8_reg_sys1 & 0x80) && THOM_FLOPPY_EXT )
@@ -3234,7 +3237,7 @@ READ8_MEMBER( thomson_state::to8_gatearray_r )
 	case 1: /* ram register / lightpen register 2 */
 		if ( m_to7_lightpen )
 		{
-			if ( !machine().side_effect_disabled() )
+			if ( !machine().side_effects_disabled() )
 			{
 				m_mainfirq->in_w<2>(0);
 				m_to8_lightpen_intr = 0;
@@ -3319,7 +3322,7 @@ READ8_MEMBER( thomson_state::to8_vreg_r )
 	/* 0xe7dc from external floppy drive aliases the video gate-array */
 	if ( ( offset == 3 ) && ( m_to8_reg_ram & 0x80 ) && ( m_to8_reg_sys1 & 0x80 ) )
 	{
-		if ( machine().side_effect_disabled() )
+		if ( machine().side_effects_disabled() )
 			return 0;
 
 		if ( THOM_FLOPPY_EXT )
@@ -3333,7 +3336,7 @@ READ8_MEMBER( thomson_state::to8_vreg_r )
 	case 0: /* palette data */
 	{
 		uint8_t c =  m_to9_palette_data[ m_to9_palette_idx ];
-		if ( !machine().side_effect_disabled() )
+		if ( !machine().side_effects_disabled() )
 		{
 			m_to9_palette_idx = ( m_to9_palette_idx + 1 ) & 31;
 		}
@@ -4013,7 +4016,7 @@ READ8_MEMBER( thomson_state::mo6_cartridge_r )
 {
 	uint8_t* pos = memregion( "maincpu" )->base() + 0x10000;
 	uint8_t data = pos[offset + 0xbffc + (m_thom_cart_bank % m_thom_cart_nb_banks) * 0x4000];
-	if ( !machine().side_effect_disabled() )
+	if ( !machine().side_effects_disabled() )
 	{
 		m_thom_cart_bank = offset & 3;
 		mo6_update_cart_bank();
@@ -4187,7 +4190,7 @@ READ8_MEMBER( thomson_state::mo6_gatearray_r )
 	case 1: /* ram register / lightpen register 2 */
 		if ( m_to7_lightpen )
 		{
-			if ( !machine().side_effect_disabled() )
+			if ( !machine().side_effects_disabled() )
 			{
 				m_mainfirq->in_w<2>(0);
 				m_to8_lightpen_intr = 0;
@@ -4269,7 +4272,7 @@ READ8_MEMBER( thomson_state::mo6_vreg_r )
 	/* 0xa7dc from external floppy drive aliases the video gate-array */
 	if ( ( offset == 3 ) && ( m_to8_reg_ram & 0x80 ) )
 		{
-		if ( !machine().side_effect_disabled() )
+		if ( !machine().side_effects_disabled() )
 			return to7_floppy_r( space, 0xc );
 		}
 
@@ -4449,7 +4452,7 @@ MACHINE_START_MEMBER( thomson_state, mo6 )
 
 READ8_MEMBER( thomson_state::mo5nr_net_r )
 {
-	if ( machine().side_effect_disabled() )
+	if ( machine().side_effects_disabled() )
 		return 0;
 
 	if ( to7_controller_type )

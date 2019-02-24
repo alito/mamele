@@ -6,8 +6,10 @@
  *
  ****************************************************************************/
 
-#ifndef MIKRO80_H_
-#define MIKRO80_H_
+#ifndef MAME_INCLUDES_MIKRO80_H
+#define MAME_INCLUDES_MIKRO80_H
+
+#pragma once
 
 #include "machine/i8255.h"
 #include "imagedev/cassette.h"
@@ -21,8 +23,8 @@ public:
 		TIMER_RESET
 	};
 
-	mikro80_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
+	mikro80_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
 		m_cursor_ram(*this, "cursor_ram"),
 		m_video_ram(*this, "video_ram"),
 		m_ppi8255(*this, "ppi8255"),
@@ -40,8 +42,17 @@ public:
 		m_io_line7(*this, "LINE7"),
 		m_io_line8(*this, "LINE8") ,
 		m_dac(*this, "dac"),
-		m_maincpu(*this, "maincpu") { }
+		m_maincpu(*this, "maincpu")
+	{ }
 
+	void kristall(machine_config &config);
+	void radio99(machine_config &config);
+	void mikro80(machine_config &config);
+
+	void init_radio99();
+	void init_mikro80();
+
+private:
 	required_shared_ptr<uint8_t> m_cursor_ram;
 	required_shared_ptr<uint8_t> m_video_ram;
 	int m_keyboard_mask;
@@ -55,13 +66,15 @@ public:
 	DECLARE_WRITE8_MEMBER(mikro80_keyboard_w);
 	DECLARE_WRITE8_MEMBER(mikro80_tape_w);
 	DECLARE_READ8_MEMBER(mikro80_tape_r);
-	DECLARE_DRIVER_INIT(radio99);
-	DECLARE_DRIVER_INIT(mikro80);
 	virtual void machine_reset() override;
 	virtual void video_start() override;
 	uint32_t screen_update_mikro80(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-protected:
+	void kristall_io(address_map &map);
+	void mikro80_io(address_map &map);
+	void mikro80_mem(address_map &map);
+	void radio99_io(address_map &map);
+
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 	required_device<i8255_device> m_ppi8255;
 	required_device<cassette_image_device> m_cassette;
@@ -81,4 +94,4 @@ protected:
 	required_device<cpu_device> m_maincpu;
 };
 
-#endif /* UT88_H_ */
+#endif // MAME_INCLUDES_MIKRO80_H

@@ -79,6 +79,7 @@ class dc_state : public driver_device
 	DECLARE_WRITE64_MEMBER( dc_modem_w );
 	DECLARE_WRITE8_MEMBER( g1_irq );
 	DECLARE_WRITE8_MEMBER( pvr_irq );
+	DECLARE_WRITE8_MEMBER( maple_irq );
 	DECLARE_READ64_MEMBER( sh4_soundram_r );
 	DECLARE_WRITE64_MEMBER( sh4_soundram_w );
 	DECLARE_WRITE_LINE_MEMBER(aica_irq);
@@ -96,7 +97,8 @@ class dc_state : public driver_device
 	TIMER_DEVICE_CALLBACK_MEMBER(dc_scanline);
 	DECLARE_MACHINE_RESET(dc_console);
 
-	DECLARE_INPUT_CHANGED_MEMBER(mastercpu_cheat_r);
+	void naomi_aw_base(machine_config &config);
+	void dc_audio_map(address_map &map);
 };
 
 /*--------- Ch2-DMA Control Registers ----------*/
@@ -285,7 +287,5 @@ class dc_state : public driver_device
 /* -------------- error interrupts ------------- */
 #define IST_ERR_ISP_LIMIT        0x00000004
 #define IST_ERR_PVRIF_ILL_ADDR   0x00000040
-
-void dc_maple_irq(running_machine &machine);
 
 #endif // MAME_INCLUDES_DC_H

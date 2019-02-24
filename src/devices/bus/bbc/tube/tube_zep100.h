@@ -32,16 +32,9 @@ public:
 	// construction/destruction
 	bbc_tube_zep100_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	DECLARE_READ8_MEMBER( mem_r );
-	DECLARE_WRITE8_MEMBER( mem_w );
-	DECLARE_READ8_MEMBER( io_r );
-	DECLARE_WRITE8_MEMBER( io_w );
-
-	DECLARE_WRITE8_MEMBER( via_pb_w );
-	DECLARE_READ8_MEMBER( ppi_pb_r );
-	DECLARE_WRITE8_MEMBER( ppi_pc_w );
-
 protected:
+	bbc_tube_zep100_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
@@ -53,15 +46,28 @@ protected:
 	virtual DECLARE_READ8_MEMBER( host_r ) override;
 	virtual DECLARE_WRITE8_MEMBER( host_w ) override;
 
+	bool m_rom_enabled;
+
 private:
-	required_device<cpu_device> m_z80;
+	required_device<z80_device> m_z80;
 	required_device<via6522_device> m_via;
 	required_device<i8255_device> m_ppi;
 	required_device<ram_device> m_ram;
 	required_memory_region m_rom;
 
 	uint8_t m_port_b;
-	bool m_rom_enabled;
+
+	DECLARE_READ8_MEMBER( mem_r );
+	DECLARE_WRITE8_MEMBER( mem_w );
+	DECLARE_READ8_MEMBER( io_r );
+	DECLARE_WRITE8_MEMBER( io_w );
+
+	DECLARE_WRITE8_MEMBER( via_pb_w );
+	DECLARE_READ8_MEMBER( ppi_pb_r );
+	DECLARE_WRITE8_MEMBER( ppi_pc_w );
+
+	void tube_zep100_io(address_map &map);
+	void tube_zep100_mem(address_map &map);
 };
 
 

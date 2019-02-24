@@ -44,7 +44,7 @@ USE_QTDEBUG = 0
 
 # DEBUG = 1
 # PROFILER = 1
-# SANITIZE = 1
+# SANITIZE =
 
 # PTR64 = 1
 # BIGENDIAN = 1
@@ -56,9 +56,14 @@ USE_QTDEBUG = 0
 # MAP = 1
 # PROFILE = 1
 # ARCHOPTS =
+# ARCHOPTS_C =
+# ARCHOPTS_CXX =
+# ARCHOPTS_OBJC =
+# ARCHOPTS_OBJCXX =
 # OPT_FLAGS =
 # LDOPTS =
 
+# USE_SYSTEM_LIB_ASIO = 1
 # USE_SYSTEM_LIB_EXPAT = 1
 # USE_SYSTEM_LIB_ZLIB = 1
 # USE_SYSTEM_LIB_JPEG = 1
@@ -69,6 +74,9 @@ USE_QTDEBUG = 0
 # USE_SYSTEM_LIB_PORTAUDIO = 1
 # USE_BUNDLED_LIB_SDL2 = 1
 # USE_SYSTEM_LIB_UTF8PROC = 1
+# USE_SYSTEM_LIB_GLM = 1
+# USE_SYSTEM_LIB_RAPIDJSON = 1
+# USE_SYSTEM_LIB_PUGIXML = 1
 
 # MESA_INSTALL_ROOT = /opt/mesa
 # SDL_INSTALL_ROOT = /opt/sdl2
@@ -84,7 +92,7 @@ USE_QTDEBUG = 0
 # OVERRIDE_CXX = c++
 # OVERRIDE_LD = ld
 
-# DEPRECATED = 1
+# DEPRECATED = 0
 # LTO = 1
 # SSE2 = 1
 # OPENMP = 1
@@ -165,6 +173,12 @@ PLATFORM := arm64
 endif
 ifneq ($(filter powerpc,$(UNAME_P)),)
 PLATFORM := powerpc
+endif
+ifneq ($(filter riscv64%,$(UNAME_M)),)
+PLATFORM := riscv64
+endif
+ifneq ($(filter riscv64%,$(UNAME_P)),)
+PLATFORM := riscv64
 endif
 ifneq ($(filter mips64%,$(UNAME_M)),)
 ifeq ($(shell getconf LONG_BIT),64)
@@ -349,6 +363,13 @@ ifndef NOASM
 endif
 endif
 
+ifeq ($(findstring riscv64,$(UNAME)),riscv64)
+ARCHITECTURE :=
+ifndef NOASM
+	NOASM := 1
+endif
+endif
+
 # Emscripten
 ifeq ($(findstring emcc,$(CC)),emcc)
 TARGETOS := asmjs
@@ -433,6 +454,10 @@ endif
 # which 3rdparty library to build;
 #  link against system (common) library otherwise
 #-------------------------------------------------
+ifdef USE_SYSTEM_LIB_ASIO
+PARAMS += --with-system-asio='$(USE_SYSTEM_LIB_ASIO)'
+endif
+
 ifdef USE_SYSTEM_LIB_EXPAT
 PARAMS += --with-system-expat='$(USE_SYSTEM_LIB_EXPAT)'
 endif
@@ -467,6 +492,18 @@ endif
 
 ifdef USE_SYSTEM_LIB_UTF8PROC
 PARAMS += --with-system-utf8proc='$(USE_SYSTEM_LIB_UTF8PROC)'
+endif
+
+ifdef USE_SYSTEM_LIB_GLM
+PARAMS += --with-system-glm='$(USE_SYSTEM_LIB_GLM)'
+endif
+
+ifdef USE_SYSTEM_LIB_RAPIDJSON
+PARAMS += --with-system-rapidjson='$(USE_SYSTEM_LIB_RAPIDJSON)'
+endif
+
+ifdef USE_SYSTEM_LIB_PUGIXML
+PARAMS += --with-system-pugixml='$(USE_SYSTEM_LIB_PUGIXML)'
 endif
 
 # reverse logic for this one
@@ -600,6 +637,22 @@ endif
 
 ifdef ARCHOPTS
 PARAMS += --ARCHOPTS='$(ARCHOPTS)'
+endif
+
+ifdef ARCHOPTS_C
+PARAMS += --ARCHOPTS_C='$(ARCHOPTS_C)'
+endif
+
+ifdef ARCHOPTS_CXX
+PARAMS += --ARCHOPTS_CXX='$(ARCHOPTS_CXX)'
+endif
+
+ifdef ARCHOPTS_OBJC
+PARAMS += --ARCHOPTS_OBJC='$(ARCHOPTS_OBJC)'
+endif
+
+ifdef ARCHOPTS_OBJCXX
+PARAMS += --ARCHOPTS_OBJCXX='$(ARCHOPTS_OBJCXX)'
 endif
 
 ifdef OPT_FLAGS
@@ -789,6 +842,10 @@ endif
 ifdef WEBASSEMBLY
 PARAMS += --WEBASSEMBLY='$(WEBASSEMBLY)'
 endif
+
+ifdef SANITIZE
+PARAMS += --SANITIZE='$(SANITIZE)'
+endif
 #-------------------------------------------------
 # All scripts
 #-------------------------------------------------
@@ -859,7 +916,7 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
   MKDIR = $(SILENT) mkdir -p "$(1)"
-  COPY  = $(SILENT) cp -fR "$(1)" "$(2)"
+  COPY  = $(SILENT) cp -fR "$(1)"/* "$(2)"
 else
   MKDIR = $(SILENT) mkdir "$(subst /,\\,$(1))" 2> nul || exit 0
   COPY  = $(SILENT) copy /Y "$(subst /,\\,$(1))" "$(subst /,\\,$(2))" > nul || exit 0
@@ -884,12 +941,12 @@ endif
 ifeq ($(OS),windows)
 ifeq (posix,$(SHELLTYPE))
 GCC_VERSION      := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) -dumpversion 2> /dev/null)
-CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) --version 2> /dev/null| head -n 1 | grep clang | sed "s/^.*[^0-9]\([0-9]*\.[0-9]*\.[0-9]*\).*$$/\1/" | head -n 1)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) --version 2> /dev/null| head -n 1 | grep clang | sed "s/^.*[^0-9]\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$$/\1/" | head -n 1)
 PYTHON_AVAILABLE := $(shell $(PYTHON) --version > /dev/null 2>&1 && echo python)
 GIT_AVAILABLE    := $(shell git --version > /dev/null 2>&1 && echo git)
 else
 GCC_VERSION      := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) -dumpversion 2> NUL)
-CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) --version 2> NUL| head -n 1 | grep clang | sed "s/^.*[^0-9]\([0-9]*\.[0-9]*\.[0-9]*\).*$$/\1/" | head -n 1)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) --version 2> NUL| head -n 1 | grep clang | sed "s/^.*[^0-9]\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$$/\1/" | head -n 1)
 PYTHON_AVAILABLE := $(shell $(PYTHON) --version > NUL 2>&1 && echo python)
 GIT_AVAILABLE    := $(shell git --version > NUL 2>&1 && echo git)
 endif
@@ -925,7 +982,7 @@ endif
 else
 GCC_VERSION      := $(shell $(TOOLCHAIN)$(subst @,,$(CC)) -dumpversion 2> /dev/null)
 ifneq ($(OS),solaris)
-CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))  --version  2> /dev/null | head -n 1 | grep -e 'version [0-9]\.[0-9]\(\.[0-9]\)\?' -o | grep -e '[0-9]\.[0-9]\(\.[0-9]\)\?' -o | tail -n 1)
+CLANG_VERSION    := $(shell $(TOOLCHAIN)$(subst @,,$(CC))  --version  2> /dev/null | head -n 1 | grep -e 'version [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | grep -e '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' -o | tail -n 1)
 endif
 PYTHON_AVAILABLE := $(shell $(PYTHON) --version > /dev/null 2>&1 && echo python)
 GIT_AVAILABLE := $(shell git --version > /dev/null 2>&1 && echo git)
@@ -1163,36 +1220,6 @@ android-arm64: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64/
 	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-arm64 config=$(CONFIG)
 
 #-------------------------------------------------
-# android-mips
-#-------------------------------------------------
-
-$(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips/Makefile: makefile $(SCRIPTS) $(GENIE)
-ifndef ANDROID_NDK_MIPS
-	$(error ANDROID_NDK_MIPS is not set)
-endif
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-mips --gcc_version=3.8.0 --osd=sdl --targetos=android --PLATFORM=mips --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --NO_X11=1 --DONT_USE_NETWORK=1 --NOASM=1 $(MAKETYPE)
-
-.PHONY: android-mips
-android-mips: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips/Makefile
-	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips config=$(CONFIG) precompile
-	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips config=$(CONFIG)
-
-#-------------------------------------------------
-# android-mips64
-#-------------------------------------------------
-
-$(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips64/Makefile: makefile $(SCRIPTS) $(GENIE)
-ifndef ANDROID_NDK_MIPS64
-	$(error ANDROID_NDK_MIPS64 is not set)
-endif
-	$(SILENT) $(GENIE) $(PARAMS) --gcc=android-mips64 --gcc_version=3.8.0 --osd=sdl --targetos=android --PLATFORM=mips64 --NO_USE_MIDI=1 --NO_OPENGL=1 --USE_QTDEBUG=0 --NO_X11=1 --DONT_USE_NETWORK=1 --NOASM=1 $(MAKETYPE)
-
-.PHONY: android-mips64
-android-mips64: android-ndk generate $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips64/Makefile
-	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips64 config=$(CONFIG) precompile
-	$(SILENT) $(MAKE) $(MAKEPARAMS) -C $(PROJECTDIR_SDL)/$(MAKETYPE)-android-mips64 config=$(CONFIG)
-
-#-------------------------------------------------
 # android-x86
 #-------------------------------------------------
 
@@ -1367,6 +1394,23 @@ freebsd_x86: generate $(PROJECTDIR)/$(MAKETYPE)-freebsd/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-freebsd config=$(CONFIG)32
 
 #-------------------------------------------------
+# gmake-freebsd-clang
+#-------------------------------------------------
+
+$(PROJECTDIR)/$(MAKETYPE)-freebsd-clang/Makefile: makefile $(SCRIPTS) $(GENIE)
+	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=freebsd-clang --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
+
+.PHONY: freebsd_x64_clang
+freebsd_x64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang config=$(CONFIG)64 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang config=$(CONFIG)64
+
+.PHONY: freebsd_x86_clang
+freebsd_x86_clang: generate $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang config=$(CONFIG)32 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-freebsd-clang config=$(CONFIG)32
+
+#-------------------------------------------------
 # gmake-netbsd
 #-------------------------------------------------
 
@@ -1385,6 +1429,23 @@ netbsd: netbsd_x86
 netbsd_x86: generate $(PROJECTDIR)/$(MAKETYPE)-netbsd/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd config=$(CONFIG)32 precompile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd config=$(CONFIG)32
+
+#-------------------------------------------------
+# gmake-netbsd-clang
+#-------------------------------------------------
+
+$(PROJECTDIR)/$(MAKETYPE)-netbsd-clang/Makefile: makefile $(SCRIPTS) $(GENIE)
+	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=netbsd-clang --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
+
+.PHONY: netbsd_x64_clang
+netbsd_x64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang config=$(CONFIG)64 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang config=$(CONFIG)64
+
+.PHONY: netbsd_x86_clang
+netbsd_x86_clang: generate $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang config=$(CONFIG)32 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-netbsd-clang config=$(CONFIG)32
 
 #-------------------------------------------------
 # gmake-openbsd
@@ -1556,14 +1617,14 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.193"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.206"' > $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char build_version[];' >> $@
 	@echo 'const char bare_build_version[] = BARE_BUILD_VERSION;' >> $@
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " ($(NEW_GIT_VERSION))";' >> $@
 else
 $(GENDIR)/version.cpp: $(GENDIR)/git_desc
-	@echo #define BARE_BUILD_VERSION "0.193" > $@
+	@echo #define BARE_BUILD_VERSION "0.206" > $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char build_version[]; >> $@
 	@echo const char bare_build_version[] = BARE_BUILD_VERSION; >> $@

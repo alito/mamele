@@ -55,17 +55,29 @@ enum
 	M37710_LINE_RESET,
 
 	// these are not interrupts, they're signals external hardware can send
-	M37710_LINE_TIMERA0TICK,
-	M37710_LINE_TIMERA1TICK,
-	M37710_LINE_TIMERA2TICK,
-	M37710_LINE_TIMERA3TICK,
-	M37710_LINE_TIMERA4TICK,
-	M37710_LINE_TIMERB0TICK,
-	M37710_LINE_TIMERB1TICK,
-	M37710_LINE_TIMERB2TICK,
+	M37710_LINE_TIMERA0IN,
+	M37710_LINE_TIMERA1IN,
+	M37710_LINE_TIMERA2IN,
+	M37710_LINE_TIMERA3IN,
+	M37710_LINE_TIMERA4IN,
+	M37710_LINE_TIMERB0IN,
+	M37710_LINE_TIMERB1IN,
+	M37710_LINE_TIMERB2IN,
+
+	M37710_LINE_TIMERA0OUT,
+	M37710_LINE_TIMERA1OUT,
+	M37710_LINE_TIMERA2OUT,
+	M37710_LINE_TIMERA3OUT,
+	M37710_LINE_TIMERA4OUT,
+	M37710_LINE_TIMERB0OUT,
+	M37710_LINE_TIMERB1OUT,
+	M37710_LINE_TIMERB2OUT,
 
 	M37710_LINE_MAX
 };
+
+#define M37710_INTERRUPT_MAX (M37710_LINE_RESET + 1)
+
 
 /* Registers - used by m37710_set_reg() and m37710_get_reg() */
 enum
@@ -99,13 +111,12 @@ enum
 
 class m37710_cpu_device : public cpu_device, public m7700_disassembler::config
 {
-public:
+protected:
 	DECLARE_READ8_MEMBER( m37710_internal_r );
 	DECLARE_WRITE8_MEMBER( m37710_internal_w );
 
-protected:
 	// construction/destruction
-	m37710_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_delegate map_delegate);
+	m37710_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, address_map_constructor map_delegate);
 
 	// device-level overrides
 	virtual void device_start() override;
@@ -127,7 +138,7 @@ protected:
 	virtual void state_string_export(const device_state_entry &entry, std::string &str) const override;
 
 	// device_disasm_interface overrides
-	virtual util::disasm_interface *create_disassembler() override;
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 	virtual bool get_m_flag() const override;
 	virtual bool get_x_flag() const override;
 
@@ -171,7 +182,7 @@ private:
 	uint32_t m_source;        /* temp register */
 	uint32_t m_destination;   /* temp register */
 	address_space *m_program;
-	direct_read_data<0> *m_direct;
+	memory_access_cache<1, 0, ENDIANNESS_LITTLE> *m_cache;
 	address_space *m_io;
 	uint32_t m_stopped;       /* Sets how the CPU is stopped */
 
@@ -179,6 +190,7 @@ private:
 	uint8_t m_m37710_regs[128];
 	attotime m_reload[8];
 	emu_timer *m_timers[8];
+	int m_timer_out[8];
 	uint32_t m_dma0_src, m_dma0_dst, m_dma0_cnt, m_dma0_mode;
 	uint32_t m_dma1_src, m_dma1_dst, m_dma1_cnt, m_dma1_mode;
 	uint32_t m_dma2_src, m_dma2_dst, m_dma2_cnt, m_dma2_mode;
@@ -199,13 +211,13 @@ private:
 	typedef void (m37710_cpu_device::*set_line_func)(int line, int state);
 	typedef int  (m37710_cpu_device::*execute_func)(int cycles);
 
-	static const int m37710_irq_levels[M37710_LINE_MAX];
-	static const int m37710_irq_vectors[M37710_LINE_MAX];
+	static const int m37710_irq_levels[M37710_INTERRUPT_MAX];
+	static const int m37710_irq_vectors[M37710_INTERRUPT_MAX];
 	static const char *const m37710_rnames[128];
 	static const char *const m37710_tnames[8];
-	static const opcode_func *m37710i_opcodes[4];
-	static const opcode_func *m37710i_opcodes2[4];
-	static const opcode_func *m37710i_opcodes3[4];
+	static const opcode_func *const m37710i_opcodes[4];
+	static const opcode_func *const m37710i_opcodes2[4];
+	static const opcode_func *const m37710i_opcodes3[4];
 	static const get_reg_func m37710i_get_reg[4];
 	static const set_reg_func m37710i_set_reg[4];
 	static const set_line_func m37710i_set_line[4];
@@ -236,8 +248,6 @@ private:
 	TIMER_CALLBACK_MEMBER( m37710_timer_cb );
 	void m37710_external_tick(int timer, int state);
 	void m37710_recalc_timer(int timer);
-	uint8_t m37710_internal_r(int offset);
-	void m37710_internal_w(int offset, uint8_t data);
 	uint32_t m37710i_get_reg_M0X0(int regnum);
 	uint32_t m37710i_get_reg_M0X1(int regnum);
 	uint32_t m37710i_get_reg_M1X0(int regnum);
@@ -2027,7 +2037,7 @@ public:
 	// construction/destruction
 	m37702s1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 protected:
-	DECLARE_ADDRESS_MAP(map, 16);
+	void map(address_map &map);
 };
 
 class m37702m2_device : public m37710_cpu_device
@@ -2037,7 +2047,7 @@ public:
 	m37702m2_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 protected:
 	m37702m2_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
-	DECLARE_ADDRESS_MAP(map, 16);
+	void map(address_map &map);
 };
 
 class m37710s4_device : public m37710_cpu_device
@@ -2046,7 +2056,7 @@ public:
 	// construction/destruction
 	m37710s4_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 protected:
-	DECLARE_ADDRESS_MAP(map, 16);
+	void map(address_map &map);
 };
 
 class m37720s1_device : public m37710_cpu_device
@@ -2055,7 +2065,7 @@ public:
 	// construction/destruction
 	m37720s1_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 protected:
-	DECLARE_ADDRESS_MAP(map, 16);
+	void map(address_map &map);
 };
 
 DECLARE_DEVICE_TYPE(M37702M2, m37702m2_device)

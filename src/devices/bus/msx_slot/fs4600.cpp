@@ -27,17 +27,9 @@ msx_slot_fs4600_device::msx_slot_fs4600_device(const machine_config &mconfig, co
 }
 
 
-MACHINE_CONFIG_MEMBER( msx_slot_fs4600_device::device_add_mconfig )
-	MCFG_NVRAM_ADD_0FILL("nvram")
-MACHINE_CONFIG_END
-
-
-void msx_slot_fs4600_device::set_rom_start(device_t &device, const char *region, uint32_t offset)
+void msx_slot_fs4600_device::device_add_mconfig(machine_config &config)
 {
-	msx_slot_fs4600_device &dev = downcast<msx_slot_fs4600_device &>(device);
-
-	dev.m_rom_region.set_tag(region);
-	dev.m_region_offset = offset;
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 }
 
 

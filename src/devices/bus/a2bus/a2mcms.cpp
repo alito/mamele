@@ -39,7 +39,7 @@ DEFINE_DEVICE_TYPE(A2BUS_MCMS2, a2bus_mcms2_device, "a2mcms2", "Mountain Compute
 #define ENGINE_TAG  "engine"
 
 #define MCFG_MCMS_IRQ_CALLBACK(_cb) \
-	devcb = &mcms_device::set_irq_cb(*device, DEVCB_##_cb);
+	downcast<mcms_device &>(*device).set_irq_cb(DEVCB_##_cb);
 
 /***************************************************************************
     FUNCTION PROTOTYPES
@@ -49,11 +49,12 @@ DEFINE_DEVICE_TYPE(A2BUS_MCMS2, a2bus_mcms2_device, "a2mcms2", "Mountain Compute
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-MACHINE_CONFIG_MEMBER( a2bus_mcms1_device::device_add_mconfig )
-	MCFG_SPEAKER_STANDARD_STEREO("mcms_l", "mcms_r")
+MACHINE_CONFIG_START(a2bus_mcms1_device::device_add_mconfig)
+	SPEAKER(config, "mcms_l").front_left();
+	SPEAKER(config, "mcms_r").front_right();
 
 	MCFG_DEVICE_ADD(ENGINE_TAG, MCMS, 1000000)
-	MCFG_MCMS_IRQ_CALLBACK(WRITELINE(a2bus_mcms1_device, irq_w))
+	MCFG_MCMS_IRQ_CALLBACK(WRITELINE(*this, a2bus_mcms1_device, irq_w))
 
 	MCFG_SOUND_ROUTE(0, "mcms_l", 1.0)
 	MCFG_SOUND_ROUTE(1, "mcms_r", 1.0)
@@ -81,8 +82,6 @@ a2bus_mcms1_device::a2bus_mcms1_device(const machine_config &mconfig, const char
 
 void a2bus_mcms1_device::device_start()
 {
-	// set_a2bus_device makes m_slot valid
-	set_a2bus_device();
 }
 
 void a2bus_mcms1_device::device_reset()
@@ -159,18 +158,13 @@ a2bus_mcms2_device::a2bus_mcms2_device(const machine_config &mconfig, const char
 
 void a2bus_mcms2_device::device_start()
 {
-	// set_a2bus_device makes m_slot valid
-	set_a2bus_device();
-
-	if (m_slot < 2)
-	{
+	if (slotno() < 2)
 		fatalerror("MCMS: Card 2 must be in slot 2 or greater\n");
-	}
 }
 
 void a2bus_mcms2_device::device_reset()
 {
-	m_card1 = static_cast<a2bus_mcms1_device *>(m_a2bus->m_device_list[m_slot-1]);
+	m_card1 = downcast<a2bus_mcms1_device *>(a2bus().m_device_list[slotno()-1]);
 	m_engine = m_card1->get_engine();
 }
 
@@ -283,7 +277,7 @@ void mcms_device::sound_stream_update(sound_stream &stream, stream_sample_t **in
 				wptr = (m_table[v]<<8) | (m_acc[v]>>8);
 				m_rand = (m_acc[v]>>8) & 0x1f;
 
-				sample = (m_pBusDevice->slot_dma_read_no_space(wptr) ^ 0x80);
+				sample = (m_pBusDevice->slot_dma_read(wptr) ^ 0x80);
 				if (v & 1)
 				{
 					mixL += sample * m_vols[v];

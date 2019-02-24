@@ -53,25 +53,6 @@ The following chips are functionally equivalent and pin-compatible.
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_FIFO7200_ADD(_tag, _ramsize) \
-	MCFG_DEVICE_ADD(_tag, FIFO7200, 0) \
-	fifo7200_device::set_ram_size(*device, _ramsize);
-
-#define MCFG_FIFO7200_EF_HANDLER(_devcb) \
-	devcb = &fifo7200_device::set_ef_handler(*device, DEVCB_##_devcb);
-
-#define MCFG_FIFO7200_FF_HANDLER(_devcb) \
-	devcb = &fifo7200_device::set_ff_handler(*device, DEVCB_##_devcb);
-
-#define MCFG_FIFO7200_HF_HANDLER(_devcb) \
-	devcb = &fifo7200_device::set_hf_handler(*device, DEVCB_##_devcb);
-
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -80,13 +61,18 @@ The following chips are functionally equivalent and pin-compatible.
 class fifo7200_device : public device_t
 {
 public:
+	fifo7200_device(const machine_config &mconfig, const char *tag, device_t *owner, int size)
+		: fifo7200_device(mconfig, tag, owner, (uint32_t)0)
+	{
+		set_ram_size(size);
+	}
+
 	fifo7200_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	// static configuration helpers
-	template <class Object> static devcb_base &set_ef_handler(device_t &device, Object &&cb) { return downcast<fifo7200_device &>(device).m_ef_handler.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_ff_handler(device_t &device, Object &&cb) { return downcast<fifo7200_device &>(device).m_ff_handler.set_callback(std::forward<Object>(cb)); }
-	template <class Object> static devcb_base &set_hf_handler(device_t &device, Object &&cb) { return downcast<fifo7200_device &>(device).m_hf_handler.set_callback(std::forward<Object>(cb)); }
-	static void set_ram_size(device_t &device, int size) { downcast<fifo7200_device &>(device).m_ram_size = size; }
+	auto ef_handler() { return m_ef_handler.bind(); }
+	auto ff_handler() { return m_ff_handler.bind(); }
+	auto hf_handler() { return m_hf_handler.bind(); }
+	void set_ram_size(int size) { m_ram_size = size; }
 
 	DECLARE_READ_LINE_MEMBER( ef_r ) { return !m_ef; } // _EF
 	DECLARE_READ_LINE_MEMBER( ff_r ) { return !m_ff; } // _FF
