@@ -1485,6 +1485,7 @@ configuration { "vsllvm" }
 			"-Wno-switch",
 			"-Wno-tautological-undefined-compare",
 			"-Wno-deprecated-declarations",
+			"-Wno-macro-redefined",
 		}
 
 
