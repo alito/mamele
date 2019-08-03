@@ -1308,6 +1308,9 @@ configuration { "vsllvm" }
 		"_CRT_SECURE_NO_DEPRECATE",
 		"_CRT_STDIO_LEGACY_WIDE_SPECIFIERS",
 	}
+	includedirs {
+		MAME_DIR .. "3rdparty/dxsdk/Include"
+	}
 
 configuration { "vs20*" }
 		defines {
@@ -1486,6 +1489,7 @@ configuration { "vsllvm" }
 			"-Wno-tautological-undefined-compare",
 			"-Wno-deprecated-declarations",
 			"-Wno-macro-redefined",
+			"-Wno-narrowing",
 		}
 
 
