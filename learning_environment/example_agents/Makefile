@@ -7,26 +7,25 @@ MAME_LE_DIRECTORY=..
 CFLAGS += -Wall -fPIC -I$(MAME_LE_DIRECTORY)
 
 
-PYTHON2CFLAGS := -I$(shell python2 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
-PYTHON2LIBS := -l$(shell python2 -c 'import sysconfig; print (sysconfig.get_config_var("LDLIBRARY")[3:-3])') -lm
 
-PYTHON3CFLAGS := -I$(shell python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))')
-PYTHON3LIBS := -l$(shell python3 -c 'import sysconfig; print (sysconfig.get_config_var("LDLIBRARY")[3:-3])') -lm
+PYTHONBINDINGS = 
+
+ifneq (, $(shell which python2-config))
+	PYTHONBINDINGS += python2binding.so
+	PYTHON2CFLAGS := $(shell python2-config --includes)
+	PYTHON2LIBS := $(shell python2-config --libs)
+endif
+
+ifneq (, $(shell which python3-config))
+	PYTHONBINDINGS += python3binding.so
+	PYTHON3CFLAGS := $(shell python3-config --includes)
+	PYTHON3LIBS := $(shell python3-config --libs)
+endif
 
 OPTFLAGS = -O2
 
 DEBUGFLAGS = -g
 
-
-# Conditionally compile python2 and python3 bindings depending on what's installed
-PYTHONBINDINGS = 
-ifneq ($(PYTHON2LIBS), "-l -lm")
-	PYTHONBINDINGS += python2binding.so
-endif
-
-ifneq ($(PYTHON3LIBS), "-l -lm")
-	PYTHONBINDINGS += python3binding.so
-endif
 
 all: sit.so $(PYTHONBINDINGS)
 
