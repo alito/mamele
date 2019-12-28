@@ -92,6 +92,7 @@ video_manager::video_manager(running_machine &machine)
 	, m_seconds_to_run(machine.options().seconds_to_run())
 	, m_auto_frameskip(machine.options().auto_frameskip())
 	, m_speed(original_speed_setting())
+	, m_low_latency(machine.options().low_latency())
 	, m_empty_skip_count(0)
 	, m_frameskip_level(machine.options().frameskip())
 	, m_frameskip_counter(0)
@@ -233,7 +234,7 @@ void video_manager::frame_update(bool from_debugger)
 
 	// if we're throttling, synchronize before rendering
 	attotime current_time = machine().time();
-	if (!from_debugger && !skipped_it && effective_throttle())
+	if (!from_debugger && !skipped_it && !m_low_latency && effective_throttle())
 		update_throttle(current_time);
 
 	// ask the OSD to update
@@ -242,6 +243,13 @@ void video_manager::frame_update(bool from_debugger)
 		machine().osd().update(!from_debugger && skipped_it);
 	}
 	g_profiler.stop();
+
+	// we synchronize after rendering instead of before, if low latency mode is enabled
+	if (!from_debugger && !skipped_it && m_low_latency && effective_throttle())
+		update_throttle(current_time);
+
+	// get most recent input now
+	machine().osd().input_update();
 
 	if (m_learning_environment_enabled) {
 		/* create the bitmap */
