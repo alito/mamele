@@ -19,7 +19,7 @@ endif
 ifneq (, $(shell which python3-config))
 	PYTHONBINDINGS += python3binding.so
 	PYTHON3CFLAGS := $(shell python3-config --includes)
-	PYTHON3LIBS := $(shell python3-config --libs)
+	PYTHON3LIBS := $(shell python3-config --libs --embed)
 endif
 
 OPTFLAGS = -O2
