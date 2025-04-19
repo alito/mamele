@@ -464,11 +464,11 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 	/* copy the contents of the bitmap to the framebuffer pointer we are going to pass around */
 	/* We are copying in the same format that it comes in, one full pixel at a time */
 	int x, y;
-	u32 *base;
+	const u32 *base;
 	unsigned int *idest = (unsigned int *) frame_buffer.buffer;
 	//fprintf(stderr, "bitmap format %d\n", bitmap.format());
 	for (y = 0; y < height; y++) {
-		base = reinterpret_cast<u32 *> (bitmap.raw_pixptr(y, 0));
+		base = reinterpret_cast<const u32 *> (bitmap.raw_pixptr(y, 0));
 		for (x = 0; x < width; x++) {
 			*idest++ = *base++;
 		}
