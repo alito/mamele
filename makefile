@@ -326,6 +326,9 @@ endif
 ifeq ($(firstword $(filter ppc64,$(UNAME))),ppc64)
 ARCHITECTURE := _x64
 endif
+ifeq ($(firstword $(filter powerpc64,$(UNAME))),powerpc64)
+ARCHITECTURE := _x64
+endif
 ifeq ($(firstword $(filter ppc64le,$(UNAME))),ppc64le)
 ARCHITECTURE := _x64
 endif
@@ -363,33 +366,6 @@ WINDRES  := $(word 1,$(TOOLCHAIN) i686-w64-mingw32-)windres
 endif
 endif
 
-ifeq ($(findstring arm,$(UNAME)),arm)
-ARCHITECTURE :=
-ifndef NOASM
-	NOASM := 1
-endif
-endif
-
-ifeq ($(findstring aarch64,$(UNAME)),aarch64)
-ARCHITECTURE :=
-ifndef NOASM
-	NOASM := 1
-endif
-endif
-
-ifeq ($(findstring s390x,$(UNAME)),s390x)
-ifndef NOASM
-	NOASM := 1
-endif
-endif
-
-ifeq ($(findstring riscv64,$(UNAME)),riscv64)
-ARCHITECTURE :=
-ifndef NOASM
-	NOASM := 1
-endif
-endif
-
 # Emscripten
 ifeq ($(findstring emcc,$(CC)),emcc)
 TARGETOS := asmjs
@@ -399,15 +375,37 @@ ifndef NOASM
 endif
 endif
 
-# ppc has inline assembly support but no DRC
 ifeq ($(findstring ppc,$(UNAME)),ppc)
 ifndef FORCE_DRC_C_BACKEND
 	FORCE_DRC_C_BACKEND := 1
 endif
 endif
 
-# ARM / ARM64
+ifeq ($(findstring powerpc,$(UNAME)),powerpc)
+ifndef FORCE_DRC_C_BACKEND
+	FORCE_DRC_C_BACKEND := 1
+endif
+endif
+
 ifeq ($(findstring arm,$(UNAME)),arm)
+ifndef FORCE_DRC_C_BACKEND
+	FORCE_DRC_C_BACKEND := 1
+endif
+endif
+
+ifeq ($(findstring aarch64,$(UNAME)),aarch64)
+ifndef FORCE_DRC_C_BACKEND
+	FORCE_DRC_C_BACKEND := 1
+endif
+endif
+
+ifeq ($(findstring s390x,$(UNAME)),s390x)
+ifndef FORCE_DRC_C_BACKEND
+	FORCE_DRC_C_BACKEND := 1
+endif
+endif
+
+ifeq ($(findstring riscv64,$(UNAME)),riscv64)
 ifndef FORCE_DRC_C_BACKEND
 	FORCE_DRC_C_BACKEND := 1
 endif
@@ -431,6 +429,14 @@ ifneq (,$(findstring s390x,$(UNAME)))
 BIGENDIAN := 1
 endif
 endif # BIGENDIAN
+# FreeBSD
+ifneq (,$(findstring powerpc,$(UNAME)))
+ifneq (,$(findstring powerpc64le,$(UNAME)))
+BIGENDIAN := 0
+else
+BIGENDIAN := 1
+endif
+endif
 
 ifndef PYTHON_EXECUTABLE
 PYTHON := python
@@ -1746,14 +1752,14 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.227"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.228"' > $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char build_version[];' >> $@
 	@echo 'const char bare_build_version[] = BARE_BUILD_VERSION;' >> $@
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " ($(NEW_GIT_VERSION))";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.227" > $@
+	@echo #define BARE_BUILD_VERSION "0.228" > $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char build_version[]; >> $@
 	@echo const char bare_build_version[] = BARE_BUILD_VERSION; >> $@
