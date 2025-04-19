@@ -502,6 +502,9 @@ configuration { "vs20*" }
 	buildoptions {
 		"/bigobj",
 	}
+	buildoptions_cpp {
+		"/Zc:__cplusplus",
+	}
 	flags {
 		"ExtraWarnings",
 	}
