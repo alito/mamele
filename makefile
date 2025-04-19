@@ -36,6 +36,7 @@ LEARNING_ENVIRONMENT = 1
 # SDL2_MULTIAPI = 1
 # NO_USE_MIDI = 1
 # NO_USE_PORTAUDIO = 1
+# NO_USE_PULSEAUDIO = 1
 # USE_TAPTUN = 1
 # USE_PCAP = 1
 # Just to reduce dependencies
@@ -432,7 +433,6 @@ endif
 ifneq (,$(findstring s390x,$(UNAME)))
 BIGENDIAN := 1
 endif
-endif # BIGENDIAN
 # FreeBSD
 ifneq (,$(findstring powerpc,$(UNAME)))
 ifneq (,$(findstring powerpc64le,$(UNAME)))
@@ -441,6 +441,7 @@ else
 BIGENDIAN := 1
 endif
 endif
+endif # BIGENDIAN
 
 ifndef PYTHON_EXECUTABLE
 PYTHON := python
@@ -776,6 +777,10 @@ endif
 
 ifdef NO_USE_PORTAUDIO
 PARAMS += --NO_USE_PORTAUDIO='$(NO_USE_PORTAUDIO)'
+endif
+
+ifdef NO_USE_PULSEAUDIO
+PARAMS += --NO_USE_PULSEAUDIO='$(NO_USE_PULSEAUDIO)'
 endif
 
 ifdef USE_QTDEBUG
@@ -1764,14 +1769,14 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.232"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.233"' > $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char build_version[];' >> $@
 	@echo 'const char bare_build_version[] = BARE_BUILD_VERSION;' >> $@
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " ($(NEW_GIT_VERSION))";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.232" > $@
+	@echo #define BARE_BUILD_VERSION "0.233" > $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char build_version[]; >> $@
 	@echo const char bare_build_version[] = BARE_BUILD_VERSION; >> $@
