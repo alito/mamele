@@ -94,6 +94,7 @@ USE_QTDEBUG = 0
 # OVERRIDE_CC = cc
 # OVERRIDE_CXX = c++
 # OVERRIDE_LD = ld
+# OVERRIDE_AR = ar
 
 # DEPRECATED = 0
 # LTO = 1
@@ -112,7 +113,7 @@ USE_QTDEBUG = 0
 # FORCE_VERSION_COMPILE = 1
 
 # MSBUILD = 1
-# IGNORE_BAD_LOCALISATION=1
+# IGNORE_BAD_LOCALISATION = 1
 # PRECOMPILE = 0
 
 # DEBUG_DIR=c:\test\location
@@ -242,6 +243,7 @@ endif
 # build scripts will be run from
 # scripts/target/$(TARGET)/$(SUBTARGET).lua
 #-------------------------------------------------
+
 ifdef PROJECT
 PARAMS += --PROJECT='$(PROJECT)'
 TARGET := $(PROJECT)
@@ -595,6 +597,12 @@ ifndef CROSS_BUILD
 LD := $(OVERRIDE_LD)
 endif
 endif
+ifdef OVERRIDE_AR
+PARAMS += --AR='$(OVERRIDE_AR)'
+ifndef CROSS_BUILD
+AR := $(OVERRIDE_AR)
+endif
+endif
 
 #-------------------------------------------------
 # sanity check the configuration
@@ -901,10 +909,10 @@ endif
 ifdef SANITIZE
 PARAMS += --SANITIZE='$(SANITIZE)'
 endif
+
 #-------------------------------------------------
 # All scripts
 #-------------------------------------------------
-
 
 SCRIPTS = scripts/genie.lua \
 	scripts/src/lib.lua \
@@ -1475,6 +1483,7 @@ xcode4-ios: generate
 #-------------------------------------------------
 # gmake-solaris
 #-------------------------------------------------
+
 ifndef CLANG_VERSION
 $(PROJECTDIR)/$(MAKETYPE)-solaris/Makefile: makefile $(SCRIPTS) $(GENIE)
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=solaris --gcc_version=$(GCC_VERSION) $(MAKETYPE)
@@ -1495,6 +1504,7 @@ solaris_x86: generate $(PROJECTDIR)/$(MAKETYPE)-solaris/Makefile
 #-------------------------------------------------
 # gmake-solaris-clang
 #-------------------------------------------------
+
 ifdef CLANG_VERSION
 $(PROJECTDIR)/$(MAKETYPE)-solaris/Makefile: makefile $(SCRIPTS) $(GENIE)
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) --gcc=solaris --gcc_version=$(CLANG_VERSION) $(MAKETYPE)
@@ -1511,7 +1521,6 @@ solaris_clang: solaris_x86_clang
 solaris_x86_clang: generate $(PROJECTDIR)/$(MAKETYPE)-solaris/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-solaris config=$(CONFIG)32 precompile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-solaris config=$(CONFIG)32
-
 
 #-------------------------------------------------
 # gmake-freebsd
@@ -1682,6 +1691,7 @@ endif
 #-------------------------------------------------
 # cmake
 #-------------------------------------------------
+
 .PHONY: cmake
 cmake: generate
 	$(SILENT) $(GENIE) $(PARAMS) $(TARGET_PARAMS) cmake
@@ -1754,14 +1764,14 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.230"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.231"' > $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char build_version[];' >> $@
 	@echo 'const char bare_build_version[] = BARE_BUILD_VERSION;' >> $@
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " ($(NEW_GIT_VERSION))";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.230" > $@
+	@echo #define BARE_BUILD_VERSION "0.231" > $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char build_version[]; >> $@
 	@echo const char bare_build_version[] = BARE_BUILD_VERSION; >> $@
@@ -1780,6 +1790,7 @@ ifdef IGNORE_BAD_LOCALISATION
 else
 	$(SILENT)$(PYTHON) scripts/build/msgfmt.py --output-file $@ $<
 endif
+
 #-------------------------------------------------
 # Regression tests
 #-------------------------------------------------
