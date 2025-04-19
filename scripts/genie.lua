@@ -1182,6 +1182,7 @@ configuration { "asmjs" }
 	}
 	linkoptions {
 		"-Wl,--start-group",
+		"-r",
 	}
 	archivesplit_size "20"
 
