@@ -1028,6 +1028,21 @@ end
 
 ---------------------------------------------------
 --
+--@src/devices/bus/casloopy/slot.h,BUSES["CASLOOPY"] = true
+---------------------------------------------------
+
+if (BUSES["CASLOOPY"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/bus/casloopy/slot.cpp",
+		MAME_DIR .. "src/devices/bus/casloopy/slot.h",
+		MAME_DIR .. "src/devices/bus/casloopy/rom.cpp",
+		MAME_DIR .. "src/devices/bus/casloopy/rom.h",
+	}
+end
+
+
+---------------------------------------------------
+--
 --@src/devices/bus/cbm2/exp.h,BUSES["CBM2"] = true
 --@src/devices/bus/cbm2/user.h,BUSES["CBM2"] = true
 ---------------------------------------------------
@@ -3030,6 +3045,8 @@ if (BUSES["NUBUS"]~=null) then
 		MAME_DIR .. "src/devices/bus/nubus/nubus_image.h",
 		MAME_DIR .. "src/devices/bus/nubus/nubus_wsportrait.cpp",
 		MAME_DIR .. "src/devices/bus/nubus/nubus_wsportrait.h",
+		MAME_DIR .. "src/devices/bus/nubus/8lc.cpp",
+		MAME_DIR .. "src/devices/bus/nubus/8lc.h",
 		MAME_DIR .. "src/devices/bus/nubus/bootbug.cpp",
 		MAME_DIR .. "src/devices/bus/nubus/bootbug.h",
 		MAME_DIR .. "src/devices/bus/nubus/quadralink.cpp",
@@ -3038,6 +3055,8 @@ if (BUSES["NUBUS"]~=null) then
 		MAME_DIR .. "src/devices/bus/nubus/laserview.h",
 		MAME_DIR .. "src/devices/bus/nubus/supermac.cpp",
 		MAME_DIR .. "src/devices/bus/nubus/supermac.h",
+		MAME_DIR .. "src/devices/bus/nubus/thunder4gx.cpp",
+		MAME_DIR .. "src/devices/bus/nubus/thunder4gx.h",
 		MAME_DIR .. "src/devices/bus/nubus/pds30_cb264.cpp",
 		MAME_DIR .. "src/devices/bus/nubus/pds30_cb264.h",
 		MAME_DIR .. "src/devices/bus/nubus/pds30_procolor816.cpp",
