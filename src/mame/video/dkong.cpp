@@ -56,7 +56,7 @@ static const double cd4049_al = 0.01;
     dkong color interface:
 
     All outputs are open-collector and pullup resistors are connected to 5V.
-    Red and Green outputs are routed through a complimentary darlington
+    Red and Green outputs are routed through a complementary darlington
     whereas blue is routed through a 1:1 stage leading to a 0.7V cutoff.
 */
 
@@ -935,7 +935,7 @@ VIDEO_START_MEMBER(dkong_state,dkong)
 {
 	VIDEO_START_CALL_MEMBER(dkong_base);
 
-	m_scanline_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(dkong_state::scanline_callback),this));
+	m_scanline_timer = timer_alloc(FUNC(dkong_state::scanline_callback), this);
 	m_scanline_timer->adjust(m_screen->time_until_pos(0));
 
 	switch (m_hardware_type)

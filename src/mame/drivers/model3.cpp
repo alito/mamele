@@ -122,7 +122,7 @@ Sega ID# for Model 3 PCBs:
 837-12875 MODEL3 STEP 1.5 VIDEO BOARD
 837-12715-91 MODEL3 STEP2 CPU BOARD
 837-12716-91 MODEL3 STEP2 VIDEO BOARD (has been listed with and without the "-91")
-837-13368 MODEL3 STEP2.1 VIDEO BD (most manuals show this is interchangable with 837-12716 STEP2 video board)
+837-13368 MODEL3 STEP2.1 VIDEO BD (most manuals show this is interchangeable with 837-12716 STEP2 video board)
 
 This document is for MODEL3 (the first version).
 The games that exist on this hardware include....
@@ -1325,33 +1325,33 @@ MACHINE_START_MEMBER(model3_state,model3_10)
 {
 	configure_fast_ram();
 
-	m_sound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_sound_timer_tick),this));
-	m_real3d_dma_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::real3d_dma_timer_callback),this));
-	m_scan_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_scan_timer_tick),this));
+	m_sound_timer = timer_alloc(FUNC(model3_state::model3_sound_timer_tick), this);
+	m_real3d_dma_timer = timer_alloc(FUNC(model3_state::real3d_dma_timer_callback), this);
+	m_scan_timer = timer_alloc(FUNC(model3_state::model3_scan_timer_tick), this);
 }
 MACHINE_START_MEMBER(model3_state,model3_15)
 {
 	configure_fast_ram();
 
-	m_sound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_sound_timer_tick),this));
-	m_real3d_dma_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::real3d_dma_timer_callback),this));
-	m_scan_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_scan_timer_tick),this));
+	m_sound_timer = timer_alloc(FUNC(model3_state::model3_sound_timer_tick), this);
+	m_real3d_dma_timer = timer_alloc(FUNC(model3_state::real3d_dma_timer_callback), this);
+	m_scan_timer = timer_alloc(FUNC(model3_state::model3_scan_timer_tick), this);
 }
 MACHINE_START_MEMBER(model3_state,model3_20)
 {
 	configure_fast_ram();
 
-	m_sound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_sound_timer_tick),this));
-	m_real3d_dma_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::real3d_dma_timer_callback),this));
-	m_scan_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_scan_timer_tick),this));
+	m_sound_timer = timer_alloc(FUNC(model3_state::model3_sound_timer_tick), this);
+	m_real3d_dma_timer = timer_alloc(FUNC(model3_state::real3d_dma_timer_callback), this);
+	m_scan_timer = timer_alloc(FUNC(model3_state::model3_scan_timer_tick), this);
 }
 MACHINE_START_MEMBER(model3_state,model3_21)
 {
 	configure_fast_ram();
 
-	m_sound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_sound_timer_tick),this));
-	m_real3d_dma_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::real3d_dma_timer_callback),this));
-	m_scan_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(model3_state::model3_scan_timer_tick),this));
+	m_sound_timer = timer_alloc(FUNC(model3_state::model3_sound_timer_tick), this);
+	m_real3d_dma_timer = timer_alloc(FUNC(model3_state::real3d_dma_timer_callback), this);
+	m_scan_timer = timer_alloc(FUNC(model3_state::model3_scan_timer_tick), this);
 }
 
 void model3_state::model3_init(int step)

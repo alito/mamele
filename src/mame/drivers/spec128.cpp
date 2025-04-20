@@ -151,7 +151,6 @@ resulting mess can be seen in the F4 viewer display.
 *******************************************************************************/
 
 #include "emu.h"
-#include "includes/spectrum.h"
 #include "includes/spec128.h"
 
 #include "cpu/z80/z80.h"
@@ -198,8 +197,7 @@ u8 spectrum_128_state::spectrum_128_rom_r(offs_t offset)
 		: ((u8*)m_bank_rom[0]->base())[offset];
 }
 
-template <u8 Bank>
-void spectrum_128_state::spectrum_128_ram_w(offs_t offset, u8 data)
+template <u8 Bank> void spectrum_128_state::spectrum_128_ram_w(offs_t offset, u8 data)
 {
 	u16 addr = 0x4000 * Bank + offset;
 	if (is_contended(addr)) content_early();
@@ -207,9 +205,10 @@ void spectrum_128_state::spectrum_128_ram_w(offs_t offset, u8 data)
 
 	((u8*)m_bank_ram[Bank]->base())[offset] = data;
 }
+// Base 128 models typically don't share RAM in bank0. Reserved for extension in 256+.
+template void spectrum_128_state::spectrum_128_ram_w<0>(offs_t offset, u8 data);
 
-template <u8 Bank>
-u8 spectrum_128_state::spectrum_128_ram_r(offs_t offset)
+template <u8 Bank> u8 spectrum_128_state::spectrum_128_ram_r(offs_t offset)
 {
 	u16 addr = 0x4000 * Bank + offset;
 	if (is_contended(addr)) content_early();
@@ -299,18 +298,16 @@ void spectrum_128_state::machine_start()
 	memory_region *rom = memregion("maincpu");
 	m_bank_rom[0]->configure_entries(0, 2, rom->base() + 0x10000, 0x4000);
 
+	auto ram_entries = m_ram->size() / 0x4000;
 	for (auto i = 1; i < 4; i++)
-		m_bank_ram[i]->configure_entries(0, m_ram->size() / 0x4000, m_ram->pointer(), 0x4000);
+		m_bank_ram[i]->configure_entries(0, ram_entries, m_ram->pointer(), 0x4000);
+
+	m_bank_ram[1]->set_entry(ram_entries > 5 ? 5 : (ram_entries - 1)); /* Bank 5 is always in 0x4000 - 0x7fff */
+	m_bank_ram[2]->set_entry(2); /* Bank 2 is always in 0x8000 - 0xbfff */
 }
 
 void spectrum_128_state::machine_reset()
 {
-	/* Bank 5 is always in 0x4000 - 0x7fff */
-	m_bank_ram[1]->set_entry(5);
-
-	/* Bank 2 is always in 0x8000 - 0xbfff */
-	m_bank_ram[2]->set_entry(2);
-
 	spectrum_state::machine_reset();
 
 	/* set initial ram config */
@@ -347,7 +344,8 @@ GFXDECODE_END
 
 rectangle spectrum_128_state::get_screen_area()
 {
-	return rectangle{48, 48 + 255, 63, 63 + 191};
+	return { SPEC_LEFT_BORDER, SPEC_LEFT_BORDER + SPEC_DISPLAY_XSIZE - 1,
+			SPEC128_UNSEEN_LINES + SPEC_TOP_BORDER, SPEC128_UNSEEN_LINES + SPEC_TOP_BORDER + SPEC_DISPLAY_YSIZE - 1 };
 }
 
 void spectrum_128_state::spectrum_128(machine_config &config)
@@ -364,7 +362,9 @@ void spectrum_128_state::spectrum_128(machine_config &config)
 	config.set_maximum_quantum(attotime::from_hz(60));
 
 	/* video hardware */
-	m_screen->set_raw(X1_128_SINCLAIR / 5, 456, 311, {get_screen_area().left() - 48, get_screen_area().right() + 48, get_screen_area().top() - 48, get_screen_area().bottom() + 56});
+	rectangle visarea = { get_screen_area().left() - SPEC_LEFT_BORDER, get_screen_area().right() + SPEC_RIGHT_BORDER,
+		get_screen_area().top() - SPEC_TOP_BORDER, get_screen_area().bottom() + SPEC_BOTTOM_BORDER };
+	m_screen->set_raw(X1_128_SINCLAIR / 5, SPEC128_CYCLES_PER_LINE * 2, SPEC128_UNSEEN_LINES + SPEC_SCREEN_HEIGHT, visarea);
 
 	subdevice<gfxdecode_device>("gfxdecode")->set_info(spec128);
 
