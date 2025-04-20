@@ -2,9 +2,8 @@
 // copyright-holders:R. Belmont
 /****************************************************************************
 
-    drivers/macquadra800.cpp
     Mac Centris 610 ("WLCD")
-    Mac Centris 630 ("Wombat 25")
+    Mac Centris 650 ("Wombat 25")
     Mac Quadra 610 ("Speedbump 610")
     Mac Quadra 650 ("Speedbump 650")
     Mac Quadra 800 ("Wombat 33")
@@ -26,6 +25,7 @@
 #include "macadb.h"
 #include "mactoolbox.h"
 
+#include "bus/nscsi/cd.h"
 #include "bus/nscsi/devices.h"
 #include "bus/nubus/cards.h"
 #include "bus/nubus/nubus.h"
@@ -178,8 +178,13 @@ void quadra800_state::macqd800(machine_config &config)
 	NSCSI_CONNECTOR(config, "scsi:0", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi:1", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi:2", mac_scsi_devices, nullptr);
-	NSCSI_CONNECTOR(config, "scsi:3", mac_scsi_devices, nullptr);
-	NSCSI_CONNECTOR(config, "scsi:4", mac_scsi_devices, "cdrom");
+	NSCSI_CONNECTOR(config, "scsi:3").option_set("cdrom", NSCSI_CDROM_APPLE).machine_config(
+		[](device_t *device)
+		{
+			device->subdevice<cdda_device>("cdda")->add_route(0, "^^iosb:lspeaker", 1.0);
+			device->subdevice<cdda_device>("cdda")->add_route(1, "^^iosb:rspeaker", 1.0);
+		});
+	NSCSI_CONNECTOR(config, "scsi:4", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi:5", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi:6", mac_scsi_devices, "harddisk");
 	NSCSI_CONNECTOR(config, "scsi:7").option_set("ncr53c96", NCR53C96).clock(40_MHz_XTAL).machine_config(
@@ -222,6 +227,11 @@ void quadra800_state::macqd800(machine_config &config)
 	m_ram->set_extra_options("16M,32M,64M,96M,128M,192M,256M,320M,384M,512M,640M");
 
 	SOFTWARE_LIST(config, "hdd_list").set_original("mac_hdd");
+	SOFTWARE_LIST(config, "cd_list").set_original("mac_cdrom").set_filter("MC68040");
+	SOFTWARE_LIST(config, "flop_mac35_orig").set_original("mac_flop_orig");
+	SOFTWARE_LIST(config, "flop_mac35_clean").set_original("mac_flop_clcracked");
+	SOFTWARE_LIST(config, "flop35_list").set_original("mac_flop");
+	SOFTWARE_LIST(config, "flop35hd_list").set_original("mac_hdflop");
 }
 
 void quadra800_state::macct610(machine_config &config)

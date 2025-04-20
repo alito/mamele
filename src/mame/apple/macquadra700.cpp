@@ -17,9 +17,11 @@
 #include "macrtc.h"
 #include "mactoolbox.h"
 
+#include "bus/nscsi/cd.h"
 #include "bus/nscsi/devices.h"
 #include "bus/nubus/cards.h"
 #include "bus/nubus/nubus.h"
+#include "bus/rs232/rs232.h"
 #include "cpu/m68000/m68040.h"
 #include "machine/6522via.h"
 #include "machine/applefdintf.h"
@@ -553,15 +555,32 @@ void macquadra_state::macqd700(machine_config &config)
 	applefdintf_device::add_35_nc(config, m_floppy[1]);
 
 	SCC8530N(config, m_scc, C7M);
-//  m_scc->intrq_callback().set(FUNC(macquadra_state::set_scc_interrupt));
+	m_scc->configure_channels(3'686'400, 3'686'400, 3'686'400, 3'686'400);
+	m_scc->out_txda_callback().set("printer", FUNC(rs232_port_device::write_txd));
+	m_scc->out_txdb_callback().set("modem", FUNC(rs232_port_device::write_txd));
+
+	rs232_port_device &rs232a(RS232_PORT(config, "printer", default_rs232_devices, nullptr));
+	rs232a.rxd_handler().set(m_scc, FUNC(z80scc_device::rxa_w));
+	rs232a.dcd_handler().set(m_scc, FUNC(z80scc_device::dcda_w));
+	rs232a.cts_handler().set(m_scc, FUNC(z80scc_device::ctsa_w));
+
+	rs232_port_device &rs232b(RS232_PORT(config, "modem", default_rs232_devices, nullptr));
+	rs232b.rxd_handler().set(m_scc, FUNC(z80scc_device::rxb_w));
+	rs232b.dcd_handler().set(m_scc, FUNC(z80scc_device::dcdb_w));
+	rs232b.cts_handler().set(m_scc, FUNC(z80scc_device::ctsb_w));
 
 	// SCSI bus and devices
 	NSCSI_BUS(config, m_scsibus1);
 	NSCSI_CONNECTOR(config, "scsi1:0", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi1:1", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi1:2", mac_scsi_devices, nullptr);
-	NSCSI_CONNECTOR(config, "scsi1:3", mac_scsi_devices, nullptr);
-	NSCSI_CONNECTOR(config, "scsi1:4", mac_scsi_devices, "cdrom");
+	NSCSI_CONNECTOR(config, "scsi1:3").option_set("cdrom", NSCSI_CDROM_APPLE).machine_config(
+		[](device_t *device)
+		{
+			device->subdevice<cdda_device>("cdda")->add_route(0, "^^lspeaker", 1.0);
+			device->subdevice<cdda_device>("cdda")->add_route(1, "^^rspeaker", 1.0);
+		});
+	NSCSI_CONNECTOR(config, "scsi1:4", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi1:5", mac_scsi_devices, nullptr);
 	NSCSI_CONNECTOR(config, "scsi1:6", mac_scsi_devices, "harddisk");
 	NSCSI_CONNECTOR(config, "scsi1:7").option_set("ncr53c96", NCR53C96).clock(50_MHz_XTAL / 2).machine_config(
@@ -626,6 +645,9 @@ void macquadra_state::macqd700(machine_config &config)
 	m_ram->set_extra_options("8M,16M,32M,64M,68M,72M,80M,96M,128M");
 
 	SOFTWARE_LIST(config, "hdd_list").set_original("mac_hdd");
+	SOFTWARE_LIST(config, "cd_list").set_original("mac_cdrom").set_filter("MC68040");
+	SOFTWARE_LIST(config, "flop_mac35_orig").set_original("mac_flop_orig");
+	SOFTWARE_LIST(config, "flop_mac35_clean").set_original("mac_flop_clcracked");
 	SOFTWARE_LIST(config, "flop35_list").set_original("mac_flop");
 	SOFTWARE_LIST(config, "flop35hd_list").set_original("mac_hdflop");
 }

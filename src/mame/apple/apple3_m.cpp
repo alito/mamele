@@ -1123,14 +1123,26 @@ TIMER_CALLBACK_MEMBER(apple3_state::scanend_cb)
 	m_via[1]->write_pb6(1);
 
 	m_scanstart->adjust(m_screen->time_until_pos((scanline+1) % 224, 0));
+}
 
-	// check for ctrl-reset
-	if ((m_kbspecial->read() & 0x88) == 0x88)
+INPUT_CHANGED_MEMBER(apple3_state::keyb_special_changed)
+{
+	if (((m_kbspecial->read() & 0x88) == 0x88) && (m_via_0_a & ENV_NMIENABLE))
 	{
+		// ctrl-reset pressed (RESET)
 		if (!m_reset_latch)
 		{
 			m_reset_latch = true;
 			m_maincpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+		}
+	}
+	else if ((m_kbspecial->read() & 0x80) && (m_via_0_a & ENV_NMIENABLE) && !m_reset_latch)
+	{
+		// reset key only pressed (NMI)
+		if (!m_nmi_latch)
+		{
+			m_nmi_latch = true;
+			m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 		}
 	}
 	else
@@ -1141,6 +1153,11 @@ TIMER_CALLBACK_MEMBER(apple3_state::scanend_cb)
 			// allow cards to see reset
 			m_a2bus->reset_bus();
 			m_maincpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+		}
+		else if (m_nmi_latch)
+		{
+			m_nmi_latch = false;
+			m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 		}
 	}
 }
@@ -1274,6 +1291,41 @@ void apple3_state::ay3600_data_ready_w(int state)
 			m_strobe = 0x80;
 //          printf("new char = %04x (%02x)\n", trans, m_transchar);
 		}
+	}
+}
+
+void apple3_state::ay3600_ako_w(int state)
+{
+	m_anykeydown = (state == ASSERT_LINE) ? true : false;
+
+	if (m_anykeydown)
+	{
+		m_repttimer->adjust(attotime::from_hz(2));
+	}
+	else
+	{
+		m_repttimer->adjust(attotime::never);
+	}
+}
+
+TIMER_DEVICE_CALLBACK_MEMBER(apple3_state::ay3600_repeat)
+{
+	// is the key still down?
+	if (m_anykeydown)
+	{
+		// Closed Apple key
+		if (m_kbspecial->read() & 0x20)
+		{
+			m_repttimer->adjust(attotime::from_hz(30));
+		}
+		else
+		{
+			m_repttimer->adjust(attotime::from_hz(10));
+		}
+
+		m_strobe = 0x80;
+		m_via[1]->write_ca2(ASSERT_LINE);
+		m_via[1]->write_ca2(CLEAR_LINE);
 	}
 }
 
