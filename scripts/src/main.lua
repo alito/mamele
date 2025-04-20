@@ -222,7 +222,6 @@ if _OPTIONS["with-learning-environment"] then
 		"learningenvironment",
 	}
 end
-end
 	links {
 		ext_lib("zlib"),
 		ext_lib("flac"),
