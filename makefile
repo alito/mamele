@@ -1491,6 +1491,11 @@ openbsd_x64: generate $(PROJECTDIR)/$(MAKETYPE)-openbsd/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd config=$(CONFIG)64 precompile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd config=$(CONFIG)64
 
+.PHONY: openbsd_arm64
+openbsd_arm64: generate $(PROJECTDIR)/$(MAKETYPE)-openbsd/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd config=$(CONFIG)64 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd config=$(CONFIG)64
+
 .PHONY: openbsd
 openbsd: openbsd_x86
 
@@ -1508,6 +1513,11 @@ $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang/Makefile: makefile $(SCRIPTS) $(GENIE)
 
 .PHONY: openbsd_x64_clang
 openbsd_x64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang/Makefile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang config=$(CONFIG)64 precompile
+	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang config=$(CONFIG)64
+
+.PHONY: openbsd_arm64_clang
+openbsd_arm64_clang: generate $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang/Makefile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang config=$(CONFIG)64 precompile
 	$(SILENT) $(MAKE) -C $(PROJECTDIR)/$(MAKETYPE)-openbsd-clang config=$(CONFIG)64
 
@@ -1578,7 +1588,7 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.246"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.247"' > $@
 	@echo '#define BARE_VCS_REVISION "$(NEW_GIT_VERSION)"' >> $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char bare_vcs_revision[];' >> $@
@@ -1588,7 +1598,7 @@ $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " (" BARE_VCS_REVISION ")";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.246" > $@
+	@echo #define BARE_BUILD_VERSION "0.247" > $@
 	@echo #define BARE_VCS_REVISION "$(NEW_GIT_VERSION)" >> $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char bare_vcs_revision[]; >> $@
