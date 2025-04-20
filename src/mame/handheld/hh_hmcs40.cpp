@@ -223,7 +223,7 @@ u16 hh_hmcs40_state::read_inputs(int columns)
 
 	// read selected input rows
 	for (int i = 0; i < columns; i++)
-		if (m_inp_mux >> i & 1)
+		if (BIT(m_inp_mux, i))
 			ret |= m_inputs[i]->read();
 
 	return ret;
@@ -4875,7 +4875,7 @@ ROM_END
 
 /*******************************************************************************
 
-  Tomy(tronic) Tron (manufactured in Japan)
+  Tomy Tron (manufactured in Japan)
   * PCB label: THN-02 2E114E07
   * Hitachi HD38800A88 MCU
   * cyan/red/green VFD NEC FIP10AM24T no. 2-8 1

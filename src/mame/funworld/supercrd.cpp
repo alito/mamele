@@ -8,6 +8,8 @@
   Encrypted CPU (based on a Z80)
   plus 2x 8255 + YM3014 + YM3812 hardware.
 
+  Close to Amatic 8000-1 hardware.
+
 
   Driver by Roberto Fresca.
 
@@ -196,7 +198,7 @@
 
 
 // configurable logging
-#define LOG_UNKOPCODES     (1U <<  1)
+#define LOG_UNKOPCODES     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_UNKOPCODES)
 

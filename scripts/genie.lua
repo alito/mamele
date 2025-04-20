@@ -1109,6 +1109,11 @@ end
 					"-Wno-error=uninitialized",   -- netlist
 				}
 			end
+			if version >= 130000 then
+				buildoptions_cpp {
+					"-Wno-xor-used-as-pow",
+				}
+			end
 		end
 	end
 
@@ -1238,7 +1243,7 @@ configuration { "linux-*" }
 		end
 
 
-configuration { "netbsd" }
+configuration { "freebsd or netbsd" }
 		flags {
 			"LinkSupportCircularDependencies",
 		}
