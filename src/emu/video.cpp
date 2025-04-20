@@ -20,6 +20,7 @@
 #include "screen.h"
 
 #include "corestr.h"
+#include "path.h"
 #include "png.h"
 #include "xmlfile.h"
 
