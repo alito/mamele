@@ -1,6 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:hap, Henrik Algestam
-// thanks-to:Sean Riddle, Igor, Lee Robson
+// thanks-to:Sean Riddle, Igor, Lee Robson, Milan Galcik
 /***************************************************************************
 
 Sharp SM5xx family handhelds.
@@ -17,7 +17,6 @@ Use -autosave to at least make them remember the highscores.
 TODO:
 - improve display decay simulation? but SVG doesn't support setting brightness
   per segment, adding pwm_display_device right now has no added value
-- improve/redo SVG of: rkosmosa
 - confirm gnw_bfight rom (assumed to be the same as gnw_bfightn)
 - confirm gnw_climber rom (assumed to be the same as gnw_climbern)
 - confirm gnw_smb rom (assumed to be the same as gnw_smbn)
@@ -107,7 +106,7 @@ BF-803    cs   SM511   Balloon Fight      "
 YM-901-S* x    SM511   Super Mario Bros.  "
 
 RGW-001 (2010 Ball remake) is on different hardware, ATmega169PV MCU.
-The "Mini Classics" keychains are by Nelsonic, not Nintendo.
+The "Mini Classics" keychains are by Stadlbauer, not Nintendo.
 
 Bassmate Computer (BM-501) is on identical hardware as G&W Multi Screen,
 but it's not part of the game series.
@@ -137,7 +136,6 @@ The MCUs used were not imported from Sharp, but cloned by USSR, renamed to
 #include "emu.h"
 #include "includes/hh_sm510.h"
 
-#include "cpu/sm510/sm500.h"
 #include "screen.h"
 #include "speaker.h"
 
@@ -292,9 +290,7 @@ u8 hh_sm510_state::read_inputs(int columns, int fixed)
 void hh_sm510_state::update_k_line()
 {
 	// this is necessary because the MCU can wake up on K input activity
-	u8 input = input_r();
-	for (int i = 0; i < 4; i++)
-		m_maincpu->set_input_line(i, BIT(input, i) ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, input_r() ? ASSERT_LINE : CLEAR_LINE);
 }
 
 INPUT_CHANGED_MEMBER(hh_sm510_state::input_changed)
@@ -1533,7 +1529,7 @@ void gnw_mmouse_state::ehockey(machine_config &config)
 
 void gnw_mmouse_state::rkosmosa(machine_config &config)
 {
-	kb1013vk12_common(config, 1756, 1080); // R mask option ?
+	kb1013vk12_common(config, 1646, 1080); // R mask option ?
 }
 
 void gnw_mmouse_state::okhota(machine_config &config)
@@ -1619,8 +1615,8 @@ ROM_START( rkosmosa )
 	ROM_REGION( 0x1000, "maincpu", 0 )
 	ROM_LOAD( "im-13.bin", 0x0000, 0x0740, CRC(553e2b09) SHA1(2b74f8437b881fbb62b61f25435a5bfc66872a9a) )
 
-	ROM_REGION( 89361, "screen", 0)
-	ROM_LOAD( "rkosmosa.svg", 0, 89361, BAD_DUMP CRC(d61f3bdc) SHA1(932d45dc9302db5550971ce0d295a88e8c507e3f) )
+	ROM_REGION( 81420, "screen", 0)
+	ROM_LOAD( "rkosmosa.svg", 0, 81420, CRC(dc6632be) SHA1(0906d933f4cda39ee1e57b502651a821e61e95ef) )
 ROM_END
 
 ROM_START( okhota )
@@ -5682,14 +5678,15 @@ public:
 		inp_fixed_last();
 	}
 
-	// R2 connects to a single LED behind the screen
-	void led_w(u8 data) { m_led_out = data >> 1 & 1; }
-	output_finder<> m_led_out;
-
 	void tgaiden(machine_config &config);
 
 protected:
 	virtual void machine_start() override;
+
+private:
+	// R2 connects to a single LED behind the screen
+	void led_w(u8 data) { m_led_out = data >> 1 & 1; }
+	output_finder<> m_led_out;
 };
 
 void tgaiden_state::machine_start()
@@ -5740,7 +5737,6 @@ INPUT_PORTS_END
 void tgaiden_state::tgaiden(machine_config &config)
 {
 	sm510_tiger(config, 1476, 1080);
-
 	m_maincpu->write_r().append(FUNC(tgaiden_state::led_w));
 }
 
@@ -8168,8 +8164,10 @@ public:
 		inp_fixed_last();
 	}
 
-	virtual void input_w(u8 data) override;
 	void tnmarebc(machine_config &config);
+
+private:
+	virtual void input_w(u8 data) override;
 };
 
 // handlers
