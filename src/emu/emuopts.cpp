@@ -223,13 +223,13 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_HTTP_ROOT,                                  "web",       core_options::option_type::STRING,     "HTTP server document root" },
 
 	// learning environment options
-	{ nullptr,                                nullptr,           OPTION_HEADER,     "LEARNING ENVIRONMENT OPTIONS" },
-	{ OPTION_LE_USE,                          "0",               OPTION_BOOLEAN, "enable learning environment" },
-	{ OPTION_LE_LIBRARY ";le",                nullptr,           OPTION_STRING, "library that should be given control to" },
-	{ OPTION_LE_SHOW,                         "1",               OPTION_BOOLEAN, "display screen when learning environment is enabled (dangerous to turn off)"},
-	{ OPTION_LE_OPTIONS,                      "",                OPTION_STRING, "options to pass to the learning environment" },
-	{ OPTION_LE_PLAYER,                       "1",               OPTION_INTEGER, "player that learning environment plays as" },
-	{ OPTION_LE_DATA_PATH,                    ".",                OPTION_STRING, "directory where gameover and score data is stored" },
+	{ nullptr,                                nullptr,           core_options::option_type::HEADER,     "LEARNING ENVIRONMENT OPTIONS" },
+	{ OPTION_LE_USE,                          "0",               core_options::option_type::BOOLEAN, "enable learning environment" },
+	{ OPTION_LE_LIBRARY ";le",                nullptr,           core_options::option_type::STRING, "library that should be given control to" },
+	{ OPTION_LE_SHOW,                         "1",               core_options::option_type::BOOLEAN, "display screen when learning environment is enabled (dangerous to turn off)"},
+	{ OPTION_LE_OPTIONS,                      "",                core_options::option_type::STRING, "options to pass to the learning environment" },
+	{ OPTION_LE_PLAYER,                       "1",               core_options::option_type::INTEGER, "player that learning environment plays as" },
+	{ OPTION_LE_DATA_PATH,                    ".",                core_options::option_type::STRING, "directory where gameover and score data is stored" },
 
 	{ nullptr }
 };
