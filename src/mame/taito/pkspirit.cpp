@@ -251,6 +251,7 @@ void pkspirit_state::pkspirit(machine_config &config)
 
 	ym2203_device &opn(YM2203(config, "opn", 36_MHz_XTAL / 9)); // divider not verified
 	opn.irq_handler().set_inputline("audiocpu", 0);
+	//ymsnd.port_a_write_callback() TODO: writes continuously here.
 	opn.add_route(ALL_OUTPUTS, "mono", 0.30);
 
 	OKIM6295(config, "oki", 1.056_MHz_XTAL, okim6295_device::PIN7_HIGH).add_route(ALL_OUTPUTS, "mono", 0.5); // all verified
@@ -278,7 +279,7 @@ ROM_START( pkspirit )
 	ROM_LOAD16_BYTE( "d41_16.ic16", 0x80001, 0x10000, CRC(6c9d169d) SHA1(e6cd2ddd6b6242e2fadbbcb4b3170dd54391b25e) )
 
 	ROM_REGION( 0x40000, "oki", ROMREGION_ERASE00 ) // on video PCB
-	// empty socket at IC38. Unused or ROM removed?
+	// empty socket at IC38. Confirmed on 2 different PCBs
 
 	ROM_REGION( 0x80, "eeprom", 0 ) // on base PCB
 	ROM_LOAD( "93c46.ic37", 0x00, 0x80, NO_DUMP )

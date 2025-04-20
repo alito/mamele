@@ -930,6 +930,18 @@ end
 
 ---------------------------------------------------
 --
+--@src/devices/machine/atahle.h,MACHINES["ATAHLE"] = true
+---------------------------------------------------
+
+if (MACHINES["ATAHLE"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/atahle.cpp",
+		MAME_DIR .. "src/devices/machine/atahle.h",
+	}
+end
+
+---------------------------------------------------
+--
 --@src/devices/machine/ataflash.h,MACHINES["ATAFLASH"] = true
 ---------------------------------------------------
 
@@ -938,6 +950,18 @@ if (MACHINES["ATAFLASH"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/ataflash.cpp",
 		MAME_DIR .. "src/devices/machine/ataflash.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/atastorage.h,MACHINES["ATASTORAGE"] = true
+---------------------------------------------------
+
+if (MACHINES["ATASTORAGE"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/atastorage.cpp",
+		MAME_DIR .. "src/devices/machine/atastorage.h",
 	}
 end
 
@@ -4161,13 +4185,13 @@ end
 
 ---------------------------------------------------
 --
---@src/devices/machine/dp8573.h,MACHINES["DP8573"] = true
+--@src/devices/machine/dp8573a.h,MACHINES["DP8573A"] = true
 ---------------------------------------------------
 
-if (MACHINES["DP8573"]~=null) then
+if (MACHINES["DP8573A"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/machine/dp8573.cpp",
-		MAME_DIR .. "src/devices/machine/dp8573.h",
+		MAME_DIR .. "src/devices/machine/dp8573a.cpp",
+		MAME_DIR .. "src/devices/machine/dp8573a.h",
 	}
 end
 
@@ -4253,6 +4277,18 @@ if (MACHINES["STEPPERS"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/steppers.cpp",
 		MAME_DIR .. "src/devices/machine/steppers.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/em_reel.h,MACHINES["EM_REEL"] = true
+---------------------------------------------------
+
+if (MACHINES["EM_REEL"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/em_reel.cpp",
+		MAME_DIR .. "src/devices/machine/em_reel.h",
 	}
 end
 
