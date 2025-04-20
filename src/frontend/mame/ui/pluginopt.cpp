@@ -35,7 +35,7 @@ menu_plugin::menu_plugin(mame_ui_manager &mui, render_container &container) :
 	set_heading(_("Plugin Options"));
 }
 
-void menu_plugin::populate(float &customtop, float &custombottom)
+void menu_plugin::populate()
 {
 	for (auto &curplugin : m_plugins)
 		item_append(curplugin, 0, (void *)curplugin.c_str());
@@ -103,6 +103,9 @@ void menu_plugin_opt::handle(event const *ev)
 		case IPT_UI_CLEAR:
 			key = "clear";
 			break;
+		case IPT_UI_BACK:
+			key = "back";
+			break;
 		case IPT_UI_CANCEL:
 			key = "cancel";
 			break;
@@ -120,12 +123,12 @@ void menu_plugin_opt::handle(event const *ev)
 			set_selection(reinterpret_cast<void *>(uintptr_t(*result.second)));
 		if (result.first)
 			reset(reset_options::REMEMBER_REF);
-		else if (ev && (ev->iptkey == IPT_UI_CANCEL))
+		else if (ev && (ev->iptkey == IPT_UI_BACK))
 			stack_pop();
 	}
 }
 
-void menu_plugin_opt::populate(float &customtop, float &custombottom)
+void menu_plugin_opt::populate()
 {
 	std::vector<std::tuple<std::string, std::string, std::string>> menu_list;
 	std::string flags;

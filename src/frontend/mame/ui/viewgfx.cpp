@@ -527,7 +527,7 @@ private:
 		}
 
 		// cancel or graphics viewer dismisses the viewer
-		if (input.pressed(IPT_UI_CANCEL) || input.pressed(IPT_UI_SHOW_GFX))
+		if (input.pressed(IPT_UI_BACK) || input.pressed(IPT_UI_SHOW_GFX))
 			return cancel(uistate);
 
 		return uistate;
@@ -537,6 +537,7 @@ private:
 	{
 		if (!uistate)
 			m_machine.resume();
+		m_machine.ui_input().reset();
 		m_bitmap_dirty = true;
 		return UI_HANDLER_CANCEL;
 	}

@@ -118,7 +118,7 @@ menu_load_save_state_base::~menu_load_save_state_base()
 //  populate
 //-------------------------------------------------
 
-void menu_load_save_state_base::populate(float &customtop, float &custombottom)
+void menu_load_save_state_base::populate()
 {
 	// build the "filename to code" map, if we have not already (if it were not for the
 	// possibility that the system keyboard can be changed at runtime, I would put this
@@ -224,9 +224,6 @@ void menu_load_save_state_base::populate(float &customtop, float &custombottom)
 	if (is_one_shot())
 		item_append(_("Cancel"), 0, nullptr);
 
-	// set up custom render proc
-	custombottom = (2.0f * ui().get_line_height()) + (3.0f * ui().box_tb_border());
-
 	// get ready to poll inputs
 	m_switch_poller.reset();
 	m_keys_released = false;
@@ -265,7 +262,7 @@ void menu_load_save_state_base::handle(event const *ev)
 					_("Delete saved state %1$s?\nPress %2$s to delete\nPress %3$s to cancel"),
 					m_confirm_delete->visible_name(),
 					ui().get_general_input_setting(IPT_UI_SELECT),
-					ui().get_general_input_setting(IPT_UI_CANCEL));
+					ui().get_general_input_setting(IPT_UI_BACK));
 		}
 	}
 	else if (!m_confirm_delete)
@@ -399,7 +396,7 @@ void menu_load_save_state_base::handle_keys(uint32_t flags, int &iptkey)
 			m_keys_released = false;
 			reset(reset_options::REMEMBER_POSITION);
 		}
-		else if (exclusive_input_pressed(iptkey, IPT_UI_CANCEL, 0))
+		else if (exclusive_input_pressed(iptkey, IPT_UI_BACK, 0))
 		{
 			// don't delete it - dismiss the prompt
 			m_switch_poller.reset();
@@ -417,6 +414,19 @@ void menu_load_save_state_base::handle_keys(uint32_t flags, int &iptkey)
 	{
 		menu::handle_keys(flags, iptkey);
 	}
+}
+
+
+//-------------------------------------------------
+//  recompute_metrics - recompute metrics
+//-------------------------------------------------
+
+void menu_load_save_state_base::recompute_metrics(uint32_t width, uint32_t height, float aspect)
+{
+	autopause_menu<>::recompute_metrics(width, height, aspect);
+
+	// set up custom render proc
+	set_custom_space(0.0F, (2.0F * line_height()) + (3.0F * tb_border()));
 }
 
 
@@ -446,14 +456,14 @@ void menu_load_save_state_base::custom_render(void *selectedref, float top, floa
 	{
 		draw_text_box(
 				std::begin(text), std::next(std::begin(text), count),
-				origx1, origx2, origy2 + ui().box_tb_border(), origy2 + (count * ui().get_line_height()) + (3.0f * ui().box_tb_border()),
+				origx1, origx2, origy2 + tb_border(), origy2 + (count * line_height()) + (3.0F * tb_border()),
 				text_layout::text_justify::CENTER, text_layout::word_wrapping::NEVER, false,
-				ui().colors().text_color(), ui().colors().background_color(), 1.0f);
+				ui().colors().text_color(), ui().colors().background_color());
 	}
 
 	// draw the confirmation prompt if necessary
 	if (!m_confirm_prompt.empty())
-		ui().draw_text_box(container(), m_confirm_prompt, text_layout::text_justify::CENTER, 0.5f, 0.5f, ui().colors().background_color());
+		ui().draw_text_box(container(), m_confirm_prompt, text_layout::text_justify::CENTER, 0.5F, 0.5F, ui().colors().background_color());
 }
 
 
