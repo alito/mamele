@@ -16,6 +16,7 @@
 #include "rendersw.hxx"
 #include "output.h"
 #include "learning-environment.h"
+#include "screen.h"
 
 #include "corestr.h"
 #include "png.h"
@@ -522,8 +523,13 @@ void video_manager::screenless_update_callback(void *ptr, int param)
 
 void video_manager::postload()
 {
+	attotime const emutime = machine().time();
 	for (const auto &x : m_movie_recordings)
-		x->set_next_frame_time(machine().time());
+		x->set_next_frame_time(emutime);
+
+	// reset speed counters
+	m_speed_last_realtime = osd_ticks();
+	m_speed_last_emutime = emutime;
 }
 
 
