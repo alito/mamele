@@ -2655,19 +2655,6 @@ end
 
 ---------------------------------------------------
 --
---@src/devices/machine/ncr539x.h,MACHINES["NCR539x"] = true
----------------------------------------------------
-
-if (MACHINES["NCR539x"]~=null) then
-	MACHINES["SCSI"] = true
-	files {
-		MAME_DIR .. "src/devices/machine/ncr539x.cpp",
-		MAME_DIR .. "src/devices/machine/ncr539x.h",
-	}
-end
-
----------------------------------------------------
---
 --@src/devices/machine/nmc9306.h,MACHINES["NMC9306"] = true
 ---------------------------------------------------
 
@@ -2877,6 +2864,21 @@ if (MACHINES["PLA"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/pla.cpp",
 		MAME_DIR .. "src/devices/machine/pla.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/psion_asic5.h,MACHINES["PSION_ASIC"] = true
+--@src/devices/machine/psion_asic9.h,MACHINES["PSION_ASIC"] = true
+---------------------------------------------------
+
+if (MACHINES["PSION_ASIC"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/psion_asic5.cpp",
+		MAME_DIR .. "src/devices/machine/psion_asic5.h",
+		MAME_DIR .. "src/devices/machine/psion_asic9.cpp",
+		MAME_DIR .. "src/devices/machine/psion_asic9.h",
 	}
 end
 
@@ -5136,5 +5138,17 @@ if (MACHINES["MC88200"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/mc88200.cpp",
 		MAME_DIR .. "src/devices/machine/mc88200.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/pccard_sram.h,MACHINES["PCCARD_SRAM"] = true
+---------------------------------------------------
+
+if (MACHINES["PCCARD_SRAM"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/pccard_sram.cpp",
+		MAME_DIR .. "src/devices/machine/pccard_sram.h",
 	}
 end

@@ -61,29 +61,28 @@ osd_interface &running_machine::osd() const
 //-------------------------------------------------
 
 running_machine::running_machine(const machine_config &_config, machine_manager &manager)
-	: m_side_effects_disabled(0),
-		debug_flags(0),
-		m_config(_config),
-		m_system(_config.gamedrv()),
-		m_manager(manager),
-		m_current_phase(machine_phase::PREINIT),
-		m_paused(false),
-		m_hard_reset_pending(false),
-		m_exit_pending(false),
-		m_soft_reset_timer(nullptr),
-		m_rand_seed(0x9d14abd7),
-		m_ui_active(_config.options().ui_active()),
-		m_basename(_config.gamedrv().name),
-		m_sample_rate(_config.options().sample_rate()),
-		m_saveload_schedule(saveload_schedule::NONE),
-		m_saveload_schedule_time(attotime::zero),
-		m_saveload_searchpath(nullptr),
+	: m_side_effects_disabled(0)
+	, debug_flags(0)
+	, m_config(_config)
+	, m_system(_config.gamedrv())
+	, m_manager(manager)
+	, m_current_phase(machine_phase::PREINIT)
+	, m_paused(false)
+	, m_hard_reset_pending(false)
+	, m_exit_pending(false)
+	, m_soft_reset_timer(nullptr)
+	, m_rand_seed(0x9d14abd7)
+	, m_basename(_config.gamedrv().name)
+	, m_sample_rate(_config.options().sample_rate())
+	, m_saveload_schedule(saveload_schedule::NONE)
+	, m_saveload_schedule_time(attotime::zero)
+	, m_saveload_searchpath(nullptr)
 
-		m_save(*this),
-		m_memory(*this),
-		m_ioport(*this),
-		m_parameters(*this),
-		m_scheduler(*this)
+	, m_save(*this)
+	, m_memory(*this)
+	, m_ioport(*this)
+	, m_parameters(*this)
+	, m_scheduler(*this)
 {
 	memset(&m_base_time, 0, sizeof(m_base_time));
 
@@ -149,7 +148,7 @@ void running_machine::start()
 	// initialize UI input
 	m_ui_input = std::make_unique<ui_input_manager>(*this);
 
-	// init the osd layer
+	// init the OSD layer
 	m_manager.osd().init(*this);
 
 	// determine if the learning environment should be enabled
@@ -159,9 +158,10 @@ void running_machine::start()
 		}		
 	}
 
-	// create the video manager
+	// create the video manager and UI manager
 	m_video = std::make_unique<video_manager>(*this);
 	m_ui = manager().create_ui(*this);
+	m_ui->set_startup_text("Initializing...", true);
 
 	// initialize the base time (needed for doing record/playback)
 	::time(&m_base_time);
@@ -331,7 +331,7 @@ int running_machine::run(bool quiet)
 		// run the CPUs until a reset or exit
 		while ((!m_hard_reset_pending && !m_exit_pending) || m_saveload_schedule != saveload_schedule::NONE)
 		{
-			g_profiler.start(PROFILER_EXTRA);
+			auto profile = g_profiler.start(PROFILER_EXTRA);
 
 			// execute CPUs if not paused
 			if (!m_paused)
@@ -343,8 +343,6 @@ int running_machine::run(bool quiet)
 			// handle save/load
 			if (m_saveload_schedule != saveload_schedule::NONE)
 				handle_saveload();
-
-			g_profiler.stop();
 		}
 		m_manager.http()->clear();
 
@@ -1185,7 +1183,7 @@ void running_machine::popup_clear() const
 	ui().popup_time(0, " ");
 }
 
-void running_machine::popup_message(util::format_argument_pack<std::ostream> const &args) const
+void running_machine::popup_message(util::format_argument_pack<char> const &args) const
 {
 	std::string const temp(string_format(args));
 	ui().popup_time(temp.length() / 40 + 2, "%s", temp);
@@ -1307,7 +1305,7 @@ void running_machine::emscripten_main_loop()
 {
 	running_machine *machine = emscripten_running_machine;
 
-	g_profiler.start(PROFILER_EXTRA);
+	auto profile = g_profiler.start(PROFILER_EXTRA);
 
 	// execute CPUs if not paused
 	if (!machine->m_paused)
@@ -1340,8 +1338,6 @@ void running_machine::emscripten_main_loop()
 	{
 		emscripten_cancel_main_loop();
 	}
-
-	g_profiler.stop();
 }
 
 void running_machine::emscripten_set_running_machine(running_machine *machine)

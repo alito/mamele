@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include <windows.h>
@@ -36,14 +37,6 @@ namespace osd {
 //============================================================
 //  dinput_device - base directinput device
 //============================================================
-
-class device_enum_interface
-{
-public:
-	virtual ~device_enum_interface() = default;
-
-	virtual BOOL device_enum_callback(LPCDIDEVICEINSTANCE instance) = 0;
-};
 
 enum class dinput_cooperative_level
 {
@@ -92,7 +85,15 @@ public:
 				format);
 	}
 
-	HRESULT enum_attached_devices(int devclass, device_enum_interface &enumerate_interface) const;
+	template <typename T>
+	HRESULT enum_attached_devices(int devclass, T &&callback) const
+	{
+		return m_dinput->EnumDevices(
+				devclass,
+				&di_enum_devices_cb<std::remove_reference_t<T> >,
+				LPVOID(&callback),
+				DIEDFL_ATTACHEDONLY);
+	}
 
 	template <typename T>
 	static HRESULT set_dword_property(
@@ -120,6 +121,12 @@ private:
 			dinput_cooperative_level cooperative_level);
 
 	static std::string make_id(LPCDIDEVICEINSTANCE instance);
+
+	template <typename T>
+	static BOOL CALLBACK di_enum_devices_cb(LPCDIDEVICEINSTANCE instance, LPVOID ref)
+	{
+		return (*reinterpret_cast<T *>(ref))(instance);
+	}
 
 	Microsoft::WRL::ComPtr<IDirectInput8> m_dinput;
 	dynamic_module::ptr                   m_dinput_dll;
@@ -160,7 +167,7 @@ public:
 			LPCDIDATAFORMAT format);
 
 	void reset() override;
-	void poll() override;
+	void poll(bool relative_reset) override;
 	void configure(input_device &device) override;
 
 private:
