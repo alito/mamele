@@ -1910,6 +1910,8 @@ if (BUSES["MSX_SLOT"]~=null) then
 		MAME_DIR .. "src/devices/bus/msx/cart/fs_sr022.h",
 		MAME_DIR .. "src/devices/bus/msx/cart/halnote.cpp",
 		MAME_DIR .. "src/devices/bus/msx/cart/halnote.h",
+		MAME_DIR .. "src/devices/bus/msx/cart/hbi55.cpp",
+		MAME_DIR .. "src/devices/bus/msx/cart/hbi55.h",
 		MAME_DIR .. "src/devices/bus/msx/cart/hfox.cpp",
 		MAME_DIR .. "src/devices/bus/msx/cart/hfox.h",
 		MAME_DIR .. "src/devices/bus/msx/cart/holy_quran.cpp",
@@ -1956,6 +1958,8 @@ if (BUSES["MSX_SLOT"]~=null) then
 		MAME_DIR .. "src/devices/bus/msx/module/module.h",
 		MAME_DIR .. "src/devices/bus/msx/module/sfg.cpp",
 		MAME_DIR .. "src/devices/bus/msx/module/sfg.h",
+		MAME_DIR .. "src/devices/bus/msx/module/skw01.cpp",
+		MAME_DIR .. "src/devices/bus/msx/module/skw01.h",
 		MAME_DIR .. "src/devices/bus/msx/softcard/softcard.cpp",
 		MAME_DIR .. "src/devices/bus/msx/softcard/softcard.h",
 	}
@@ -4509,6 +4513,20 @@ end
 
 ---------------------------------------------------
 --
+--@src/devices/bus/spectrum/zxbus.h,BUSES["ZXBUS"] = true
+---------------------------------------------------
+
+if (BUSES["ZXBUS"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/bus/spectrum/zxbus.cpp",
+		MAME_DIR .. "src/devices/bus/spectrum/zxbus.h",
+		MAME_DIR .. "src/devices/bus/spectrum/neogs.cpp",
+		MAME_DIR .. "src/devices/bus/spectrum/neogs.h",
+	}
+end
+
+---------------------------------------------------
+--
 --@src/devices/bus/uts_kbd/uts_kbd.h,BUSES["UTS_KBD"] = true
 ---------------------------------------------------
 
@@ -5187,6 +5205,8 @@ if (BUSES["NABU"]~=null) then
 		MAME_DIR .. "src/devices/bus/nabupc/hdd.h",
 		MAME_DIR .. "src/devices/bus/nabupc/option.cpp",
 		MAME_DIR .. "src/devices/bus/nabupc/option.h",
+		MAME_DIR .. "src/devices/bus/nabupc/rs232.cpp",
+		MAME_DIR .. "src/devices/bus/nabupc/rs232.h",
 	}
 end
 
