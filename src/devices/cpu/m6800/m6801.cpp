@@ -24,6 +24,8 @@ TODO:
 #include "m6801.h"
 #include "6800dasm.h"
 
+#include <tuple>
+
 #define LOG_TX      (1U << 1)
 #define LOG_TXTICK  (1U << 2)
 #define LOG_RX      (1U << 3)
@@ -994,7 +996,7 @@ void hd6301x_cpu_device::set_rmcr(u8 data)
 	}
 }
 
-int m6801_cpu_device::m6800_rx()
+int m6801_cpu_device::m6801_rx()
 {
 	return (m_in_port_func[1]() & M6801_PORT2_IO3) >> 3;
 }
@@ -1095,7 +1097,7 @@ void m6801_cpu_device::serial_receive()
 		if (m_trcsr & M6801_TRCSR_WU)
 		{
 			// wait for 10 bits of '1'
-			if (m6800_rx() == 1)
+			if (m6801_rx() == 1)
 			{
 				m_rxbits++;
 
@@ -1122,7 +1124,7 @@ void m6801_cpu_device::serial_receive()
 			switch (m_rxbits)
 			{
 			case M6801_SERIAL_START:
-				if (m6800_rx() == 0)
+				if (m6801_rx() == 0)
 				{
 					// start bit found
 					m_rxbits++;
@@ -1132,7 +1134,7 @@ void m6801_cpu_device::serial_receive()
 				break;
 
 			case M6801_SERIAL_STOP:
-				if (m6800_rx() == 1)
+				if (m6801_rx() == 1)
 				{
 					LOGRX("SCI Received STOP bit\n");
 
@@ -1186,7 +1188,7 @@ void m6801_cpu_device::serial_receive()
 				m_rsr >>= 1;
 
 				// receive bit into register
-				m_rsr |= (m6800_rx() << 7);
+				m_rsr |= (m6801_rx() << 7);
 
 				LOGRX("SCI RX sampled DATA bit %u: %u\n", m_rxbits, BIT(m_rsr, 7));
 
@@ -1519,14 +1521,17 @@ bool m6801_cpu_device::nvram_write(util::write_stream &file)
 	if (!m_nvram_battery)
 		return true;
 
+	std::error_condition err;
 	size_t actual;
 
-	if (file.write(&m_internal_ram[0], m_nvram_bytes, actual) || m_nvram_bytes != actual)
+	std::tie(err, actual) = write(file, &m_internal_ram[0], m_nvram_bytes);
+	if (err)
 		return false;
 
 	// upper bits of RAM control register
 	u8 ram_ctrl = m_ram_ctrl & 0xc0;
-	if (file.write(&ram_ctrl, 1, actual) || actual != 1)
+	std::tie(err, actual) = write(file, &ram_ctrl, 1);
+	if (err)
 		return false;
 
 	return true;
@@ -1534,14 +1539,17 @@ bool m6801_cpu_device::nvram_write(util::write_stream &file)
 
 bool m6801_cpu_device::nvram_read(util::read_stream &file)
 {
+	std::error_condition err;
 	size_t actual;
 
-	if (file.read(&m_internal_ram[0], m_nvram_bytes, actual) || m_nvram_bytes != actual)
+	std::tie(err, actual) = read(file, &m_internal_ram[0], m_nvram_bytes);
+	if (err || (m_nvram_bytes != actual))
 		return false;
 
 	// upper bits of RAM control register
 	u8 ram_ctrl = 0;
-	if (file.read(&ram_ctrl, 1, actual) || actual != 1)
+	std::tie(err, actual) = read(file, &ram_ctrl, 1);
+	if (err || (1 != actual))
 		return false;
 	m_ram_ctrl |= ram_ctrl & 0xc0;
 
@@ -1581,7 +1589,6 @@ bool hd6301_cpu_device::nvram_write(util::write_stream &file)
 	if (!m6801_cpu_device::nvram_write(file))
 		return false;
 
-	size_t actual;
 	std::vector<u8> buf(7);
 
 	// misc registers
@@ -1596,10 +1603,8 @@ bool hd6301_cpu_device::nvram_write(util::write_stream &file)
 	// port output latches
 	buf.insert(buf.end(), m_port_data, m_port_data + sizeof(m_port_data));
 
-	if (file.write(buf.data(), buf.size(), actual) || (buf.size() != actual))
-		return false;
-
-	return true;
+	auto const [err, actual] = write(file, buf.data(), buf.size());
+	return !err;
 }
 
 bool hd6301x_cpu_device::nvram_write(util::write_stream &file)
@@ -1611,16 +1616,13 @@ bool hd6301x_cpu_device::nvram_write(util::write_stream &file)
 	if (!hd6301_cpu_device::nvram_write(file))
 		return false;
 
-	size_t actual;
 	std::vector<u8> buf;
 
 	// port output latches
 	buf.insert(buf.begin(), m_portx_data, m_portx_data + sizeof(m_portx_data));
 
-	if (file.write(buf.data(), buf.size(), actual) || (buf.size() != actual))
-		return false;
-
-	return true;
+	auto const [err, actual] = write(file, buf.data(), buf.size());
+	return !err;
 }
 
 bool hd6301_cpu_device::nvram_read(util::read_stream &file)
@@ -1628,11 +1630,13 @@ bool hd6301_cpu_device::nvram_read(util::read_stream &file)
 	if (!m6801_cpu_device::nvram_read(file))
 		return false;
 
+	std::error_condition err;
 	size_t actual;
 	u8 buf[7];
 
 	// misc registers
-	if (file.read(&buf, sizeof(buf), actual) || (sizeof(buf) != actual))
+	std::tie(err, actual) = read(file, &buf, sizeof(buf));
+	if (err || (sizeof(buf) != actual))
 		return false;
 
 	m_s.b.h = buf[0];
@@ -1644,7 +1648,8 @@ bool hd6301_cpu_device::nvram_read(util::read_stream &file)
 	m_tdr = buf[6];
 
 	// port output latches
-	if (file.read(&m_port_data[0], sizeof(m_port_data), actual) || sizeof(m_port_data) != actual)
+	std::tie(err, actual) = read(file, &m_port_data[0], sizeof(m_port_data));
+	if (err || (sizeof(m_port_data) != actual))
 		return false;
 
 	return true;
@@ -1655,13 +1660,9 @@ bool hd6301x_cpu_device::nvram_read(util::read_stream &file)
 	if (!hd6301_cpu_device::nvram_read(file))
 		return false;
 
-	size_t actual;
-
 	// port output latches
-	if (file.read(&m_portx_data[0], sizeof(m_portx_data), actual) || sizeof(m_portx_data) != actual)
-		return false;
-
-	return true;
+	auto const [err, actual] = read(file, &m_portx_data[0], sizeof(m_portx_data));
+	return !err && (sizeof(m_portx_data) == actual);
 }
 
 
@@ -2546,7 +2547,7 @@ u8 m6801_cpu_device::ff_r()
 }
 
 
-void m6801_cpu_device::m6801_clock_serial()
+void m6801_cpu_device::clock_serial()
 {
 	if (m_use_ext_serclock)
 	{

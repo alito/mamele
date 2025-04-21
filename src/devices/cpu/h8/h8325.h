@@ -8,7 +8,7 @@
 
     H8-300-based mcus.
 
-    Variant         ROM        RAM
+    Variant         ROM         RAM
     H8/3257         60K         2K
     H8/3256         48K         2K
     H8/325          32K         1K
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "h8.h"
+
 #include "h8_intc.h"
 #include "h8_port.h"
 #include "h8_timer8.h"
@@ -51,14 +52,14 @@ public:
 	auto write_port7() { return m_write_port[PORT_7].bind(); }
 
 	// MD pins, default mode 3 (single chip)
-	void set_mode(u8 mode) { m_md = mode; }
+	void set_mode(u8 mode) { m_md = mode & 3; }
 
 	u8 syscr_r();
 	void syscr_w(u8 data);
 	u8 mdcr_r();
 
 protected:
-	h8325_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, u32 start);
+	h8325_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, u32 rom_size, u32 ram_size);
 
 	virtual u64 execute_clocks_to_cycles(u64 clocks) const noexcept override { return (clocks + 2 - 1) / 2; }
 	virtual u64 execute_cycles_to_clocks(u64 cycles) const noexcept override { return (cycles * 2); }
@@ -71,7 +72,8 @@ protected:
 
 	memory_view m_ram_view;
 
-	u32 m_ram_start;
+	u32 m_rom_size;
+	u32 m_ram_size;
 	u8 m_md;
 	u8 m_mds;
 	u8 m_syscr;
@@ -80,6 +82,7 @@ protected:
 	virtual void interrupt_taken() override;
 	virtual void irq_setup() override;
 	virtual void internal_update(u64 current_time) override;
+	virtual void notify_standby(int state) override;
 	virtual void device_add_mconfig(machine_config &config) override;
 	void map(address_map &map);
 
