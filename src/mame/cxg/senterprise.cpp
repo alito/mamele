@@ -12,13 +12,13 @@ NOTE: It triggers an NMI when the power switch is changed from ON to SAVE.
 If this is not done, NVRAM won't save properly.
 
 TODO:
-- if/when MAME supports an exit callback, hook up power-off NMI to that
+- if/when MAME supports an exit callback, hook up power-off switch to that
 - dump/add model 210.C (it has two small LCDs like Sphinx Galaxy)
 
 Hardware notes:
 - PCB label (Super Crown): CXG 218-600-001
-- Hitachi HD6301Y0 @ 8MHz
-- 2KB battery-backed RAM
+- Hitachi HD6301Y0P (mode 2), 8MHz XTAL
+- 2KB battery-backed RAM (HM6116LP-3)
 - chessboard buttons, 24 LEDs, piezo
 
 210 MCU is used in:
@@ -76,6 +76,8 @@ private:
 	required_device<dac_bit_interface> m_dac;
 	required_ioport_array<2> m_inputs;
 
+	u8 m_inp_mux = 0;
+
 	void main_map(address_map &map);
 
 	// I/O handlers
@@ -83,8 +85,6 @@ private:
 	u8 input2_r();
 	void control_w(u8 data);
 	void mux_w(u8 data);
-
-	u8 m_inp_mux = 0;
 };
 
 void senterp_state::machine_start()

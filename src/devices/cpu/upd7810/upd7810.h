@@ -236,6 +236,7 @@ protected:
 	static const struct opcode_s s_opXX_78c06[256];
 
 	address_space_config m_program_config;
+	memory_view m_ram_view;
 
 	PAIR    m_ppc;    /* previous program counter */
 	PAIR    m_pc;     /* program counter */
@@ -1385,6 +1386,7 @@ public:
 	upd7801_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
+	virtual void device_start() override;
 	virtual void device_reset() override;
 	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 2 - 1) / 2; }
 	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return (cycles * 2); }
