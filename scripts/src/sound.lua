@@ -236,20 +236,6 @@ if (SOUNDS["ES1373"]~=null) then
 end
 
 ---------------------------------------------------
--- Data East custom sound chips
---@src/devices/sound/bsmt2000.h,SOUNDS["BSMT2000"] = true
----------------------------------------------------
-
-if (SOUNDS["BSMT2000"]~=null) then
-	files {
-		MAME_DIR .. "src/devices/sound/bsmt2000.cpp",
-		MAME_DIR .. "src/devices/sound/bsmt2000.h",
-	}
-end
-
-
-
----------------------------------------------------
 -- Ensoniq 5503 (Apple IIgs)
 --@src/devices/sound/es5503.h,SOUNDS["ES5503"] = true
 ---------------------------------------------------
@@ -260,7 +246,6 @@ if (SOUNDS["ES5503"]~=null) then
 		MAME_DIR .. "src/devices/sound/es5503.h",
 	}
 end
-
 
 
 ---------------------------------------------------
@@ -287,6 +272,20 @@ if (SOUNDS["ESQPUMP"]~=null) then
 		MAME_DIR .. "src/devices/sound/esqpump.h",
 	}
 end
+
+
+---------------------------------------------------
+-- Data East custom sound chips
+--@src/devices/sound/bsmt2000.h,SOUNDS["BSMT2000"] = true
+---------------------------------------------------
+
+if (SOUNDS["BSMT2000"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/sound/bsmt2000.cpp",
+		MAME_DIR .. "src/devices/sound/bsmt2000.h",
+	}
+end
+
 
 
 ---------------------------------------------------
@@ -694,6 +693,20 @@ if (SOUNDS["UPD7759"]~=null) then
 		MAME_DIR .. "src/devices/sound/upd7759.h",
 		MAME_DIR .. "src/devices/sound/315-5641.cpp",
 		MAME_DIR .. "src/devices/sound/315-5641.h",
+	}
+end
+
+
+
+---------------------------------------------------
+-- IMA ADPCM sample player
+--@src/devices/sound/imaadpcm.h,SOUNDS["IMAADPCM"] = true
+---------------------------------------------------
+
+if (SOUNDS["IMAADPCM"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/sound/imaadpcm.cpp",
+		MAME_DIR .. "src/devices/sound/imaadpcm.h",
 	}
 end
 
@@ -1610,14 +1623,26 @@ if (SOUNDS["XT446"]~=null) then
 end
 
 ---------------------------------------------------
--- Roland sample players
---@src/devices/sound/rolandpcm.h,SOUNDS["ROLANDPCM"] = true
+-- Roland GP-based sample players
+--@src/devices/sound/roland_gp.h,SOUNDS["ROLANDGP"] = true
 ---------------------------------------------------
 
-if (SOUNDS["ROLANDPCM"]~=null) then
+if (SOUNDS["ROLANDGP"]~=null) then
 	files {
-		MAME_DIR .. "src/devices/sound/rolandpcm.cpp",
-		MAME_DIR .. "src/devices/sound/rolandpcm.h",
+		MAME_DIR .. "src/devices/sound/roland_gp.cpp",
+		MAME_DIR .. "src/devices/sound/roland_gp.h",
+	}
+end
+
+---------------------------------------------------
+-- Roland LP-based sample players
+--@src/devices/sound/roland_lp.h,SOUNDS["ROLANDLP"] = true
+---------------------------------------------------
+
+if (SOUNDS["ROLANDLP"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/sound/roland_lp.cpp",
+		MAME_DIR .. "src/devices/sound/roland_lp.h",
 	}
 end
 
