@@ -1,6 +1,8 @@
 /***************************************************************************
-This is a pass-through driver
+Interface between MAME and an agent playing the game. 
 
+Keeps track of keypresses by the agent, and tells the agent what the
+screen looks like, what the current score is and whether the game is over.
 ***************************************************************************/
 #include <string>
 #include <iostream>
@@ -26,10 +28,16 @@ using std::cerr;
 using std::endl;
 using std::string;
 
-const static int WaitFrames = 500; //Number of frames to wait till input is gotten
-const static input_code no_code = input_seq::end_code;
+// Number of frames to wait till we start reading the input
+// This is mostly determined by how long MAME takes to boot up the game
+const static int WAIT_FRAMES = 500;
+// Constant denoting that we have no way to specify that input. 
+// "code" in most of this file refers to input key sequences. That's what MAME calls them
+const static input_code NO_CODE = input_seq::end_code;
 
+// The series of button presses that we need to press in MAME for each of our inputs (ie up, down, button1, etc)
 static input_code button_codes[MAX_PLAYER][LE_TOTAL_BUTTONS];
+// Whether the directions/button presses are used for this game
 static bool used_buttons[MAX_PLAYER][LE_TOTAL_BUTTONS];
 
 typedef struct {
@@ -42,20 +50,21 @@ typedef struct {
 } le_state;
 
 
+// The state of all of our key presses (eg we are currently pressing up and button1)
 static le_state state;
 
 static le_frame_buffer frame_buffer = {0,0,nullptr};
 static le_memory_t *memory = nullptr;
 
 
-static int wait_frames = WaitFrames;
+static int wait_frames = WAIT_FRAMES;
 static int video_buffer_byte_length = 0;
 static int le_video_mode = LE_VIDEO_MODE_BGRA;
 
 static le_score_memory_description score_memory_description;
 static le_gameover game_over;
 
-static int g_player = 1;
+static int g_player = 1;  // Which player we are playing as
 static bool g_initialised_input = false;
 static string le_library;
 static string le_args;
@@ -114,7 +123,7 @@ static int get_current_score(running_machine &machine) {
 	*/
 	
 	if (score_memory_description.encoding == LE_ENCODING_HEXREADABLE) {
-		/* encoding that maps each hex to a decimal place
+		/* encoding where each half-byte is a decimal place in the score
 		* eg 0x34 = 34 
 		* or 0x4832 = 3248
 		*/
@@ -136,10 +145,13 @@ static bool is_game_over(running_machine &machine) {
 		return false;
 	}
 
-	u8 the_decider=0;
+	u8 the_decider = 0;
 	copy_from_memory(machine, game_over.cpu, 
 					game_over.address, 1, &the_decider);
 
+	// We only use 1 bit (game_over.bit) of the byte at that memory position to decide whether the game is over
+	// game_over.on tells us that when that bit is on the game is over. 
+	// If game_over.on is false, then the opposite is true
 	return ((the_decider & (1 << game_over.bit)) ? game_over.on : (1-game_over.on));
 }
 
@@ -156,7 +168,7 @@ static void initialise_button_codes(running_machine &machine) {
 
 	for (int i=0; i < MAX_PLAYER; i++) {
 		for (int j=0; j < LE_TOTAL_BUTTONS; j++) {
-			button_codes[i][j] = no_code;
+			button_codes[i][j] = NO_CODE;
 		}
 	}
 
@@ -241,6 +253,7 @@ static void process_events(const running_machine &machine) {
 	le_actions actions;
 
 	if (le_get_actions) {
+		// Ask the agent what buttons it wants to press for the next frame
 		actions = (*le_get_actions)();
 
 		for (int index = 0; index < LE_TOTAL_BUTTONS; index++) {
@@ -298,7 +311,9 @@ static void extract_main_memory(running_machine &machine) {
 	}					
 }
 
-
+/*
+Initialise learning environment. Called early in the MAME bootup process.
+*/
 int le_init(const running_machine &machine)
 {
 
@@ -309,7 +324,7 @@ int le_init(const running_machine &machine)
 
 	le_library = machine.options().learning_environment();
 	if (le_library.empty()) {
-		cerr << "Need to specify controller" << endl;
+		cerr << "Need to specify learning environment controller" << endl;
 		return 1;
 	}
 
@@ -317,7 +332,7 @@ int le_init(const running_machine &machine)
 	g_player = machine.options().learning_environment_player();
 
 	if ((g_player < 1) || (g_player > MAX_PLAYER)) {
-		cerr << "Player should be between 1 and " << MAX_PLAYER << endl;
+		cerr << "Learning environment player should be between 1 and " << MAX_PLAYER << endl;
 		return 1;
 	}
 
@@ -348,6 +363,10 @@ int le_init(const running_machine &machine)
 		return 1;
 	}
 	/*fprintf(stderr,"About to call function\n");*/
+	/* 
+		Call le_get_functions in the loaded module. This gets us all of the functions that we will need to 
+		dispatch to the agent
+	*/
 	le_functions_ = (*le_get_functions)(le_args.c_str());
 
 	le_start_game = le_functions_.start;
@@ -369,12 +388,13 @@ int le_init(const running_machine &machine)
 	return 0;
 }
 
+/* Called when MAME is exiting */
 void le_close_display (const running_machine &machine)
 {
 
 	// cerr << "close display called" << endl;
 
-
+	/* Let the agent code know that we are exiting if they have such a function defined */
 	if (le_finish_game) (*le_finish_game)();
 
 	if (frame_buffer.buffer) {
@@ -389,7 +409,7 @@ void le_close_display (const running_machine &machine)
 }
 
 
-/* invoked by main tree code to update bitmap into screen */
+/* invoked by main MAME code to update bitmap into screen */
 void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 {
 	int current_score;
@@ -408,7 +428,7 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 	}
 
 
-	// Wait until we've initialised input
+	// Initialise the input codes that we'll send to MAME 
 	if (!g_initialised_input) {
 		initialise_input(machine);
 		g_initialised_input = true;
@@ -432,6 +452,8 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 				game_info.buttons_used[button_index] = used_buttons[g_player-1][button_index];
 			}
 
+			// Tell the agent we are starting a game. Give it the game info, and ask what encoding they want
+			// the video frame sent as (even though they don't really have a choice at the moment)
 			le_video_mode = (*le_start_game) (&game_info);
 			if (le_video_mode != LE_VIDEO_MODE_BGRA) {
 				cerr << "Modes other than BGRA have not been implemented yet!" << endl;
@@ -457,6 +479,7 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 
 	/* If we are meant to skip more frames, quit now */
 	if (--frame_skip >= 0) {
+		// But poll for what keys to press anyway
 		process_events(machine);
 		return;
 	}
@@ -477,28 +500,29 @@ void le_update_display(running_machine &machine, const bitmap_rgb32 &bitmap)
 	current_score = get_current_score(machine);
 	game_over = (is_game_over(machine) ? 1 : 0);
 
+	// Update the agent with the score, whether it's game over and a copy of what the screen looks like
 	if (le_update_state) frame_skip = (*le_update_state)(current_score, game_over, &frame_buffer);
 
+	// If they are interested in the main memory, make a copy and send it to them
 	if (le_consume_memory) {
 		extract_main_memory(machine);
 		le_consume_memory(memory);
 	}
 
+	// Ask the agent for the next keypresses
 	process_events(machine);
 
-	// Check if we should be resetting the machine
+	// Check with the agent we should be resetting the machine
 	if ((le_check_reset) && (le_check_reset())) {
 		machine.schedule_soft_reset();
-		wait_frames = WaitFrames;
+		wait_frames = WAIT_FRAMES;
 	}
 
 	return;
 }
 
 
-
-
-
+/* This gets called from MAME code to check whether we are pressing these buttons */
 s32 le_get_input_code_value(input_code code) {
 	for (int index=0; index < LE_TOTAL_BUTTONS; index++) {
 		if (state.button[index].code == code) {

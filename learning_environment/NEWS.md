@@ -1,3 +1,10 @@
+2025-04-27 - v4.4.276
+---------------------
+
+* Update to MAME 0276
+* Remove support for Python 2
+* Update docs a bit
+
 2017-07-09 - v4.3.187
 ---------------------
 

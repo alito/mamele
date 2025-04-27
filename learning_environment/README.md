@@ -11,7 +11,7 @@ How to run
 Compile the mame binary with `make`. 
 
 It is easier to use the learning environment if 
-you run `make install` (don't run this as root though). This just copies the mame64 binary to your
+you run `make install` (don't run this as root though). This just copies the mame binary to your
 ~/bin directory, and a couple of description files that the learning environment needs at runtime
 to an ~/.le directory.  You can skip this step but then you'll need to specify where the files
 are with the -le_datapath parameter.
@@ -23,18 +23,14 @@ an agent that sits there and takes it.
 
 You can then run:
 
-`../../mame64 -use_le -le_library sit.so galaxian`
+`../../mame -use_le -le_library sit.so galaxian`
 
 to watch an agent get killed while sitting. Looking at [sit.c](example_agents/sit.c) is a good starting point for an agent
 that will show you all the points you can modify to make the agent actually act.
 
 You can also test out the Python bindings. The Python module to load is passed in the -le_options argument.
 
-`../../mame64 -use_le -le_library python2binding.so -le_options randomplayer galaxian`
-or
-`../../mame64 -use_le -le_library python3binding.so -le_options randomplayer galaxian`
-
-depending on whether you are using Python 2 or 3
+`../../mame -use_le -le_library python3binding.so -le_options randomplayer galaxian`
 
 This agent will hit random buttons so it can be a bit more fun.
 
@@ -43,7 +39,7 @@ If you run mame with the -showusage, the LEARNING ENVIRONMENT OPTIONS section wi
 rest of the relevant options
 
 ```
-$ ./mame64 -showusage
+$ ./mame -showusage
 ...
 #
 # LEARNING ENVIRONMENT OPTIONS
@@ -85,7 +81,7 @@ Since this is a fork of MAME, this code is also distributed under the terms of t
 [GNU General Public License, version 2](http://opensource.org/licenses/GPL-2.0) or later (GPL-2.0+).
 The files under this directory are also distributed under the BSD-3 License:
 
-Copyright 2005-2017 Alejandro Dubrovsky
+Copyright 2005-2025 Alejandro Dubrovsky
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 

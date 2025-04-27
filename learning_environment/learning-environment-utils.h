@@ -8,15 +8,16 @@
 #define LE_ENCODING_INVALID 0
 #define LE_ENCODING_HEXREADABLE 1
 
+/* Description of memory range where the score is stored and what encoding it uses */
 struct le_score_memory_description {
-	/* Description of memory range */
     le_score_memory_description() : cpu(), address_space_name(), address(0), number_of_bytes(0), encoding(LE_ENCODING_INVALID) { }
     std::string cpu;
     std::string address_space_name;
-	u32 address, number_of_bytes;
-	int encoding;
+    u32 address, number_of_bytes;
+    int encoding;
 };
 
+/* Memory address where there is a single bit that will determine whether the game is over or not */
 struct le_gameover {
     le_gameover() : cpu(), address_space_name(), address(0), bit(0), on(0) {}
     std::string cpu;

@@ -7,14 +7,7 @@ MAME_LE_DIRECTORY=..
 CFLAGS += -Wall -fPIC -I$(MAME_LE_DIRECTORY)
 
 
-
 PYTHONBINDINGS = 
-
-ifneq (, $(shell which python2-config))
-	PYTHONBINDINGS += python2binding.so
-	PYTHON2CFLAGS := $(shell python2-config --includes)
-	PYTHON2LIBS := $(shell python2-config --libs)
-endif
 
 ifneq (, $(shell which python3-config))
 	PYTHONBINDINGS += python3binding.so
@@ -31,15 +24,8 @@ all: sit.so $(PYTHONBINDINGS)
 
 print-%  : ; @echo $* = $($*)
 
-python2binding.o: pythonbinding.c
-	$(CC) -o python2binding.o -c $(CFLAGS) $(OPTFLAGS) $(PYTHON2CFLAGS) $<
-
 python3binding.o: pythonbinding.c
 	$(CC) -o python3binding.o -c $(CFLAGS) $(OPTFLAGS) $(PYTHON3CFLAGS) $<
-
-
-python2binding.so: python2binding.o
-	$(CC) -shared $(CFLAGS) $(OPTFLAGS) -o $@ $< $(PYTHON2LIBS)
 
 python3binding.so: python3binding.o
 	$(CC) -shared $(CFLAGS) $(OPTFLAGS) -o $@ $< $(PYTHON3LIBS)	

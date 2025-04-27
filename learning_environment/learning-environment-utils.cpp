@@ -105,10 +105,11 @@ static string find_description_filename(const string& filename, const std::strin
 }
 
 
-std::string find_description_for_game(const std::string& filename, const std::string& game_name) {
+/* Find the description for the game in the description file */
+static std::string find_description_for_game(const std::string& filename, const std::string& game_name) {
 	string line;
 	string description = "";
-	bool found=false;
+	bool found = false;
 	string target = game_name;
 	target += ":";
 

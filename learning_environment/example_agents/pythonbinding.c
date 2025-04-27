@@ -7,38 +7,6 @@ Python bindings for the agent interface of the MAME learning environment.
 #include <libgen.h>
 #include "learning-environment-common.h"
 
-
-#if PY_MAJOR_VERSION >= 3
-
-#define PyInt_AsLong PyLong_AsLong
-#define PyString_FromString PyUnicode_DecodeFSDefault
-
-#else
-
-/* 
-Write a super-simple PyMemoryView_FromMemory for Python 2.7
-We don't need to support the buffer protocol since the memoryview is only valid during the call
-*/
-PyObject* PyMemoryView_FromMemory(char *mem, Py_ssize_t size, int flags)
-{
-	Py_buffer buffer;
-
-    assert(mem != NULL);
-    assert(flags == PyBUF_READ || flags == PyBUF_WRITE);
-
-    PyBuffer_FillInfo(&buffer, NULL, mem, size, (flags == PyBUF_WRITE) ? 0 : 1, PyBUF_SIMPLE);
-
-    /* that whole buffer business seems buggy as */
-    buffer.shape = &(buffer.len);
-
-	/* Create a reference. Py_DECREF it when used */
-	PyObject* memory_view = PyMemoryView_FromBuffer(&buffer);
-
-	return memory_view;
-}
-
-#endif
-
 static PyObject *p_start_func, *p_update_func, *p_get_actions_func, *p_shutdown_func, 
 	*p_check_reset_func, *p_consume_memory_func, *p_module;
 
@@ -88,7 +56,7 @@ static void finish_game(void) {
 		p_value = PyObject_CallObject(p_shutdown_func, p_args);
 		Py_DECREF(p_args);
 		if (p_value != NULL) {
-			//printf("Result of shutdown call: %ld\n", PyInt_AsLong(p_value));
+			//printf("Result of shutdown call: %ld\n", PyLong_AsLong(p_value));
 			Py_DECREF(p_value);
 		}
 	}
@@ -126,7 +94,7 @@ static int update_state(int current_score, int game_over, const le_frame_buffer 
 			p_value = PyObject_CallObject(p_update_func, p_args);
 			Py_DECREF(p_args);
 			if (p_value != NULL) {
-				frame_skip = PyInt_AsLong(p_value);
+				frame_skip = PyLong_AsLong(p_value);
 				Py_DECREF(p_value);
 			} else {
 				/* Something went wrong. Bail out */
@@ -167,7 +135,7 @@ static le_actions get_actions(void) {
 					/* we should check that item != NULL here */
 					/* and make sure that it is a Python integer (but we don't) */
 					/* assign to the C array */
-					newstate = PyInt_AsLong(item);
+					newstate = PyLong_AsLong(item);
 					actions.buttons[index] = newstate;
 				}
 			}
@@ -351,7 +319,7 @@ le_functions le_get_functions (const char* args) {
 		fprintf(stderr,"couldn't add '%s' to PYTHONPATH", module_path);
 	} 
 
-	p_name = PyString_FromString(module_basename);
+	p_name = PyUnicode_DecodeFSDefault(module_basename);
 	p_module = PyImport_Import(p_name);
 	Py_DECREF(p_name);
 

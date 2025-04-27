@@ -8,7 +8,7 @@ Write a controller
 ==================
 
 The best way to get to know the interface is to look at [sit.c](example_agents/sit.c) and to
-[randomplayer.py](example_agents/randomplayer.py) for the C and Python bindings.
+[randomplayer.py](example_agents/randomplayer.py) for the C and Python bindings respectively.
 
 In both cases the interface is almost identical.  Only one function
 whose name is predefined is necessary to be supplied by the agent
@@ -21,12 +21,12 @@ for all structure definitions). This contains pointers to functions that
 * Gets called once on exit aka the exit function
 * Takes an update every frame of the current score, whether the game is over and 
   a snapshot of the framebuffer (the update function)
-* Gets polled every frame for the state of each of the buttons (eg up, down, button 1, etc)
+* Gets polled on each frame for the state of each of the buttons (eg up, down, button 1, etc)
   (the actions function)
-* Gets polled very frame to check whether the MAME emulator should be reset aka the reset function
+* Gets polled on each frame to check whether the MAME emulator should be reset aka the reset function
 * Takes a dump of the memory every frame aka the memory consumer function
 
-Any of these functions can be set to null if you do not want that function called. eg You might not care
+Any of these functions can be set to null if you do not want that function called. eg you might not care
 about the state of the memory, so would set the le_functions.consume_memory function to null.
 
 Flow of calls
@@ -45,9 +45,9 @@ that the game uses (eg galaxian only uses left, right and button 1)
   * update function is called with current score, whether the game is over
   and the current frame buffer.  The update function is meant to return the number of
   frames to skip till the next update (0 to receive the next
-  update available). This is used just to speed up processing in the
+  update available). This is used just to speed up processing in
   case that not all updates are desired.  Even if the update is
-  not sent, the actions will still be polled.
+  not sent, the actions will still be polled on every frame.
 
   * memory consumer is called with a dump of the memory
 
