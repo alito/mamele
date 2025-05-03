@@ -163,16 +163,6 @@ newoption {
 }
 
 newoption {
-	trigger = "distro",
-	description = "Choose distribution",
-	allowed = {
-		{ "generic",           "generic"            },
-		{ "debian-stable",     "debian-stable"      },
-		{ "ubuntu-intrepid",   "ubuntu-intrepid"    },
-	},
-}
-
-newoption {
 	trigger = "target",
 	description = "Building target",
 }
@@ -578,10 +568,6 @@ dofile ("toolchain.lua")
 -- Avoid error when invoking genie --help.
 if (_ACTION == nil) then return false end
 
--- define PTR64 if we are a 64-bit target
-configuration { "x64 or android-*64"}
-	defines { "PTR64=1" }
-
 -- define MAME_DEBUG if we are a debugging build
 configuration { "Debug" }
 	defines {
@@ -699,32 +685,18 @@ else
 	}
 end
 
-if _OPTIONS["NOASM"]=="1" then
+if _OPTIONS["NOASM"] == "1" then
 	defines {
 		"MAME_NOASM"
 	}
 end
 
-if not _OPTIONS["FORCE_DRC_C_BACKEND"] then
-	if _OPTIONS["BIGENDIAN"]~="1" then
-		if (_OPTIONS["PLATFORM"]=="arm64") then
-			configuration { }
-				defines {
-					"NATIVE_DRC=drcbe_arm64",
-				}
-		else
-			configuration { "x64" }
-				defines {
-					"NATIVE_DRC=drcbe_x64",
-				}
-			configuration { "x32" }
-				defines {
-					"NATIVE_DRC=drcbe_x86",
-				}
-			configuration {  }
-		end
-	end
-
+if _OPTIONS["FORCE_DRC_C_BACKEND"] then
+	configuration { }
+		defines {
+			"NATIVE_DRC=drcbe_c",
+		}
+elseif (_OPTIONS["PLATFORM"] == "x86") or (_OPTIONS["PLATFORM"] == "arm64") then
 	configuration { }
 		defines {
 			"ASMJIT_STATIC",
@@ -1090,9 +1062,6 @@ end
 				"-Wno-error=stringop-truncation", -- ImGui again
 				"-Wno-stringop-overflow", -- generates false positives when assigning an int rvalue to a u8 variable without an explicit cast
 			}
-			buildoptions_cpp {
-				"-Wno-error=class-memaccess", -- many instances in ImGui and BGFX
-			}
 			if version >= 110000 then
 				buildoptions {
 					"-Wno-nonnull",                 -- luaengine.cpp lambdas do not need "this" captured but GCC 11.1 erroneously insists
@@ -1113,12 +1082,6 @@ end
 		end
 	end
 
-if (_OPTIONS["PLATFORM"]=="alpha") then
-	defines {
-		"PTR64=1",
-	}
-end
-
 if (_OPTIONS["PLATFORM"]=="arm") then
 	buildoptions {
 		"-Wno-cast-align",
@@ -1128,21 +1091,6 @@ end
 if (_OPTIONS["PLATFORM"]=="arm64") then
 	buildoptions {
 		"-Wno-cast-align",
-	}
-	defines {
-		"PTR64=1",
-	}
-end
-
-if (_OPTIONS["PLATFORM"]=="riscv64") then
-	defines {
-		"PTR64=1",
-	}
-end
-
-if (_OPTIONS["PLATFORM"]=="mips64") then
-	defines {
-		"PTR64=1",
 	}
 end
 
@@ -1233,12 +1181,6 @@ configuration { "linux-*" }
 		flags {
 			"LinkSupportCircularDependencies",
 		}
-		if _OPTIONS["distro"]=="debian-stable" then
-			defines
-			{
-				"NO_AFFINITY_NP",
-			}
-		end
 
 
 configuration { "freebsd or netbsd" }
