@@ -195,6 +195,8 @@ files {
 	MAME_DIR .. "src/emu/rendlay.h",
 	MAME_DIR .. "src/emu/rendutil.cpp",
 	MAME_DIR .. "src/emu/rendutil.h",
+	MAME_DIR .. "src/emu/resampler.cpp",
+	MAME_DIR .. "src/emu/resampler.h",
 	MAME_DIR .. "src/emu/romload.cpp",
 	MAME_DIR .. "src/emu/romload.h",
 	MAME_DIR .. "src/emu/romentry.h",
@@ -273,6 +275,16 @@ files {
 	MAME_DIR .. "src/emu/video/rgbsse.h",
 	MAME_DIR .. "src/emu/video/rgbvmx.cpp",
 	MAME_DIR .. "src/emu/video/rgbvmx.h",
+	MAME_DIR .. "src/emu/audio_effects/aeffect.h",
+	MAME_DIR .. "src/emu/audio_effects/aeffect.cpp",
+	MAME_DIR .. "src/emu/audio_effects/filter.h",
+	MAME_DIR .. "src/emu/audio_effects/filter.cpp",
+	MAME_DIR .. "src/emu/audio_effects/compressor.h",
+	MAME_DIR .. "src/emu/audio_effects/compressor.cpp",
+	MAME_DIR .. "src/emu/audio_effects/reverb.h",
+	MAME_DIR .. "src/emu/audio_effects/reverb.cpp",
+	MAME_DIR .. "src/emu/audio_effects/eq.h",
+	MAME_DIR .. "src/emu/audio_effects/eq.cpp",
 }
 
 pchsource(MAME_DIR .. "src/emu/main.cpp")
