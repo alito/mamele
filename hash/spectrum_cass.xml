@@ -1187,7 +1187,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, English, AY sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="English" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -1202,7 +1204,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, English, Turbo Sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="English" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -1217,7 +1221,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, Russian, AY sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="Russian" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -1232,7 +1238,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, Russian, Turbo Sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="Russian" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -1247,7 +1255,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, Spanish, AY sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="Spanish" />
 		<info name="usage" value="128K" />
 		<info name="version" value="1.3" />
@@ -1263,7 +1273,9 @@ license:CC0-1.0
 		<description>Aliens: Neoplasma (v1.3, Spanish, Turbo Sound)</description>
 		<year>2019</year>
 		<publisher>Sanchez crew</publisher>
-		<info name="developer" value="Aleksander Udotov / Oleg Nikitin / Eugene Rogulin" />
+		<info name="developer" value="Aleksander Udotov" />
+		<info name="developer" value="Oleg Nikitin" />
+		<info name="developer" value="Eugene Rogulin" />
 		<info name="language" value="Spanish" />
 		<info name="usage" value="128K" />
 		<info name="version" value="1.3" />
@@ -1383,6 +1395,18 @@ license:CC0-1.0
 		<part name="cass2" interface="spectrum_cass">
 			<dataarea name="cass" size="93340">
 				<rom name="astro marine corps - side b.tzx" size="93340" crc="f1212bce" sha1="d8cb37beddfc70d35f77dba1c52aeee05312512f"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="asymmetry">
+		<description>Asymmetry (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="MANU &amp; KIT" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="68795">
+				<rom name="asymmetry.tap" size="68795" crc="d3e7cb46" sha1="cd951a2b7d435ee6edd3ed39f1e0bc69e45d5963"/>
 			</dataarea>
 		</part>
 	</software>
@@ -4635,7 +4659,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 2350)</description>
 		<year>2021</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 3rd Oct 2021, ver: 2350" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="50675">
@@ -4648,7 +4673,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1930)</description>
 		<year>2017</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 17 Nov 2017, ver: 1930" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="50727">
@@ -4665,7 +4691,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1654)</description>
 		<year>2016</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 17th July 2016 ver:1654" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="50727">
@@ -4678,7 +4705,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1500)</description>
 		<year>2016</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 8th May 2016 ver:1500" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="50734">
@@ -4691,7 +4719,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1470)</description>
 		<year>2016</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 3rd April 2016 ver:1470" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="50734">
@@ -4704,7 +4733,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1361)</description>
 		<year>2015</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 19th Dec 2015 ver:1361" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="43179">
@@ -4717,7 +4747,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1260)</description>
 		<year>2015</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 18th Oct 2015 ver:1260" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="38637">
@@ -4730,7 +4761,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1100)</description>
 		<year>2015</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 20th Feb 2015 ver:1100" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="35682">
@@ -4743,7 +4775,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1035)</description>
 		<year>2015</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 18th Jan 2015 ver1035" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="36792">
@@ -4756,7 +4789,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 1005)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 10th Dec 2014 ver1005" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="35602">
@@ -4769,7 +4803,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 985)</description>
 		<year>201?</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 17th Nov 2014 ver985" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="34152">
@@ -4782,7 +4817,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 950)</description>
 		<year>201?</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Ver 23rd Oct 2014 v950" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="32252">
@@ -4795,7 +4831,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 920)</description>
 		<year>201?</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Ver 10th Oct 2014 v920" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="31542">
@@ -4808,7 +4845,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 875)</description>
 		<year>201?</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Ver 17th Sept 2014 v875" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="31017">
@@ -4821,7 +4859,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 860)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 6th Sept 2014, v860" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="30442">
@@ -4834,7 +4873,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 822)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 15th August 2014, v822" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="30292">
@@ -4847,7 +4887,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 820)</description>
 		<year>201?</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 12th August 2014, v820" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="30292">
@@ -4860,7 +4901,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 810)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 6th August 2014, v810" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="30092">
@@ -4873,7 +4915,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 770)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 27th June 2014, v770" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="29377">
@@ -4886,7 +4929,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 600)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 1st March 2014, v600" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="38298">
@@ -4899,7 +4943,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (version 566)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<info name="version" value="Rev: 16th Feb 2014, v566" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="37708">
@@ -4912,7 +4957,8 @@ no loading screen, no custom loader
 		<description>Bomb Munchies (preview, 12 Jan 2014)</description>
 		<year>2014</year>
 		<publisher>Matthew Carrier</publisher>
-		<info name="developer" value="Matthew Carrier / Yerzmyey" />
+		<info name="developer" value="Matthew Carrier" />
+		<info name="developer" value="Yerzmyey" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="35751">
 				<rom name="bomb munchies preview 12th jan 2014.tap" size="35751" crc="29e2eb89" sha1="404f46e1b798215e6cf1a7f2fc70aa9170e5cb46"/>
@@ -15737,7 +15783,9 @@ Side B: Laser Shoot (original release)
 		<description>Justin</description>
 		<year>2007</year>
 		<publisher>CNGSoft</publisher>
-		<info name="language" value="English/French/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="23501">
 				<rom name="Justin.tap" size="23501" crc="f5d58915" sha1="37b93e36df31ef52563ca367a72eca3e3583791e"/>
@@ -25230,7 +25278,8 @@ Side B: Laser Shoot (original release)
 		<description>Ramiro El Vampiro Revamp (Spanish/English, double sided tape, TZX tape image)</description>
 		<year>2016</year>
 		<publisher>The Mojon Twins</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="134171">
 				<rom name="ramiro_cara_a_(esp).tzx" size="134171" crc="5c3f3477" sha1="51c556316a2d1bb87329c5198081cc2691f92578"/>
@@ -25247,7 +25296,8 @@ Side B: Laser Shoot (original release)
 		<description>Ramiro El Vampiro Revamp (Spanish/English, double sided tape, WAV tape image)</description>
 		<year>2016</year>
 		<publisher>The Mojon Twins</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="37756828">
 				<rom name="ramiro_cara_a_(esp).wav" size="37756828" crc="061768d9" sha1="f7f1c535fb08de9481be737bdac44d9a266effc8"/>
@@ -25297,7 +25347,8 @@ Side B: Laser Shoot (original release)
 		<description>Rabbit in Nightmareland</description>
 		<year>2015</year>
 		<publisher>Javier Fopiani</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="69594">
 				<rom name="rabbit in nightmareland.tap" size="69594" crc="a0123467" sha1="287a1cbaad361994da75318477d52a1c49743a82"/>
@@ -25309,7 +25360,8 @@ Side B: Laser Shoot (original release)
 		<description>Rabbit in Wonderland (128K, English/Spanish)</description>
 		<year>2015</year>
 		<publisher>Javier Fopiani</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="69090">
 				<rom name="rabbitinwonderland.tap" size="69090" crc="e6d51e0d" sha1="3bf3a299d88fc91fd56e0cbb808ca94fc27f7a0b"/>
@@ -25446,7 +25498,8 @@ Side B: Laser Shoot (original release)
 		<description>Redshift (standard load, TZX tape image)</description>
 		<year>2019</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="79898">
 				<rom name="redshift (standard load).tzx" size="79898" crc="1196ec7e" sha1="e04eb8c1791ee8d9ff5ad301f86458927f278433"/>
@@ -25458,7 +25511,8 @@ Side B: Laser Shoot (original release)
 		<description>Redshift (turbo load)</description>
 		<year>2019</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="80011">
 				<rom name="redshift (turbo load).tzx" size="80011" crc="68062737" sha1="e8171491992472fadbd2c08b22d0d036be60b659"/>
@@ -25470,7 +25524,8 @@ Side B: Laser Shoot (original release)
 		<description>Redshift (standard load, TAP tape image)</description>
 		<year>2019</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="79855">
 				<rom name="redshift (standard load).tap" size="79855" crc="2198fb31" sha1="d84375ad96398e240ffb74344313302ef60194e3"/>
@@ -30417,6 +30472,19 @@ Side B: Laser Shoot (original release)
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="46613">
 				<rom name="trmline.tap" size="46613" crc="f573c97f" sha1="b7e06f83ea3327fe16de35d04d95adbe58c3d83b"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="twilightcastle">
+		<description>Escape from the Twilight Castle (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Miguetelo" />
+		<info name="usage" value="128K" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="51206">
+				<rom name="twilight_castle_128k_miguetelo2025.tap" size="51206" crc="9d6ff436" sha1="a3bb300bedf39108306af168f881b5efee3be531"/>
 			</dataarea>
 		</part>
 	</software>
@@ -43730,6 +43798,22 @@ Side B: Once Upon a Lily Pad
 		</part>
 	</software>
 
+	<software name="ataka">
+		<description>Attack (Party Version, English, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="alt_title" value="Атака" />
+		<info name="developer" value="Макурин Борис Васильевич" />
+		<info name="language" value="English" />
+		<info name="language" value="Russian" />
+		<info name="usage" value="128K" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="101448">
+				<rom name="ATAKA.tzx" size="101448" crc="4ad21206" sha1="d311b58a78dca5dd1992c6e1b8b667dda2248be2"/>
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="atalltal">
 		<description>A Tall Tale</description>
 		<year>19??</year>
@@ -53454,6 +53538,18 @@ Side B: Once Upon a Lily Pad
 		</part>
 	</software>
 
+	<software name="bodyguard">
+		<description>DS. Bodyguard (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="sega-man" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="34151">
+				<rom name="bodyguard.tap" size="34151" crc="1e02e3af" sha1="9def97a8d4d17c4f9cf56aa9512bec3736333ad9"/>
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="bodywork">
 		<description>Body Works</description>
 		<year>1985</year>
@@ -57119,7 +57215,9 @@ Side B: Once Upon a Lily Pad
 		<description>Carlos Michelis (demo)</description>
 		<year>2012</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Russian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Russian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="72022">
 				<rom name="carlos michelis - demo.tzx" size="72022" crc="19ca5a53" sha1="3d7b6792b11bd0af3bb8023f76ed4aa5817e9e6a"/>
@@ -59561,7 +59659,19 @@ Side B: Once Upon a Lily Pad
 		</part>
 	</software>
 
-
+	<software name="cindy">
+		<description>Cindy Block (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Grongy" />
+		<info name="developer" value="Art-top" />
+		<info name="developer" value="n1k-o" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="42018">
+				<rom name="cindy.tap" size="42018" crc="1726dd76" sha1="39334c48352bca40d68858237dd7a55c6d5ec145"/>
+			</dataarea>
+		</part>
+	</software>
 
 	<software name="circuitd">
 		<description>Circuit Diagrams</description>
@@ -59705,7 +59815,9 @@ Side B: Once Upon a Lily Pad
 		<year>1988</year>
 		<publisher>Manuel Lemos</publisher>
 		<notes>Complete version, cracked from the demo by Emanuel Santos and fully compatible with +2A and +3</notes>
-		<info name="developer" value="Manuel Lemos, Ricardo Pinho, Paulo Gordinho" />
+		<info name="developer" value="Manuel Lemos" />
+		<info name="developer" value="Ricardo Pinho" />
+		<info name="developer" value="Paulo Gordinho" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="112994">
 				<rom name="City Connection 128K fixed.tap" size="112994" crc="6f25b629" sha1="a17ca80aa39ecd7834836c811f2e8564bb82aaf9"/>
@@ -59718,7 +59830,9 @@ Side B: Once Upon a Lily Pad
 		<year>1988</year>
 		<publisher>Manuel Lemos</publisher>
 		<notes>Complete version, cracked from the demo by Emanuel Santos</notes>
-		<info name="developer" value="Manuel Lemos, Ricardo Pinho, Paulo Gordinho" />
+		<info name="developer" value="Manuel Lemos" />
+		<info name="developer" value="Ricardo Pinho" />
+		<info name="developer" value="Paulo Gordinho" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="112997">
 				<rom name="city connection 128k.tzx" size="112997" crc="81485f57" sha1="efb913eaecf83908365e4675cb1eb8ecc46da963"/>
@@ -59731,7 +59845,9 @@ Side B: Once Upon a Lily Pad
 		<year>1988</year>
 		<publisher>Manuel Lemos</publisher>
 		<notes>Demo tape for magazine review</notes>
-		<info name="developer" value="Manuel Lemos, Ricardo Pinho, Paulo Gordinho" />
+		<info name="developer" value="Manuel Lemos" />
+		<info name="developer" value="Ricardo Pinho" />
+		<info name="developer" value="Paulo Gordinho" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="112998">
 				<rom name="city connection 128k demo.tzx" size="112998" crc="2ccfe779" sha1="ca2430e3a544ef490957d14c30a851a234c444ee"/>
@@ -64058,6 +64174,19 @@ Side B: Once Upon a Lily Pad
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="33928">
 				<rom name="cubey.tzx" size="33928" crc="4387e2cb" sha1="f9e123d2b4d0b5c841009f6c202f0ae249c16939"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="cubix">
+		<description>Cubix (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Gogin" />
+		<info name="usage" value="128K" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="127070">
+				<rom name="cubix_release.tap" size="127070" crc="863f4169" sha1="b4ee56422af8c97bc5b6a72fc9d35a835b616c5f"/>
 			</dataarea>
 		</part>
 	</software>
@@ -79401,6 +79530,32 @@ Side B - Game 1: The Dragonstar Trilogy Part III (Delta 4 Software)
 		</part>
 	</software>
 
+	<software name="frostland_en">
+		<description>Frostland (Party Version, English)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Roman Skorik" />
+		<info name="language" value="English" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="44149">
+				<rom name="frost_en.tap" size="44149" crc="cf081134" sha1="147e0ee3a28f34f4bbac2d1abe0b88e23c501ae6"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="frostland_ru">
+		<description>Frostland (Party Version, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Roman Skorik" />
+		<info name="language" value="Russian" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="44238">
+				<rom name="frost_ru.tap" size="44238" crc="36d22073" sha1="cc069dbb2b14c6e2f5cd97ab34276d8d4ade5e34"/>
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="frt2000">
 		<description>Fruit 2000</description>
 		<year>1985</year>
@@ -80126,7 +80281,10 @@ Side B - Game 1: The Dragonstar Trilogy Part III (Delta 4 Software)
 		<description>Futarposta</description>
 		<year>1986</year>
 		<publisher>Novotrade Rt.</publisher>
-		<info name="language" value="English/German/Hungarian/Russian" />
+		<info name="language" value="English" />
+		<info name="language" value="German" />
+		<info name="language" value="Hungarian" />
+		<info name="language" value="Russian" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="61948">
 				<rom name="futarposta.tzx" size="61948" crc="bc08ded9" sha1="3a809da0701a1548a091c70d6b230c943bd0ddaf"/>
@@ -80890,6 +81048,19 @@ Side B - Game 1: The Dragonstar Trilogy Part III (Delta 4 Software)
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="16741">
 				<rom name="galactians (prism).tzx" size="16741" crc="51877648" sha1="022075dfff39ad7aef6b978ef0f0f8712df917b5"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="galacicnexus">
+		<description>Galacic Nexus (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Tartessos Games" />
+		<info name="usage" value="128K" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="81184">
+				<rom name="galacic_nexus_en.tap" size="81184" crc="4afe81c9" sha1="97eda4b1b7891231b3d74597a5440c6ef364050e"/>
 			</dataarea>
 		</part>
 	</software>
@@ -81855,6 +82026,20 @@ Side B - Game 1: The Dragonstar Trilogy Part III (Delta 4 Software)
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="29070">
 				<rom name="general statistics.tzx" size="29070" crc="16f5e99a" sha1="186b0ac820e08210e2d3b366fa02f2e090ccb209"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="generaly">
+		<description>Generals (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="alt_title" value="Генералы" />
+		<info name="developer" value="Макурин Борис Васильеви" />
+		<info name="usage" value="128K" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="141575">
+				<rom name="generals.tzx" size="141575" crc="5e96fe82" sha1="acf1262ac2ad7e525881b07726863218ef4b36d8"/>
 			</dataarea>
 		</part>
 	</software>
@@ -84590,6 +84775,18 @@ Tape 1 - Side B:
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="55211">
 				<rom name="gunfighter.tzx" size="55211" crc="1318ce24" sha1="489a5b3950f5240512e1d7622e0808d36f6a5cda"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="gunmanmessiah">
+		<description>Gunman Messiah (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Krappygamez" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="15591">
+				<rom name="gunman_messiah.tap" size="15591" crc="5ece3be1" sha1="89414db32c954ce0f74b553e1eb5fb9f75560c8f"/>
 			</dataarea>
 		</part>
 	</software>
@@ -94606,7 +94803,8 @@ Created by Mark Jeffries
 		<description>Jeu de Dames</description>
 		<year>1984</year>
 		<publisher>Loriciels</publisher>
-		<info name="developer" value="Lemeur / Lepennec" />
+		<info name="developer" value="Lemeur" />
+		<info name="developer" value="Lepennec" />
 		<info name="language" value="French" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="39558">
@@ -97203,6 +97401,32 @@ Created by Mark Jeffries
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="26520">
 				<rom name="krypton raiders.tzx" size="26520" crc="9c59b305" sha1="71c49edbb919d4bfe2c5791b9ae71079d40d80ff"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="kubanoid_en">
+		<description>Kubanoid (Party Version, English)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Stardust" />
+		<info name="language" value="English" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="20943">
+				<rom name="kubanoid_eng.tap" size="20943" crc="da23233a" sha1="b77b265c4fc36095c0cd91c5dc5b4013272d0448"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="kubanoid_ru">
+		<description>Kubanoid (Party Version, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Stardust" />
+		<info name="language" value="Russian" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="21002">
+				<rom name="kubanoid_rus.tap" size="21002" crc="d1f2eb52" sha1="c8d6f8318885e7f3f5f5a64e3aa1702f0032e7e3"/>
 			</dataarea>
 		</part>
 	</software>
@@ -102550,7 +102774,8 @@ Lacks game introduction, bad dump or alternate version?
 		<description>Mad Cars</description>
 		<year>1984</year>
 		<publisher>Ventamatic</publisher>
-		<info name="developer" value="Joan Sales Roig / Oscar Domingo" />
+		<info name="developer" value="Joan Sales Roig" />
+		<info name="developer" value="Oscar Domingo" />
 		<info name="usage" value="48K" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="43455">
@@ -102563,7 +102788,11 @@ Lacks game introduction, bad dump or alternate version?
 		<description>Flunky</description>
 		<year>1987</year>
 		<publisher>Piranha</publisher>
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="44605">
 				<rom name="flunky.tzx" size="44605" crc="a5dba4d8" sha1="28861ae7461dc42bf4c4bf432542729d6ba12ec6"/>
@@ -102576,7 +102805,11 @@ Lacks game introduction, bad dump or alternate version?
 		<year>1987</year>
 		<publisher>Alternative Software</publisher>
 		<info name="alt_title" value="Flunky"/> <!-- box art was changed to 'Mad Flunky' game title was not updated -->
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="44635">
 				<rom name="mad flunky (alternative).tzx" size="44635" crc="ce84e265" sha1="c33ba9cff50bc90aec98874850f2e25a60be7eaa"/>
@@ -102588,7 +102821,11 @@ Lacks game introduction, bad dump or alternate version?
 		<description>Mad Flunky (EDOS)</description>
 		<year>1987</year>
 		<publisher>EDOS</publisher>
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="44847">
 				<rom name="mad flunky (edos).tzx" size="44847" crc="1914b163" sha1="337827a02674a6b0d96fa856ae7d91f804b5828e"/>
@@ -102601,7 +102838,11 @@ Lacks game introduction, bad dump or alternate version?
 		<year>1988</year>
 		<publisher>System 4</publisher>
 		<info name="alt_title" value="Flunky"/> <!-- box art was changed to 'Mad Flunky' game title was not updated -->
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="44745">
 				<rom name="mad flunky (system 4).tzx" size="44745" crc="4aa8a62a" sha1="f0c1e8c480fbee2b0685b5003133b15c7c9dbd80"/>
@@ -102613,7 +102854,11 @@ Lacks game introduction, bad dump or alternate version?
 		<description>Flunky (Zafi Chip)</description>
 		<year>1987</year>
 		<publisher>Zafi Chip</publisher>
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="44635">
 				<rom name="Flunky (Zafi Chip).tzx" size="44635" crc="4f55761e" sha1="061ffeb425adb40fd9f9bea6b70197a1bd2bea59"/>
@@ -103621,7 +103866,11 @@ Lacks game introduction, bad dump or alternate version?
 		<year>1991</year>
 		<publisher>Krisalis Software</publisher>
 		<info name="alt_title" value="Manchester United in Europe"/> <!-- Title in game -->
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="79979">
 				<rom name="manchester united europe.tzx" size="79979" crc="0721e100" sha1="b7a2d587e1af70e0a253b99a7d1e30fcbcb1b2eb"/>
@@ -103634,7 +103883,11 @@ Lacks game introduction, bad dump or alternate version?
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<info name="alt_title" value="Manchester United in Europe"/> <!-- Title in game -->
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="79815">
 				<rom name="manchester united europe (buzz).tzx" size="79815" crc="6ee41fda" sha1="40b9f08f5d6dafaf8aea5dedb95f73ce5d2262b3"/>
@@ -103647,7 +103900,11 @@ Lacks game introduction, bad dump or alternate version?
 		<year>1991</year>
 		<publisher>System 4</publisher>
 		<info name="alt_title" value="Manchester United in Europe"/> <!-- Title in game -->
-		<info name="language" value="English/French/German/Italian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="French" />
+		<info name="language" value="German" />
+		<info name="language" value="Italian" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="80170">
 				<rom name="Manchester United Europe (System 4).tzx" size="80170" crc="1c700c38" sha1="b38b899eae8cc8f9ea41cbf2da28546291927b6f"/>
@@ -104369,7 +104626,9 @@ Lacks game introduction, bad dump or alternate version?
 		<description>Marsmare: Alienation</description>
 		<year>2020</year>
 		<publisher>Drunken Fly</publisher>
-		<info name="language" value="English/Russian/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Russian" />
+		<info name="language" value="Spanish" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="115080">
 				<rom name="Marsmare-Alienation.tap" size="115080" crc="906f7098" sha1="5fc87e36b3e0ae5816f431551640730ae2b09fb4"/>
@@ -106369,7 +106628,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (English)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="English" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -106383,7 +106643,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (Czech)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="Czech" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -106397,7 +106658,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (Italian)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="Italian" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -106411,7 +106673,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (Polish)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="Polish" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -106425,7 +106688,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (Russian)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="Russian" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -106439,7 +106703,8 @@ Nothing happens after loading the cassette
 		<description>Metal Man Reloaded (Spanish)</description>
 		<year>2014</year>
 		<publisher>Oleg Origin</publisher>
-		<info name="developer" value="Oleg Origin / Stella Aragonskaya" />
+		<info name="developer" value="Oleg Origin" />
+		<info name="developer" value="Stella Aragonskaya" />
 		<info name="language" value="Spanish" />
 		<info name="usage" value="128K" />
 		<part name="cass" interface="spectrum_cass">
@@ -112657,6 +112922,22 @@ Nothing happens after loading the cassette
 		</part>
 	</software>
 
+	<software name="nighttrain">
+		<description>Night Train Deluxe (Party Version, English, German, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Undefined Crew" />
+		<info name="usage" value="128K" />
+		<info name="language" value="English" />
+		<info name="language" value="German" />
+		<info name="language" value="Russian" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="27651">
+				<rom name="night_train.tap" size="27651" crc="cc79df3b" sha1="3d9e77871cd1239f0d10c0f8ee56074633686e9c"/>
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="nightfli">
 		<description>Nightflite (diferent cover)</description>
 		<year>1982</year>
@@ -112881,7 +113162,8 @@ Nothing happens after loading the cassette
 		<description>Ninja Grannies</description>
 		<year>1989</year>
 		<publisher>&lt;unknown&gt;</publisher>
-		<info name="developer" value="Dean Hickingbottom / David Bradley" />
+		<info name="developer" value="Dean Hickingbottom" />
+		<info name="developer" value="David Bradley" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="44057">
 				<rom name="ninja grannies - side 1.tzx" size="44057" crc="6144c34e" sha1="44a32677c47eb5a78a2533d1a00e7c0a555151a5"/>
@@ -112898,7 +113180,8 @@ Nothing happens after loading the cassette
 		<description>Ninja Grannies (demo)</description>
 		<year>1989</year>
 		<publisher>&lt;unknown&gt;</publisher>
-		<info name="developer" value="Dean Hickingbottom / David Bradley" />
+		<info name="developer" value="Dean Hickingbottom" />
+		<info name="developer" value="David Bradley" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="58417">
 				<rom name="ninja grannies - demo.tzx" size="58417" crc="5e46a59b" sha1="58106e2651323b5b0be66c21adff92f190d197d7"/>
@@ -127712,6 +127995,34 @@ Game 4 - Char-Wallah
 		</part>
 	</software>
 
+	<software name="runnose_en">
+		<description>Run Away Nose (Party Version, English)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="alt_title" value="Беглый нос" />
+		<info name="developer" value="Chentzilla" />
+		<info name="language" value="English" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="39193">
+				<rom name="RUN_NOSE_EN-14.tap" size="39193" crc="9612d679" sha1="8e202d112efdd535cd437d57fd6a22f5929384bb"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="runnose_ru">
+		<description>Run Away Nose (Party Version, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="alt_title" value="Беглый нос" />
+		<info name="developer" value="Chentzilla" />
+		<info name="language" value="Russian" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="39201">
+				<rom name="RUN_NOSE_RU-14.tap" size="39201" crc="56201040" sha1="3467ba98a859f2c3732be4fc96a601adddb68a80"/>
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="runrabbi">
 		<description>Run Rabbit Run (Hill MacGibbon)</description>
 		<year>19??</year>
@@ -129692,7 +130003,8 @@ Game 4 - Char-Wallah
 		<description>Scrabble + Campo de Minas</description>
 		<year>198?</year>
 		<publisher>Microbaite Software</publisher>  <!-- The inlay says "Microbaite" but the loading screen says "Microbyte" -->
-		<info name="language" value="English/Portuguese" />
+		<info name="language" value="English" />
+		<info name="language" value="Portuguese" />
 		<part name="cass1" interface="spectrum_cass">
 			<feature name="part_id" value="A - Campo de Minas"/>
 			<dataarea name="cass" size="25697">
@@ -131513,6 +131825,20 @@ Game 4 - Char-Wallah
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="47405">
 				<rom name="shutdown.tzx" size="47405" crc="d75480cf" sha1="53b8d3b64dc728485b0dfced48cad49dd613da8b"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="sibcity">
+		<description>SibCity (Party Version, English, Russian)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="Andrew771" />
+		<info name="language" value="English" />
+		<info name="language" value="Russian" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="47015">
+				<rom name="sibcity.tap" size="47015" crc="934b409f" sha1="f3ff4356c1acff7751a8b9f82038d4daf23b2ba0"/>
 			</dataarea>
 		</part>
 	</software>
@@ -143338,7 +143664,8 @@ Game 4 - Char-Wallah
 		<description>Tabela Periódica</description>
 		<year>1984</year>
 		<publisher>Astor Software</publisher>
-		<info name="developer" value="Manuel Albuquerque / Nuno Albuquerque" />
+		<info name="developer" value="Manuel Albuquerque" />
+		<info name="developer" value="Nuno Albuquerque" />
 		<info name="language" value="Portuguese" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="48385">
@@ -143351,7 +143678,9 @@ Game 4 - Char-Wallah
 		<description>Tabela Periódica (fast version, hack)</description>
 		<year>1984</year>
 		<publisher>Astor Software</publisher>
-		<info name="developer" value="Manuel Albuquerque / Nuno Albuquerque / Zé Oliveira" />
+		<info name="developer" value="Manuel Albuquerque" />
+		<info name="developer" value="Nuno Albuquerque" />
+		<info name="developer" value="Zé Oliveira" />
 		<info name="language" value="Portuguese" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="48100">
@@ -143699,7 +144028,8 @@ Game 4 - Char-Wallah
 		<description>Talisman of Lost Souls + The Guardian</description>
 		<year>199?</year>
 		<publisher>The Guild</publisher>
-		<info name="developer" value="Tony Kingsmill / John Betteridge" />
+		<info name="developer" value="Tony Kingsmill" />
+		<info name="developer" value="John Betteridge" />
 		<part name="cass1" interface="spectrum_cass">
 			<dataarea name="cass" size="35373">
 				<rom name="The Talisman Of Lost Souls - The Guardian - Side 1.tzx" size="35373" crc="314cd477" sha1="a1ffd3620058f50ef8af9a936020f312aa217203"/>
@@ -144887,7 +145217,8 @@ Game 4 - Char-Wallah
 		<description>Teodoro no Sabe Volar (TZX tape image)</description>
 		<year>2010</year>
 		<publisher>RetroWorks</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass1" interface="spectrum_cass">
 			<feature name="part_id" value="Side 1 - English"/>
 			<dataarea name="cass" size="45501">
@@ -146296,7 +146627,8 @@ Game 4 - Char-Wallah
 		<year>2008</year>
 		<publisher>World XXI Soft</publisher>
 		<info name="alt_title" value="Escuela de Ladrones (versión demo)"/>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="110278">
 				<rom name="Thieves School Demo.tap" size="110278" crc="af197125" sha1="2395d079dd411fb0a20713299915d2e2a2a1eb2c"/>
@@ -156843,7 +157175,8 @@ Version without loading screen, maybe a pre-release
 		<description>Wudang (standard loader)</description>
 		<year>2020</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<info name="usage" value="48K" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="22457">
@@ -156856,7 +157189,8 @@ Version without loading screen, maybe a pre-release
 		<description>Wudang (turbo loader)</description>
 		<year>2020</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<info name="usage" value="48K" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="22511">
@@ -156869,7 +157203,8 @@ Version without loading screen, maybe a pre-release
 		<description>Wudang (Pure Basic Contest version)</description>
 		<year>2020</year>
 		<publisher>World XXI Soft</publisher>
-		<info name="language" value="English/Spanish" />
+		<info name="language" value="English" />
+		<info name="language" value="Spanish" />
 		<info name="usage" value="48K" />
 		<part name="cass" interface="spectrum_cass">
 			<dataarea name="cass" size="45825">
@@ -178025,6 +178360,18 @@ Tape 2 - Side B - Game 2: Drazen Petrovic Basket
 		<part name="cass2" interface="spectrum_cass">
 			<dataarea name="cass" size="78675">
 				<rom name="traveller_s tales - side 2.tzx" size="78675" crc="1fc059d2" sha1="a899c4a9c0de4c992a4c467eeabad07483f070ea"/>
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="travelunlimited">
+		<description>Travel Unlimited (Party Version)</description>
+		<year>2025</year>
+		<publisher>YRGB</publisher>
+		<info name="developer" value="MANU &amp; KIT" />
+		<part name="cass" interface="spectrum_cass">
+			<dataarea name="cass" size="64464">
+				<rom name="travel_unlimited.tap" size="64464" crc="4d5a3183" sha1="d70c0b100bbda1be53f5499db7fcf31cae4aa561"/>
 			</dataarea>
 		</part>
 	</software>
