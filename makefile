@@ -58,6 +58,7 @@ USE_QTDEBUG = 0
 # OPTIMIZE = 3
 # SYMBOLS = 1
 # SYMLEVEL = 2
+# PDB_SYMBOLS = 1
 # MAP = 1
 # PROFILE = 1
 # ARCHOPTS =
@@ -633,6 +634,10 @@ endif
 
 ifdef SYMLEVEL
 PARAMS += --SYMLEVEL='$(SYMLEVEL)'
+endif
+
+ifdef PDB_SYMBOLS
+PARAMS += --PDB_SYMBOLS='$(PDB_SYMBOLS)'
 endif
 
 ifdef PROFILER
@@ -1537,7 +1542,7 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.281"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.282"' > $@
 	@echo '#define BARE_VCS_REVISION "$(NEW_GIT_VERSION)"' >> $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char bare_vcs_revision[];' >> $@
@@ -1547,7 +1552,7 @@ $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " (" BARE_VCS_REVISION ")";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.281" > $@
+	@echo #define BARE_BUILD_VERSION "0.282" > $@
 	@echo #define BARE_VCS_REVISION "$(NEW_GIT_VERSION)" >> $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char bare_vcs_revision[]; >> $@
