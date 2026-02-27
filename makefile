@@ -467,7 +467,7 @@ OSD := sdl
 else ifeq ($(TARGETOS),solaris)
 OSD := sdl
 else ifeq ($(TARGETOS),macosx)
-OSD := sdl
+OSD := sdl3
 else ifeq ($(TARGETOS),asmjs)
 OSD := sdl
 endif # TARGETOS
@@ -569,15 +569,6 @@ endif
 # enable symbols as it is useless without them
 ifdef SANITIZE
 SYMBOLS = 1
-endif
-
-# profiler defaults to on for DEBUG builds
-ifdef DEBUG
-ifneq '$(DEBUG)' '0'
-ifndef PROFILER
-PROFILER = 1
-endif
-endif
 endif
 
 # allow gprof profiling as well, which overrides the internal PROFILER
@@ -1546,7 +1537,7 @@ endif
 
 ifeq (posix,$(SHELLTYPE))
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo '#define BARE_BUILD_VERSION "0.285"' > $@
+	@echo '#define BARE_BUILD_VERSION "0.286"' > $@
 	@echo '#define BARE_VCS_REVISION "$(NEW_GIT_VERSION)"' >> $@
 	@echo 'extern const char bare_build_version[];' >> $@
 	@echo 'extern const char bare_vcs_revision[];' >> $@
@@ -1556,7 +1547,7 @@ $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
 	@echo 'const char build_version[] = BARE_BUILD_VERSION " (" BARE_VCS_REVISION ")";' >> $@
 else
 $(GENDIR)/version.cpp: makefile $(GENDIR)/git_desc | $(GEN_FOLDERS)
-	@echo #define BARE_BUILD_VERSION "0.285" > $@
+	@echo #define BARE_BUILD_VERSION "0.286" > $@
 	@echo #define BARE_VCS_REVISION "$(NEW_GIT_VERSION)" >> $@
 	@echo extern const char bare_build_version[]; >> $@
 	@echo extern const char bare_vcs_revision[]; >> $@
