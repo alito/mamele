@@ -48,6 +48,8 @@ private:
 
 	void map_shadowram(address_space *memory_space, offs_t start_offs, offs_t end_offs, u8 setting);
 
+	void aperture_map(address_map &map);
+
 	u8 m_cache_control_1;
 	u8 m_cache_control_2;
 	u8 m_noncache_control;
@@ -109,7 +111,7 @@ protected:
 
 	virtual void config_map(address_map &map) override ATTR_COLD;
 private:
-	//required_device<sis630_gui_device> m_vga;
+	//required_device<vga_device> m_vga;
 
 	//virtual void bridge_control_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0) override;
 

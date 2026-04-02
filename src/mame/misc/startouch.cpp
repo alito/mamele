@@ -155,12 +155,12 @@ void startouch_state::europl01(machine_config &config)
 	VT82C586B_ACPI(config, "pci:07.3", 0);
 	ACPI_PIPC     (config, "pci:07.3:acpi");
 
-	PCI_SLOT(config, "pci:01.0:1", agp_cards, 1, 0, 1, 2, 3, nullptr);
+	PCI_SLOT(config, "pci:01.0:0", agp_cards, 0, 0, 1, 2, 3, nullptr);
 
-	PCI_SLOT(config, "pci:1", pci_cards, 13, 0, 1, 2, 3, nullptr);
-	PCI_SLOT(config, "pci:2", pci_cards, 14, 1, 2, 3, 0, nullptr);
-	PCI_SLOT(config, "pci:3", pci_cards, 15, 2, 3, 0, 1, nullptr);
-	PCI_SLOT(config, "pci:4", pci_cards, 16, 3, 0, 1, 2, "trio64dx");
+	PCI_SLOT(config, "pci:1", pci_cards, 8,  0, 1, 2, 3, nullptr);
+	PCI_SLOT(config, "pci:2", pci_cards, 9,  1, 2, 3, 0, nullptr);
+	PCI_SLOT(config, "pci:3", pci_cards, 10, 2, 3, 0, 1, nullptr);
+	PCI_SLOT(config, "pci:4", pci_cards, 11, 3, 0, 1, 2, "trio64dx");
 
 	// TODO: add Med3931
 	ISA16_SLOT(config, "board4", 0, "pci:07.0:isabus", isa_internal_devices, "superio", true).set_option_machine_config("superio", superio_config);
